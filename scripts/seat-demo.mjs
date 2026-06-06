@@ -46,8 +46,9 @@ const dots = seats
 const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
 <title>ParkFee 選位 demo（B1）</title><style>
  body{margin:0;font-family:system-ui,"Microsoft JhengHei",sans-serif;display:flex;height:100vh}
- #stage{flex:1;overflow:auto;background:#0f172a}#wrap{position:relative;width:max-content}
- #plan{display:block}svg{position:absolute;inset:0;width:100%;height:100%}
+ #stage{flex:1;overflow:auto;background:#0f172a;cursor:grab;user-select:none;touch-action:none}
+ #stage.grabbing{cursor:grabbing}#wrap{position:relative;width:max-content}
+ #plan{display:block;-webkit-user-drag:none}svg{position:absolute;inset:0;width:100%;height:100%}
  .seat{cursor:pointer}.seat circle{fill:rgba(59,130,246,.4);stroke:#1d4ed8;stroke-width:.7}
  .seat text{font-size:6px;fill:#0f172a;text-anchor:middle;pointer-events:none;user-select:none}
  .seat:hover circle{fill:rgba(59,130,246,.7)}
@@ -56,14 +57,20 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
  h1{font-size:15px;margin:0 0 8px}.hint{font-size:12px;color:#64748b;line-height:1.5}
  li{font-size:13px}label{font-size:13px;display:block;margin:8px 0}
 </style></head><body>
- <div id="stage"><div id="wrap"><img id="plan" src="b1.png"><svg viewBox="0 0 ${dispW} ${dispH}">${dots}</svg></div></div>
+ <div id="stage"><div id="wrap"><img id="plan" src="b1.png" draggable="false"><svg viewBox="0 0 ${dispW} ${dispH}">${dots}</svg></div></div>
  <div id="panel"><a href="../" style="font-size:13px;color:#2563eb;text-decoration:none">← 回首頁</a><h1 style="margin-top:6px">選位 demo（B1）</h1>
-  <p class="hint">真實 B1 平面圖 + ${seats.length} 個車位編號(自動放點，含汽/機/自行車與部分尺寸標註，尚未分類)。點選＝高亮/取消。</p>
+  <p class="hint">真實 B1 平面圖 + ${seats.length} 個車位編號(自動放點，含汽/機/自行車與部分尺寸標註，尚未分類)。點選＝高亮/取消；<b>按住拖曳平移</b>，Ctrl+滾輪縮放。</p>
   <label><input type="checkbox" id="show" checked> 顯示車位點</label>
   <div>已選 <b id="count">0</b></div><ul id="picked"></ul></div>
 <script>
+ // 拖曳平移（拖動超過門檻不觸發選位）
+ const stage=document.getElementById('stage')
+ let down=false,moved=false,sx,sy,sl,st
+ stage.addEventListener('pointerdown',e=>{down=true;moved=false;sx=e.clientX;sy=e.clientY;sl=stage.scrollLeft;st=stage.scrollTop;stage.classList.add('grabbing')})
+ window.addEventListener('pointermove',e=>{if(!down)return;const dx=e.clientX-sx,dy=e.clientY-sy;if(Math.abs(dx)>4||Math.abs(dy)>4)moved=true;stage.scrollLeft=sl-dx;stage.scrollTop=st-dy})
+ window.addEventListener('pointerup',()=>{down=false;stage.classList.remove('grabbing')})
  const picked=new Set()
- document.querySelectorAll('.seat').forEach(g=>g.addEventListener('click',()=>{const id=g.dataset.id;g.classList.toggle('sel');picked.has(id)?picked.delete(id):picked.add(id);count.textContent=picked.size;document.getElementById('picked').innerHTML=[...picked].map(x=>'<li>車位 '+x+'</li>').join('')}))
+ document.querySelectorAll('.seat').forEach(g=>g.addEventListener('click',()=>{if(moved)return;const id=g.dataset.id;g.classList.toggle('sel');picked.has(id)?picked.delete(id):picked.add(id);count.textContent=picked.size;document.getElementById('picked').innerHTML=[...picked].map(x=>'<li>車位 '+x+'</li>').join('')}))
  show.addEventListener('change',e=>document.querySelector('svg').style.display=e.target.checked?'':'none')
 </script></body></html>`
 writeFileSync(`${OUT}/seat-select-demo.html`, html)
