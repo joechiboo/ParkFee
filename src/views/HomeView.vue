@@ -1,6 +1,8 @@
 <script setup>
 import { RouterLink } from 'vue-router'
 
+const rulesUrl = `${import.meta.env.BASE_URL}rules.html`
+
 const flow = [
   { to: '/register', step: '1', label: '登記', desc: '匯入名冊 / 掃描帶車號' },
   { to: '/allocate', step: '2', label: '分階段配位', desc: '固定種子抽籤、可重現' },
@@ -17,6 +19,19 @@ const flow = [
       把《社區地下室停車場管理辦法》的機車條文，變成可重現、可稽核的年度作業：
       登記 → 抽籤 → 車位分配 → 繳費 → eTag 名單 → 巡邏稽核。
     </p>
+
+    <a
+      :href="rulesUrl"
+      class="mt-5 flex items-center justify-between gap-3 rounded-lg border border-indigo-200 bg-indigo-50 p-4 transition hover:border-indigo-400 hover:shadow-sm"
+    >
+      <div>
+        <div class="font-semibold text-indigo-900">📋 住戶說明頁 — 時序與規則</div>
+        <p class="mt-1 text-sm text-indigo-700/80">
+          一頁看懂：登記、抽籤、選位、繳費的時間點與遊戲規則（可分享給住戶）
+        </p>
+      </div>
+      <span class="flex-none text-indigo-400">→</span>
+    </a>
 
     <div class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <RouterLink

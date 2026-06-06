@@ -106,6 +106,14 @@
   .faq p{margin:0 0 12px; font-size:14px; color:#475569}
 
   footer{margin-top:56px; padding-top:20px; border-top:1px solid var(--line); text-align:center; color:var(--muted); font-size:13px}
+  .backbar{max-width:920px; margin:0 auto; padding:14px 20px 0}
+  .backbar a{
+    display:inline-flex; align-items:center; gap:6px; font-size:13.5px; font-weight:600;
+    color:var(--brand); text-decoration:none; padding:6px 12px; border:1px solid var(--line);
+    border-radius:999px; background:#fff; transition:border-color .15s;
+  }
+  .backbar a:hover{border-color:var(--brand)}
+  @media print{.backbar{display:none}}
 
   @media (max-width:640px){
     .lanes,.cards{grid-template-columns:1fr}
@@ -126,6 +134,8 @@
   <h1>機車車位 登記・抽籤・選位 時序與規則</h1>
   <p>一頁看懂：什麼時候做什麼、怎麼配位、收多少錢</p>
 </header>
+
+<div class="backbar"><a href="./">← 回到管理工具</a></div>
 
 <div class="src">
   依據《社區地下室停車場管理辦法》（115/03/21 修訂）整理。本頁為摘要說明，如與辦法有出入，<b>一律以辦法為準</b>。
