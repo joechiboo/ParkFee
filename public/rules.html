@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
+<title>樂菲莊園 機車車位 — 時序與規則</title>
+<style>
+  :root{
+    --ink:#1e293b; --muted:#64748b; --line:#e2e8f0; --bg:#f8fafc;
+    --brand:#4f46e5; --brand-soft:#eef2ff; --brand-ink:#3730a3;
+    --green:#059669; --green-soft:#ecfdf5;
+    --amber:#d97706; --amber-soft:#fffbeb;
+    --rose:#e11d48; --rose-soft:#fff1f2;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,-apple-system,sans-serif;
+    line-height:1.7; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px; margin:0 auto; padding:0 20px 80px}
+  header{
+    background:linear-gradient(135deg,#4f46e5,#6366f1); color:#fff;
+    padding:48px 20px 40px; text-align:center;
+  }
+  header .badge{
+    display:inline-block; font-size:13px; letter-spacing:.1em;
+    background:rgba(255,255,255,.18); padding:4px 12px; border-radius:999px; margin-bottom:14px;
+  }
+  header h1{margin:0 0 8px; font-size:30px; font-weight:800; letter-spacing:.02em}
+  header p{margin:0; opacity:.9; font-size:15px}
+  .src{
+    max-width:920px; margin:18px auto 0; padding:10px 16px; font-size:13px;
+    color:var(--muted); background:#fff; border:1px solid var(--line);
+    border-radius:10px; text-align:center;
+  }
+  section{margin-top:44px}
+  h2{
+    font-size:21px; font-weight:800; margin:0 0 6px;
+    display:flex; align-items:center; gap:10px;
+  }
+  h2 .n{
+    flex:none; width:30px; height:30px; border-radius:8px; background:var(--brand);
+    color:#fff; font-size:15px; display:grid; place-items:center; font-weight:700;
+  }
+  .lead{color:var(--muted); margin:0 0 18px; font-size:14.5px}
+
+  /* 時序 stepper */
+  .steps{display:grid; gap:12px}
+  .step{
+    display:grid; grid-template-columns:120px 1fr; gap:16px; align-items:start;
+    background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px 18px;
+  }
+  .step .when{font-weight:700; font-size:14px; color:var(--brand-ink)}
+  .step .when small{display:block; color:var(--muted); font-weight:400; font-size:12.5px; margin-top:2px}
+  .step h3{margin:0 0 4px; font-size:16px}
+  .step p{margin:0; font-size:14px; color:#475569}
+  .tag{display:inline-block; font-size:12px; font-weight:700; padding:2px 9px; border-radius:999px; margin-left:6px}
+  .tag.free{background:var(--green-soft); color:var(--green)}
+  .tag.pay{background:var(--amber-soft); color:var(--amber)}
+
+  /* 兩條道 */
+  .lanes{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  .lane{border-radius:14px; padding:18px; border:1px solid var(--line); background:#fff}
+  .lane.fast{border-color:#a7f3d0; background:var(--green-soft)}
+  .lane.draw{border-color:#c7d2fe; background:var(--brand-soft)}
+  .lane h3{margin:0 0 4px; font-size:16px}
+  .lane .sub{font-size:12.5px; color:var(--muted); margin:0 0 12px}
+  .flow{list-style:none; margin:0; padding:0}
+  .flow li{position:relative; padding:6px 0 6px 26px; font-size:14px}
+  .flow li::before{
+    content:""; position:absolute; left:7px; top:14px; width:8px; height:8px;
+    border-radius:50%; background:var(--brand);
+  }
+  .lane.fast .flow li::before{background:var(--green)}
+  .flow li::after{content:""; position:absolute; left:10px; top:20px; bottom:-2px; width:2px; background:var(--line)}
+  .flow li:last-child::after{display:none}
+
+  /* 規則卡 */
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px}
+  .card{background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px}
+  .card .k{font-size:12px; font-weight:700; color:var(--brand); letter-spacing:.05em}
+  .card h3{margin:4px 0 8px; font-size:15.5px}
+  .card p{margin:0; font-size:13.5px; color:#475569}
+
+  table{width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:14px; overflow:hidden}
+  th,td{padding:12px 16px; text-align:left; font-size:14px; border-bottom:1px solid var(--line)}
+  th{background:#f1f5f9; font-weight:700}
+  tr:last-child td{border-bottom:none}
+  td .big{font-weight:800; color:var(--brand-ink); font-size:16px}
+
+  .note{
+    background:var(--amber-soft); border:1px solid #fde68a; border-radius:12px;
+    padding:14px 16px; font-size:13.5px; color:#92400e; margin-top:16px;
+  }
+  .note b{color:#78350f}
+
+  .faq{display:grid; gap:10px}
+  .faq details{background:#fff; border:1px solid var(--line); border-radius:12px; padding:4px 16px}
+  .faq summary{cursor:pointer; font-weight:700; font-size:14.5px; padding:12px 0; list-style:none}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary::before{content:"＋"; color:var(--brand); margin-right:8px; font-weight:700}
+  .faq details[open] summary::before{content:"－"}
+  .faq p{margin:0 0 12px; font-size:14px; color:#475569}
+
+  footer{margin-top:56px; padding-top:20px; border-top:1px solid var(--line); text-align:center; color:var(--muted); font-size:13px}
+
+  @media (max-width:640px){
+    .lanes,.cards{grid-template-columns:1fr}
+    .step{grid-template-columns:1fr; gap:6px}
+    header h1{font-size:24px}
+  }
+  @media print{
+    body{background:#fff}
+    header{background:#4f46e5 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact}
+    .faq details{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="badge">樂菲莊園社區 · 機車車位</div>
+  <h1>機車車位 登記・抽籤・選位 時序與規則</h1>
+  <p>一頁看懂：什麼時候做什麼、怎麼配位、收多少錢</p>
+</header>
+
+<div class="src">
+  依據《社區地下室停車場管理辦法》（115/03/21 修訂）整理。本頁為摘要說明，如與辦法有出入，<b>一律以辦法為準</b>。
+</div>
+
+<div class="wrap">
+
+  <!-- 時序 -->
+  <section>
+    <h2><span class="n">時</span>年度時序</h2>
+    <p class="lead">從登記到啟用，一條龍六步。<b>登記不收費，抽中後才繳。</b></p>
+    <div class="steps">
+      <div class="step">
+        <div class="when">① 登記<small>每年 11/15–11/30</small></div>
+        <div><h3>線上或紙本登記 <span class="tag free">不收費</span></h3>
+          <p>出示行照、登記車號。每戶限登記一次，一次填齊想登記的機車。逾期未登記以棄權論。</p></div>
+      </div>
+      <div class="step">
+        <div class="when">② 抽籤<small>登記截止後 10 日內</small></div>
+        <div><h3>電腦隨機抽選「順序號」</h3>
+          <p>抽的是<b>選位的先後順序</b>，不是直接抽到車位。公開抽籤、委員監察，並記錄亂數種子與時間，可事後重新驗算。</p></div>
+      </div>
+      <div class="step">
+        <div class="when">③ 選位</div>
+        <div><h3>依順序號 人工選位</h3>
+          <p>中籤者依自己的順序號，輪流從剩餘車位中選定號碼（選課式），由本人或管理中心人工操作，搭配平面圖選位。</p></div>
+      </div>
+      <div class="step">
+        <div class="when">④ 簽約繳費<small>公告後 5 日內</small></div>
+        <div><h3>到管理中心簽約，一次繳一年 <span class="tag pay">繳費</span></h3>
+          <p>確定車位號碼後辦理。簽署承租合約書並一次繳清全年費用（臨櫃，配合既有管理費收取）。</p></div>
+      </div>
+      <div class="step">
+        <div class="when">⑤ 逾期放棄<small>公告後 10 日</small></div>
+        <div><h3>未辦妥視同放棄 → 候補遞補</h3>
+          <p>抽中後未於期限內完成簽約繳費者，視同放棄，由候補者依序遞補並繳費。</p></div>
+      </div>
+      <div class="step">
+        <div class="when">⑥ 啟用</div>
+        <div><h3>領／貼 eTag，憑車號進出</h3>
+          <p>一車一 eTag，依行照車號。未登記 eTag 之車輛禁止入內。</p></div>
+      </div>
+    </div>
+    <div class="note">
+      <b>首次上線：</b>11/15–11/30 是辦法訂定的<b>每年常態登記期</b>。社區第一次辦理（重建名冊）的登記日期，由管委會另行公告，不必等到 11 月。
+    </div>
+  </section>
+
+  <!-- 兩條道 -->
+  <section>
+    <h2><span class="n">道</span>兩條配位路徑</h2>
+    <p class="lead">想停哪種位子，走的路不一樣。</p>
+    <div class="lanes">
+      <div class="lane fast">
+        <h3>🟢 志願小位 — 免抽快速道</h3>
+        <p class="sub">自願登記一般（小）機車位者</p>
+        <ul class="flow">
+          <li>登記時表明「志願小位」</li>
+          <li>免抽籤，依登記順序選定小位號碼</li>
+          <li>車位當下確定 → 即可辦理繳費</li>
+        </ul>
+      </div>
+      <div class="lane draw">
+        <h3>🔵 一般／大位 — 抽籤道</h3>
+        <p class="sub">第 1 輛抽資格、第 2 輛起競爭剩餘</p>
+        <ul class="flow">
+          <li>登記 → 等截止後電腦抽順序號</li>
+          <li>依順序號人工選位</li>
+          <li>公告後 5 日內簽約繳費</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 配位規則 -->
+  <section>
+    <h2><span class="n">配</span>分階段配位規則</h2>
+    <p class="lead">分三階段依序跑，後階段用前階段配完的剩餘車位。</p>
+    <div class="cards">
+      <div class="card">
+        <div class="k">階段 0</div>
+        <h3>無障礙車位</h3>
+        <p>身障者優先承租（共 8 位）。登記超過 8 位採抽籤；未抽中者併入一般機車抽籤。</p>
+      </div>
+      <div class="card">
+        <div class="k">階段 1</div>
+        <h3>保障每戶第 1 輛</h3>
+        <p>志願小位者免抽、依登記序選位；其餘第 1 輛抽資格＋順序號。目標讓每個有第 1 輛的戶都有一位（保障「一位」，不保證類型／位置）。</p>
+      </div>
+      <div class="card">
+        <div class="k">階段 2</div>
+        <h3>第 2 輛起</h3>
+        <p>用階段 1 剩餘車位開放競爭。需求 ≤ 剩餘 → 直接抽號；需求 &gt; 剩餘 → 公開抽籤定資格、號碼與候補序。第 3 輛以上有剩餘再依序辦。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 收費 -->
+  <section>
+    <h2><span class="n">費</span>收費標準</h2>
+    <p class="lead">抽中後一次繳一年，臨櫃辦理。中途退租依剩餘月份退費，不滿一月以一月計。</p>
+    <table>
+      <tr><th>車種</th><th>月費</th><th>一次繳一年</th></tr>
+      <tr><td>一般機車（250CC 以下）</td><td>100 元</td><td><span class="big">1,200 元</span></td></tr>
+      <tr><td>重機（250CC 以上，佔雙機車位）</td><td>300 元</td><td><span class="big">3,600 元</span></td></tr>
+      <tr><td>自行車</td><td colspan="2">免費</td></tr>
+    </table>
+    <div class="note">
+      <b>重機：</b>佔用雙機車位，須在社區機車位「足額」之條件下方可停放。
+    </div>
+  </section>
+
+  <!-- 罰則 -->
+  <section>
+    <h2><span class="n">罰</span>罰則摘要</h2>
+    <div class="cards">
+      <div class="card">
+        <div class="k">佔用他人車位</div>
+        <h3>3,000 元／日</h3>
+        <p>收取之費用歸該車位所有權人。</p>
+      </div>
+      <div class="card">
+        <div class="k">三次違停／放雜物</div>
+        <h3>取消停車資格</h3>
+        <p>經查獲公告並提報管委會確認後，立即取消資格。</p>
+      </div>
+      <div class="card">
+        <div class="k">輪流停同一車位</div>
+        <h3>押金 3,000 元</h3>
+        <p>須向服務中心登記；違規經確認則沒收押金並撤銷增加之停車資格。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section>
+    <h2><span class="n">問</span>常見問題</h2>
+    <div class="faq">
+      <details><summary>登記要先繳錢嗎？</summary><p>不用。登記不收任何費用，抽中車位後再到管理中心一次繳一年。</p></details>
+      <details><summary>不會用手機／電腦怎麼辦？</summary><p>可到管理中心索取紙本登記表填寫，由服務人員協助登錄，與線上登記等效。</p></details>
+      <details><summary>一戶可以登記幾輛？</summary><p>不限輛數，但每戶只能送出一次，請一次填齊。配位時保障每戶第 1 輛先有一位，第 2 輛起看剩餘車位抽籤。</p></details>
+      <details><summary>「抽籤」是直接抽到車位嗎？</summary><p>不是。電腦抽的是「順序號」，決定選位的先後；拿到順序號後再依序人工選定車位號碼。</p></details>
+      <details><summary>沒抽中怎麼辦？</summary><p>會列入候補序，前面有人放棄即依序遞補。</p></details>
+      <details><summary>抽籤公不公平？</summary><p>公開抽籤、委員監察，並記錄亂數種子與執行時間，任何人都可事後重新驗算結果是否一致。</p></details>
+    </div>
+  </section>
+
+  <footer>
+    樂菲莊園管理委員會　·　電話 02-2218-6136<br>
+    本頁為《社區地下室停車場管理辦法》之摘要說明，內容以辦法正文為準。
+  </footer>
+
+</div>
+</body>
+</html>
