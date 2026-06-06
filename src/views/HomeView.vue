@@ -2,6 +2,7 @@
 import { RouterLink } from 'vue-router'
 
 const rulesUrl = `${import.meta.env.BASE_URL}rules.html`
+const demoUrl = `${import.meta.env.BASE_URL}demo/seat-select-demo.html`
 
 const flow = [
   { to: '/register', step: '1', label: '登記', desc: '匯入名冊 / 掃描帶車號' },
@@ -31,6 +32,19 @@ const flow = [
         </p>
       </div>
       <span class="flex-none text-indigo-400">→</span>
+    </a>
+
+    <a
+      :href="demoUrl"
+      class="mt-3 flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 transition hover:border-emerald-400 hover:shadow-sm"
+    >
+      <div>
+        <div class="font-semibold text-emerald-900">🗺️ 選位地圖原型 — B1 平面圖（試玩）</div>
+        <p class="mt-1 text-sm text-emerald-700/80">
+          真實 B1 平面圖 + 可點選車位。原型：尚未分類車種、約 8 成對齊
+        </p>
+      </div>
+      <span class="flex-none text-emerald-400">→</span>
     </a>
 
     <div class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

@@ -57,7 +57,7 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
  li{font-size:13px}label{font-size:13px;display:block;margin:8px 0}
 </style></head><body>
  <div id="stage"><div id="wrap"><img id="plan" src="b1.png"><svg viewBox="0 0 ${dispW} ${dispH}">${dots}</svg></div></div>
- <div id="panel"><h1>選位 demo（B1）</h1>
+ <div id="panel"><a href="../" style="font-size:13px;color:#2563eb;text-decoration:none">← 回首頁</a><h1 style="margin-top:6px">選位 demo（B1）</h1>
   <p class="hint">真實 B1 平面圖 + ${seats.length} 個車位編號(自動放點，含汽/機/自行車與部分尺寸標註，尚未分類)。點選＝高亮/取消。</p>
   <label><input type="checkbox" id="show" checked> 顯示車位點</label>
   <div>已選 <b id="count">0</b></div><ul id="picked"></ul></div>
