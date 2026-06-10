@@ -4,6 +4,7 @@ import { RouterLink, RouterView } from 'vue-router'
 const nav = [
   { to: '/', label: '首頁' },
   { to: '/register', label: '登記' },
+  { to: '/me', label: '我的登記' },
   { to: '/allocate', label: '配位' },
   { to: '/result', label: '結果' },
   { to: '/patrol', label: '巡邏稽核' },
