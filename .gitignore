@@ -14,6 +14,17 @@ dist-ssr
 *.njsproj
 *.sln
 
+# ⚠️ 個資 — 嚴禁進 repo（戶號↔車號 名冊、eTag 名冊等敏感資料）
+# 此 repo 為公開，任何含住戶身分/車號的檔案一律排除。
+private/
+*.xlsx
+*.xls
+*eTag*
+*eatg*
+*EATG*
+*名冊*
+*戶號*
+
 # logs
 npm-debug.log*
 yarn-debug.log*
