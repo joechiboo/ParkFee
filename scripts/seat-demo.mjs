@@ -25,11 +25,13 @@ const dots = seats
   .sort((a, b) => order[a.cat] - order[b.cat]) // 機車畫最上層
   .map(
     (s) =>
-      `<g class="seat cat-${s.cat}" data-id="${s.id}" data-cat="${s.cat}"><circle cx="${s.x}" cy="${s.y}" r="7"/><text x="${s.x}" y="${s.y + 2.5}">${s.id}</text></g>`,
+      `<g class="seat cat-${s.cat}${s.verified ? ' verified' : ''}" data-id="${s.id}" data-cat="${s.cat}"><circle cx="${s.x}" cy="${s.y}" r="7"/><text x="${s.x}" y="${s.y + 2.5}">${s.id}</text></g>`,
   )
   .join('')
 
 const n = seats.reduce((a, s) => ((a[s.cat] = (a[s.cat] || 0) + 1), a), {})
+const motorVer = seats.filter((s) => s.cat === 'motor' && s.verified).length
+const motorTodo = (n.motor || 0) - motorVer
 
 const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -39,10 +41,12 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
  #stage.grabbing{cursor:grabbing}#wrap{position:relative;width:max-content}
  #plan{display:block;-webkit-user-drag:none}svg{position:absolute;inset:0;width:100%;height:100%}
  .seat text{font-size:6px;text-anchor:middle;pointer-events:none;user-select:none;fill:#0f172a}
- /* 機車：可點選 */
+ /* 機車：可點選。未盤點＝琥珀（暫定，PDF 抽出未現場核對）；已盤點＝藍 */
  .cat-motor{cursor:pointer}
- .cat-motor circle{fill:rgba(59,130,246,.45);stroke:#1d4ed8;stroke-width:.7}
- .cat-motor:hover circle{fill:rgba(59,130,246,.75)}
+ .cat-motor circle{fill:rgba(245,158,11,.30);stroke:#d97706;stroke-width:.7}
+ .cat-motor:hover circle{fill:rgba(245,158,11,.55)}
+ .cat-motor.verified circle{fill:rgba(59,130,246,.45);stroke:#1d4ed8}
+ .cat-motor.verified:hover circle{fill:rgba(59,130,246,.75)}
  .cat-motor.sel circle{fill:#ef4444;stroke:#b91c1c}.cat-motor.sel text{fill:#fff;font-weight:700}
  /* 汽車 / 腳踏車：僅參考、不可點 */
  .cat-car circle{fill:rgba(16,185,129,.5);stroke:#047857;stroke-width:.7}.cat-car{pointer-events:none}
@@ -59,7 +63,8 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
  <div id="stage"><div id="wrap"><img id="plan" src="b1.png" draggable="false">
    <svg viewBox="0 0 ${dispW} ${dispH}">${dots}</svg></div></div>
  <div id="panel"><a href="../">← 回首頁</a><h1 style="margin-top:6px">選位 demo（B1）</h1>
-  <p class="hint">真實 B1 平面圖。<b>機車位可點選</b>（${n.motor} 個，藍）；汽車/腳踏車為參考。<br><b>按住拖曳平移</b>，Ctrl+滾輪縮放。</p>
+  <p class="hint">真實 B1 平面圖。<b>機車位可點選</b>；汽車/腳踏車為參考。<br><b>按住拖曳平移</b>，Ctrl+滾輪縮放。</p>
+  <p class="hint">盤點進度：<b style="color:#1d4ed8">已盤點 ${motorVer}</b> ／ <b style="color:#d97706">未盤點 ${motorTodo}</b>（琥珀＝PDF 抽出、待現場核對）</p>
   <label><input type="checkbox" data-cat="motor" checked><span class="dot m"></span>機車 ${n.motor}</label>
   <label><input type="checkbox" data-cat="car"><span class="dot c"></span>汽車 ${n.car || 0}</label>
   <label><input type="checkbox" data-cat="bike"><span class="dot b"></span>腳踏車 ${n.bike || 0}</label>

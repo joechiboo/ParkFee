@@ -3815,248 +3815,284 @@
     },
     {
       "key": 543,
-      "id": "490",
+      "id": "497",
       "x": 1034.5,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 544,
-      "id": "491",
+      "id": "498",
       "x": 1048.5,
       "y": 1464,
-      "cat": "motor"
+      "cat": "excl",
+      "note": "漏水",
+      "verified": true
     },
     {
       "key": 545,
-      "id": "492",
+      "id": "499",
       "x": 1063.5,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 546,
-      "id": "493",
+      "id": "500",
       "x": 1076,
       "y": 1463,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 547,
-      "id": "494",
+      "id": "501",
       "x": 1087,
       "y": 1463,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 548,
-      "id": "495",
+      "id": "502",
       "x": 1098,
       "y": 1463,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 549,
-      "id": "496",
+      "id": "503",
       "x": 1110.5,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 550,
-      "id": "497",
+      "id": "504",
       "x": 1125,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 551,
-      "id": "498",
+      "id": "505",
       "x": 1139.5,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 552,
-      "id": "499",
+      "id": "506",
       "x": 1152,
       "y": 1463,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 553,
-      "id": "500",
+      "id": "507",
       "x": 1163,
       "y": 1463,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 554,
-      "id": "501",
+      "id": "508",
       "x": 1173.5,
       "y": 1463,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 555,
-      "id": "502",
+      "id": "509",
       "x": 1185,
       "y": 1463,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 556,
-      "id": "503",
+      "id": "510",
       "x": 1197.5,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 557,
-      "id": "504",
+      "id": "511",
       "x": 1212,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 558,
-      "id": "505",
+      "id": "512",
       "x": 1226.5,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 559,
-      "id": "506",
+      "id": "513",
       "x": 1241,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 560,
-      "id": "507",
+      "id": "514",
       "x": 1255.5,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 561,
-      "id": "508",
+      "id": "515",
       "x": 1270,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 562,
-      "id": "509",
+      "id": "516",
       "x": 1284,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 563,
-      "id": "510",
+      "id": "517",
       "x": 1297,
       "y": 1463,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 564,
-      "id": "511",
+      "id": "518",
       "x": 1308,
       "y": 1463,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 565,
-      "id": "512",
+      "id": "519",
       "x": 1319,
       "y": 1463,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 566,
-      "id": "513",
+      "id": "520",
       "x": 1331.5,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 567,
-      "id": "514",
+      "id": "521",
       "x": 1346,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 568,
-      "id": "515",
+      "id": "522",
       "x": 1360,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 569,
-      "id": "516",
+      "id": "523",
       "x": 1375,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 570,
-      "id": "517",
+      "id": "524",
       "x": 1387.5,
       "y": 1463,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 571,
-      "id": "518",
+      "id": "525",
       "x": 1398.5,
       "y": 1463,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 572,
-      "id": "519",
+      "id": "526",
       "x": 1409,
       "y": 1463,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 573,
-      "id": "520",
+      "id": "527",
       "x": 1422,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 574,
-      "id": "521",
+      "id": "528",
       "x": 1436.5,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 575,
-      "id": "522",
+      "id": "529",
       "x": 1451,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 576,
-      "id": "523",
+      "id": "530",
       "x": 1465.5,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 577,
-      "id": "524",
+      "id": "531",
       "x": 1480,
       "y": 1464,
-      "cat": "motor"
+      "cat": "motor",
+      "verified": true
     },
     {
       "key": 578,
