@@ -2,6 +2,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { register, RegistrationError } from '../store/db.js'
+import { normalizeHousehold, isValidHousehold } from '../data/household.js'
 
 const router = useRouter()
 
@@ -20,8 +21,17 @@ function removeVehicle(i) {
   if (form.vehicles.length > 1) form.vehicles.splice(i, 1)
 }
 
+function onHouseholdInput() {
+  form.戶號 = normalizeHousehold(form.戶號)
+}
+
 function submit() {
   error.value = ''
+  form.戶號 = normalizeHousehold(form.戶號)
+  if (!isValidHousehold(form.戶號)) {
+    error.value = '戶號格式不對，請用「棟+樓-戶」，例：H3-6（店面 S1-6）'
+    return
+  }
   try {
     done.value = register({ 戶號: form.戶號, 電話: form.電話, vehicles: form.vehicles })
   } catch (e) {
@@ -66,8 +76,10 @@ function submit() {
       <div class="grid gap-4 sm:grid-cols-2">
         <label class="block">
           <span class="text-sm font-medium text-slate-700">戶號 *</span>
-          <input v-model="form.戶號" type="text" placeholder="例：A棟5樓3號 / A-5-3"
+          <input v-model="form.戶號" @input="onHouseholdInput" type="text" placeholder="例：H3-6（店面 S1-6）"
+            style="text-transform:uppercase"
             class="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none" />
+          <span v-if="form.戶號 && !isValidHousehold(form.戶號)" class="mt-1 block text-xs text-red-600">格式：棟(A–H)+樓(1–15)-戶，例 H3-6；店面 S1-6</span>
         </label>
         <label class="block">
           <span class="text-sm font-medium text-slate-700">聯絡電話</span>
