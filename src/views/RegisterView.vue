@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { register, RegistrationError } from '../store/db.js'
 import { normalizeHousehold, isValidHousehold } from '../data/household.js'
 import { normalizeTWPlate } from '../data/plate.js'
+import { formatTWPhone } from '../data/phone.js'
 
 const router = useRouter()
 
@@ -26,18 +27,23 @@ function onHouseholdInput() {
   form.戶號 = normalizeHousehold(form.戶號)
 }
 
-function submit() {
+const submitting = ref(false)
+
+async function submit() {
   error.value = ''
   form.戶號 = normalizeHousehold(form.戶號)
   if (!isValidHousehold(form.戶號)) {
     error.value = '戶號格式不對，請用「棟+樓-戶」，例：H3-6（店面 S1-6）'
     return
   }
+  submitting.value = true
   try {
-    done.value = register({ 戶號: form.戶號, 電話: form.電話, vehicles: form.vehicles })
+    done.value = await register({ 戶號: form.戶號, 電話: form.電話, vehicles: form.vehicles })
   } catch (e) {
     if (e instanceof RegistrationError) error.value = e.message
-    else throw e
+    else error.value = '送出失敗，請檢查網路後再試一次'
+  } finally {
+    submitting.value = false
   }
 }
 </script>
@@ -84,7 +90,7 @@ function submit() {
         </label>
         <label class="block">
           <span class="text-sm font-medium text-slate-700">聯絡電話</span>
-          <input v-model="form.電話" type="tel" placeholder="0912-345-678"
+          <input v-model="form.電話" @blur="form.電話 = formatTWPhone(form.電話)" type="tel" placeholder="0912-345-678"
             class="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none" />
         </label>
       </div>
@@ -132,8 +138,8 @@ function submit() {
       <p v-if="error" class="rounded bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ error }}</p>
 
       <div class="flex items-center gap-3">
-        <button type="submit" class="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">
-          送出登記
+        <button type="submit" :disabled="submitting" class="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50">
+          {{ submitting ? '送出中…' : '送出登記' }}
         </button>
         <RouterLink to="/me" class="text-sm text-slate-500 hover:underline">已登記過？登入查看 →</RouterLink>
       </div>
