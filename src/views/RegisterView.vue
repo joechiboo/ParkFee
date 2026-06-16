@@ -3,6 +3,7 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { register, RegistrationError } from '../store/db.js'
 import { normalizeHousehold, isValidHousehold } from '../data/household.js'
+import { normalizeTWPlate } from '../data/plate.js'
 
 const router = useRouter()
 
@@ -106,7 +107,7 @@ function submit() {
           <div class="mt-2 grid gap-3 sm:grid-cols-2">
             <label class="block">
               <span class="text-xs text-slate-600">車號 *</span>
-              <input v-model="v.車號" type="text" placeholder="ABC-123"
+              <input v-model="v.車號" @input="v.車號 = v.車號.toUpperCase()" @blur="v.車號 = normalizeTWPlate(v.車號)" type="text" placeholder="ABC-123"
                 class="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm uppercase focus:border-slate-500 focus:outline-none" />
             </label>
             <label class="block">

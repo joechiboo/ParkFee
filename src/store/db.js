@@ -12,6 +12,7 @@
 // 注意：localStorage 僅單機。正式跨裝置登入需後端（Supabase），屆時只換本檔實作。
 
 import { normalizeTWPlate } from '../data/plate.js'
+import { normalizeHousehold } from '../data/household.js'
 
 const KEY = 'parkfee_reg_v1'
 
@@ -28,7 +29,7 @@ function save(db) {
 
 export class RegistrationError extends Error {}
 
-const normHouse = (s) => String(s ?? '').trim()
+const normHouse = normalizeHousehold // 單一事實來源：household.js（大寫/全形/去空白）
 
 // 取得某戶（含其車輛），找不到回 null。
 export function getHousehold(戶號) {
