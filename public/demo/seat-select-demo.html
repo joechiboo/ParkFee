@@ -68,6 +68,6 @@
  const render=()=>{count.textContent=picked.size;document.getElementById('picked').innerHTML=[...picked].map(([x,t])=>'<li>'+(LABEL[t]||'機車位')+' '+x+'</li>').join('')}
  document.querySelectorAll('.cat-motor,.cat-small,.cat-access').forEach(g=>g.addEventListener('click',()=>{if(moved)return;const id=g.dataset.id;const on=g.classList.toggle('sel');on?picked.set(id,g.dataset.cat):picked.delete(id);render()}))
  // 車種顯示開關（依 data-cat 過濾座位）
- const initHidden={car:true,bike:true,excl:true}
+ const initHidden={car:true,bike:true}
  document.querySelectorAll('input[data-filter]').forEach(cb=>{const c=cb.dataset.filter;const apply=()=>document.querySelectorAll('[data-cat="'+c+'"]').forEach(g=>g.classList.toggle('hide',!cb.checked));if(initHidden[c]){cb.checked=false}apply();cb.addEventListener('change',apply)})
 </script></body></html>
