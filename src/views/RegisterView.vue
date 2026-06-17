@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { register, RegistrationError } from '../store/db.js'
 import { normalizeHousehold, isValidHousehold } from '../data/household.js'
 import { normalizeTWPlate } from '../data/plate.js'
-import { formatTWPhone } from '../data/phone.js'
+import { formatTWPhone, isValidTWPhone } from '../data/phone.js'
 
 const router = useRouter()
 
@@ -36,6 +36,11 @@ async function submit() {
     error.value = '戶號格式不對，請用「棟+樓-戶」，例：H3-6（店面 S1-6）'
     return
   }
+  form.電話 = formatTWPhone(form.電話)
+  if (form.電話 && !isValidTWPhone(form.電話)) {
+    error.value = '電話格式不對，手機請填 09 開頭 10 碼（例 0986-642-519）'
+    return
+  }
   submitting.value = true
   try {
     done.value = await register({ 戶號: form.戶號, 電話: form.電話, vehicles: form.vehicles })
@@ -49,7 +54,7 @@ async function submit() {
 </script>
 
 <template>
-  <section class="max-w-2xl">
+  <section class="mx-auto max-w-2xl">
     <h1 class="text-2xl font-bold">機車車位登記</h1>
 
     <!-- 完成畫面 -->
@@ -85,13 +90,14 @@ async function submit() {
           <span class="text-sm font-medium text-slate-700">戶號 *</span>
           <input v-model="form.戶號" @input="onHouseholdInput" type="text" placeholder="例：H3-6（店面 S1-6）"
             style="text-transform:uppercase"
-            class="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none" />
+            class="mt-1 w-full rounded border border-slate-300 px-3 py-2.5 text-base sm:text-sm focus:border-slate-500 focus:outline-none" />
           <span v-if="form.戶號 && !isValidHousehold(form.戶號)" class="mt-1 block text-xs text-red-600">格式：棟(A–H)+樓(1–15)-戶，例 H3-6；店面 S1-6</span>
         </label>
         <label class="block">
           <span class="text-sm font-medium text-slate-700">聯絡電話</span>
           <input v-model="form.電話" @blur="form.電話 = formatTWPhone(form.電話)" type="tel" placeholder="0912-345-678"
-            class="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none" />
+            class="mt-1 w-full rounded border border-slate-300 px-3 py-2.5 text-base sm:text-sm focus:border-slate-500 focus:outline-none" />
+          <span v-if="form.電話 && !isValidTWPhone(form.電話)" class="mt-1 block text-xs text-red-600">手機請填 09 開頭 10 碼（例 0986-642-519）</span>
         </label>
       </div>
 
@@ -114,22 +120,22 @@ async function submit() {
             <label class="block">
               <span class="text-xs text-slate-600">車號 *</span>
               <input v-model="v.車號" @input="v.車號 = v.車號.toUpperCase()" @blur="v.車號 = normalizeTWPlate(v.車號)" type="text" placeholder="ABC-123"
-                class="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm uppercase focus:border-slate-500 focus:outline-none" />
+                class="mt-1 w-full rounded border border-slate-300 px-3 py-2.5 text-base sm:text-sm uppercase focus:border-slate-500 focus:outline-none" />
             </label>
             <label class="block">
               <span class="text-xs text-slate-600">車種</span>
-              <select v-model="v.車種" class="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none">
+              <select v-model="v.車種" class="mt-1 w-full rounded border border-slate-300 px-3 py-2.5 text-base sm:text-sm focus:border-slate-500 focus:outline-none">
                 <option value="一般">一般（≤250CC）</option>
                 <option value="重機">重機（250CC↑，佔雙位）</option>
               </select>
             </label>
           </div>
-          <div class="mt-2 flex gap-5">
-            <label class="flex items-center gap-1.5 text-sm text-slate-700">
-              <input v-model="v.身障" type="checkbox" /> 身障（無障礙優先）
+          <div class="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+            <label class="flex items-center gap-2 py-1 text-sm text-slate-700">
+              <input v-model="v.身障" type="checkbox" class="h-4 w-4" /> 身障（無障礙優先）
             </label>
-            <label class="flex items-center gap-1.5 text-sm text-slate-700">
-              <input v-model="v.志願小位" type="checkbox" /> 志願小位（免抽依序選）
+            <label class="flex items-center gap-2 py-1 text-sm text-slate-700">
+              <input v-model="v.志願小位" type="checkbox" class="h-4 w-4" /> 志願小位（免抽依序選）
             </label>
           </div>
         </div>
@@ -137,11 +143,11 @@ async function submit() {
 
       <p v-if="error" class="rounded bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ error }}</p>
 
-      <div class="flex items-center gap-3">
-        <button type="submit" :disabled="submitting" class="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50">
+      <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+        <button type="submit" :disabled="submitting" class="rounded bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50">
           {{ submitting ? '送出中…' : '送出登記' }}
         </button>
-        <RouterLink to="/me" class="text-sm text-slate-500 hover:underline">已登記過？登入查看 →</RouterLink>
+        <RouterLink to="/me" class="text-center text-sm text-slate-500 hover:underline sm:text-left">已登記過？登入查看 →</RouterLink>
       </div>
     </form>
   </section>
