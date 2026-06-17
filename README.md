@@ -27,7 +27,7 @@ v1 只處理 **戶號＋車號**，不存身分證號 — 簽約與身分查驗�
 ## 技術
 
 - Vue 3 + Vite + Tailwind，部署 GitHub Pages
-- 無後端：名冊以 CSV 匯入、結果以 CSV 匯出（名冊仍維護在管委會既有試算表）
+- 登記/登入接 Supabase（Postgres + Edge Functions、RLS deny-all）；名冊以 CSV 匯入、結果以 CSV 匯出（名冊仍維護在管委會既有試算表）
 - 抽籤使用固定種子的亂數，結果可重現、可稽核
 - 車牌辨識純前端：Tesseract.js（v1，框選＋校正後辨識），升級可換 onnxruntime-web 自動偵測
 
