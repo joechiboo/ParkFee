@@ -3,16 +3,17 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { login } from '../store/db.js'
 import { editTarget } from '../store/editTarget.js'
+import { sessionHousehold, sessionPlate, clearSession } from '../store/session.js'
 
 const creds = reactive({ 戶號: '', 車號: '' })
-const household = ref(null)
+const household = sessionHousehold // 登入狀態跨頁保留
 const error = ref('')
 const loading = ref(false)
 const router = useRouter()
 
 function startEdit() {
   // 帶上登入用的車號作為擁有權證明，server 端編輯時會驗證
-  editTarget.value = { ...household.value, 認證車號: creds.車號 }
+  editTarget.value = { ...household.value, 認證車號: sessionPlate.value }
   router.push('/register')
 }
 
@@ -26,6 +27,7 @@ async function doLogin() {
       return
     }
     household.value = h
+    sessionPlate.value = creds.車號
   } catch {
     error.value = '登入失敗，請檢查網路後再試一次'
   } finally {
@@ -33,7 +35,7 @@ async function doLogin() {
   }
 }
 function logout() {
-  household.value = null
+  clearSession()
   creds.戶號 = ''
   creds.車號 = ''
 }

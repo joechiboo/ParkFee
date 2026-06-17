@@ -6,6 +6,7 @@ import { normalizeHousehold, isValidHousehold } from '../data/household.js'
 import { normalizeTWPlate } from '../data/plate.js'
 import { formatTWPhone, isValidTWPhone } from '../data/phone.js'
 import { editTarget } from '../store/editTarget.js'
+import { sessionHousehold, sessionPlate } from '../store/session.js'
 
 const router = useRouter()
 
@@ -68,6 +69,8 @@ async function submit() {
     done.value = isEdit.value
       ? await updateHousehold({ ...payload, 認證車號: authPlate.value })
       : await register(payload)
+    sessionHousehold.value = done.value
+    sessionPlate.value = done.value?.vehicles?.[0]?.車號 || authPlate.value
   } catch (e) {
     if (e instanceof RegistrationError) error.value = e.message
     else error.value = '送出失敗，請檢查網路後再試一次'
@@ -98,7 +101,7 @@ async function submit() {
       </ul>
       <div class="mt-4 flex gap-2">
         <button class="rounded bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800" @click="router.push('/me')">
-          前往登入
+          查看我的登記
         </button>
       </div>
     </div>
