@@ -1,5 +1,12 @@
 <script setup>
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterLink, RouterView, useRouter } from 'vue-router'
+import { sessionHousehold, clearSession } from './store/session.js'
+
+const router = useRouter()
+function logout() {
+  clearSession()
+  router.push('/')
+}
 
 // 主導覽（管委會作業）；登入 (/me) 另放右側
 const nav = [
@@ -29,7 +36,18 @@ const nav = [
             {{ item.label }}
           </RouterLink>
         </nav>
+        <div v-if="sessionHousehold" class="ml-auto flex shrink-0 items-center gap-2">
+          <RouterLink to="/me" class="text-sm text-slate-500 hover:underline">{{ sessionHousehold.戶號 }}</RouterLink>
+          <button
+            type="button"
+            class="rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100"
+            @click="logout"
+          >
+            登出
+          </button>
+        </div>
         <RouterLink
+          v-else
           to="/me"
           class="ml-auto shrink-0 rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100"
           active-class="bg-slate-900 text-white hover:bg-slate-900"
