@@ -99,8 +99,9 @@
 
 ## 7. 技術與檔案結構
 
-- Vue 3 + Vite + Tailwind，部署 GitHub Pages，無後端。
-- 資料 CSV 進出；名冊維護在管委會既有試算表。
+- Vue 3 + Vite + Tailwind，部署 GitHub Pages（純靜態前端，**不自架 API server**）。
+- **持久化已定 Supabase（Postgres）+ Edge Functions**（住戶自助登記/登入查結果）；敏感資料只走 Edge Function、service_role 永不進前端。詳見 [docs/12-機制合規與建置規劃.md §4](docs/12-機制合規與建置規劃.md)。
+  - ⚠️ 本節原規格為「無後端、資料 CSV 進出、名冊維護在試算表」，2026-06 已改為上述自助模型；CSV 進出仍可作為物業端匯入/匯出與 eTag 白名單的管道。
 - 抽籤固定種子亂數，可重現。
 - 車牌辨識：Tesseract.js（v1），升級 onnxruntime-web。
 - 不存身分證號；照片裝置端處理、不上傳。
