@@ -37,6 +37,13 @@ export async function login(戶號, 車號) {
   return data.household ?? null
 }
 
+// 編輯既有戶（新增/移除車輛、改電話）。戶號不可變。
+// 需對應 Edge Function 'update-household'（伺服器端用 service_role 驗證後整批取代該戶車輛）。
+export async function updateHousehold({ 戶號, 電話, vehicles }) {
+  const data = await invoke('update-household', { 戶號, 電話, vehicles })
+  return data.household
+}
+
 // 安全考量：以「戶號」單獨查詢會讓任何人列舉他戶的車號/電話（enumeration 洩漏），
 // 故 Supabase 後端不提供此入口。需取整戶資料請走 login(戶號, 車號)（雙因子）。
 export async function getHousehold() {

@@ -77,6 +77,47 @@ export function register({ 戶號, 電話, vehicles }) {
   return getHousehold(hid)
 }
 
+// 更新既有戶的登記（編輯）。戶號不可變、且必須已登記。
+// vehicles 整批取代（重新驗證車號全域唯一、重編「第幾輛」）；電話可更新。
+// 回傳更新後的整戶資料；違規拋 RegistrationError。
+export function updateHousehold({ 戶號, 電話, vehicles }) {
+  const hid = normHouse(戶號)
+  if (!hid) throw new RegistrationError('請填寫戶號')
+  const db = load()
+  if (!db.households[hid]) throw new RegistrationError(`戶號 ${hid} 尚未登記，無法編輯`)
+  if (!Array.isArray(vehicles) || vehicles.length === 0)
+    throw new RegistrationError('至少要保留一台機車')
+
+  // 該戶以外的車輛（檢查全域唯一時要排除本戶舊車，因為本戶整批取代）
+  const others = Object.fromEntries(Object.entries(db.vehicles).filter(([, v]) => v.戶號 !== hid))
+
+  const cleaned = vehicles.map((v, i) => {
+    const 車號 = normalizeTWPlate(v.車號)
+    if (!車號) throw new RegistrationError(`第 ${i + 1} 台未填車號`)
+    return {
+      車號,
+      戶號: hid,
+      車種: v.車種 === '重機' ? '重機' : '一般',
+      第幾輛: i + 1,
+      身障: !!v.身障,
+      志願小位: !!v.志願小位,
+    }
+  })
+
+  const seen = new Set()
+  for (const v of cleaned) {
+    if (seen.has(v.車號)) throw new RegistrationError(`車號 ${v.車號} 重複填寫`)
+    seen.add(v.車號)
+    if (others[v.車號]) throw new RegistrationError(`車號 ${v.車號} 已被其他戶登記`)
+  }
+
+  db.vehicles = others
+  for (const v of cleaned) db.vehicles[v.車號] = v
+  db.households[hid] = { ...db.households[hid], 電話: String(電話 ?? '').trim() }
+  save(db)
+  return getHousehold(hid)
+}
+
 // 登入：戶號 + 任一已登記車號。命中回整戶資料，否則 null。
 export function login(戶號, 車號) {
   const hid = normHouse(戶號)

@@ -33,3 +33,6 @@ export async function login(戶號, 車號) {
 export async function getHousehold(戶號) {
   return (await backend()).getHousehold(戶號)
 }
+export async function updateHousehold(input) {
+  return (await backend()).updateHousehold(input)
+}

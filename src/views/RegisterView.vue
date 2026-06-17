@@ -1,10 +1,11 @@
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { register, RegistrationError } from '../store/db.js'
+import { register, updateHousehold, RegistrationError } from '../store/db.js'
 import { normalizeHousehold, isValidHousehold } from '../data/household.js'
 import { normalizeTWPlate } from '../data/plate.js'
 import { formatTWPhone, isValidTWPhone } from '../data/phone.js'
+import { editTarget } from '../store/editTarget.js'
 
 const router = useRouter()
 
@@ -15,6 +16,24 @@ const form = reactive({
 })
 const error = ref('')
 const done = ref(null) // 成功後的整戶資料
+const isEdit = ref(false) // 由 MeView 帶資料進來編輯時為 true
+
+// 編輯模式：載入 MeView 傳來的整戶資料、預填表單、鎖戶號
+onMounted(() => {
+  const h = editTarget.value
+  if (!h) return
+  isEdit.value = true
+  form.戶號 = h.戶號
+  form.電話 = h.電話 || ''
+  const vs = (h.vehicles || []).map((v) => ({
+    車號: v.車號,
+    車種: v.車種 === '重機' ? '重機' : '一般',
+    身障: !!v.身障,
+    志願小位: !!v.志願小位,
+  }))
+  form.vehicles = vs.length ? vs : [{ 車號: '', 車種: '一般', 身障: false, 志願小位: false }]
+  editTarget.value = null // 取用後清空，避免之後新登記誤入編輯模式
+})
 
 function addVehicle() {
   form.vehicles.push({ 車號: '', 車種: '一般', 身障: false, 志願小位: false })
@@ -43,7 +62,8 @@ async function submit() {
   }
   submitting.value = true
   try {
-    done.value = await register({ 戶號: form.戶號, 電話: form.電話, vehicles: form.vehicles })
+    const payload = { 戶號: form.戶號, 電話: form.電話, vehicles: form.vehicles }
+    done.value = isEdit.value ? await updateHousehold(payload) : await register(payload)
   } catch (e) {
     if (e instanceof RegistrationError) error.value = e.message
     else error.value = '送出失敗，請檢查網路後再試一次'
@@ -55,11 +75,11 @@ async function submit() {
 
 <template>
   <section class="mx-auto max-w-2xl">
-    <h1 class="text-2xl font-bold">機車車位登記</h1>
+    <h1 class="text-2xl font-bold">{{ isEdit ? '編輯登記' : '機車車位登記' }}</h1>
 
     <!-- 完成畫面 -->
     <div v-if="done" class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-5">
-      <div class="font-semibold text-emerald-900">✓ 登記完成</div>
+      <div class="font-semibold text-emerald-900">✓ {{ isEdit ? '更新完成' : '登記完成' }}</div>
       <p class="mt-1 text-sm text-emerald-800">
         戶號 <b>{{ done.戶號 }}</b> 已登記 {{ done.vehicles.length }} 台機車。
       </p>
@@ -88,10 +108,11 @@ async function submit() {
       <div class="grid gap-4 sm:grid-cols-2">
         <label class="block">
           <span class="text-sm font-medium text-slate-700">戶號 *</span>
-          <input v-model="form.戶號" @input="onHouseholdInput" type="text" placeholder="例：H3-6（店面 S1-6）"
+          <input v-model="form.戶號" @input="onHouseholdInput" :disabled="isEdit" type="text" placeholder="例：H3-6（店面 S1-6）"
             style="text-transform:uppercase"
-            class="mt-1 w-full rounded border border-slate-300 px-3 py-2.5 text-base sm:text-sm focus:border-slate-500 focus:outline-none" />
-          <span v-if="form.戶號 && !isValidHousehold(form.戶號)" class="mt-1 block text-xs text-red-600">格式：棟(A–H)+樓(1–15)-戶，例 H3-6；店面 S1-6</span>
+            class="mt-1 w-full rounded border border-slate-300 px-3 py-2.5 text-base sm:text-sm focus:border-slate-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500" />
+          <span v-if="isEdit" class="mt-1 block text-xs text-slate-500">編輯模式：戶號不可修改</span>
+          <span v-else-if="form.戶號 && !isValidHousehold(form.戶號)" class="mt-1 block text-xs text-red-600">格式：棟(A–H)+樓(1–15)-戶，例 H3-6；店面 S1-6</span>
         </label>
         <label class="block">
           <span class="text-sm font-medium text-slate-700">聯絡電話</span>
@@ -145,7 +166,7 @@ async function submit() {
 
       <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
         <button type="submit" :disabled="submitting" class="rounded bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50">
-          {{ submitting ? '送出中…' : '送出登記' }}
+          {{ submitting ? '處理中…' : (isEdit ? '更新登記' : '送出登記') }}
         </button>
         <RouterLink to="/me" class="text-center text-sm text-slate-500 hover:underline sm:text-left">已登記過？登入查看 →</RouterLink>
       </div>

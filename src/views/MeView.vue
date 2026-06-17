@@ -1,11 +1,19 @@
 <script setup>
 import { ref, reactive } from 'vue'
+import { useRouter } from 'vue-router'
 import { login } from '../store/db.js'
+import { editTarget } from '../store/editTarget.js'
 
 const creds = reactive({ 戶號: '', 車號: '' })
 const household = ref(null)
 const error = ref('')
 const loading = ref(false)
+const router = useRouter()
+
+function startEdit() {
+  editTarget.value = household.value
+  router.push('/register')
+}
 
 async function doLogin() {
   error.value = ''
@@ -71,6 +79,10 @@ function logout() {
           </table>
         </div>
       </div>
+
+      <button class="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700" @click="startEdit">
+        ✏ 編輯登記（新增 / 移除機車）
+      </button>
 
       <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
         🎲 抽籤結果尚未公布。配位完成後，這裡會顯示您各台車分到的車位、應繳金額與簽約期限。

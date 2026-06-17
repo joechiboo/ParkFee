@@ -8,7 +8,7 @@ globalThis.localStorage = {
   removeItem: (k) => mem.delete(k),
 }
 
-const { register, login, getHousehold, _reset, RegistrationError } = await import('./local-backend.js')
+const { register, login, getHousehold, updateHousehold, _reset, RegistrationError } = await import('./local-backend.js')
 
 describe('登記儲存層 localStorage 後端（登記即註冊 / 戶號+車號登入）', () => {
   beforeEach(() => _reset())
@@ -51,5 +51,34 @@ describe('登記儲存層 localStorage 後端（登記即註冊 / 戶號+車號�
 
   it('查無此戶回 null', () => {
     expect(getHousehold('GHOST')).toBeNull()
+  })
+
+  it('編輯：新增一台車，第幾輛重編', () => {
+    register({ 戶號: 'H3-6', vehicles: [{ 車號: 'AA1' }] })
+    const h = updateHousehold({ 戶號: 'H3-6', vehicles: [{ 車號: 'AA1' }, { 車號: 'BB2', 車種: '重機' }] })
+    expect(h.vehicles).toHaveLength(2)
+    expect(h.vehicles[1]).toMatchObject({ 車號: 'BB-2', 第幾輛: 2, 車種: '重機' })
+  })
+
+  it('編輯：移除一台車', () => {
+    register({ 戶號: 'H3-7', vehicles: [{ 車號: 'C1' }, { 車號: 'C2' }] })
+    const h = updateHousehold({ 戶號: 'H3-7', vehicles: [{ 車號: 'C2' }] })
+    expect(h.vehicles).toHaveLength(1)
+    expect(h.vehicles[0].車號).toBe('C-2')
+  })
+
+  it('編輯：保留本戶原車號不算「已被他戶登記」', () => {
+    register({ 戶號: 'H3-8', vehicles: [{ 車號: 'KEEP1' }] })
+    expect(() => updateHousehold({ 戶號: 'H3-8', vehicles: [{ 車號: 'keep-1' }, { 車號: 'NEW1' }] })).not.toThrow()
+  })
+
+  it('編輯：不可搶用他戶車號', () => {
+    register({ 戶號: 'H3-9', vehicles: [{ 車號: 'X1' }] })
+    register({ 戶號: 'H4-1', vehicles: [{ 車號: 'Y1' }] })
+    expect(() => updateHousehold({ 戶號: 'H3-9', vehicles: [{ 車號: 'X1' }, { 車號: 'Y1' }] })).toThrow(/已被其他戶/)
+  })
+
+  it('編輯：未登記的戶不能編輯', () => {
+    expect(() => updateHousehold({ 戶號: 'NOPE-1', vehicles: [{ 車號: 'Z1' }] })).toThrow(RegistrationError)
   })
 })
