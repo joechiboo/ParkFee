@@ -8,9 +8,9 @@ globalThis.localStorage = {
   removeItem: (k) => mem.delete(k),
 }
 
-const { register, login, getHousehold, _reset, RegistrationError } = await import('./db.js')
+const { register, login, getHousehold, _reset, RegistrationError } = await import('./local-backend.js')
 
-describe('登記儲存層（登記即註冊 / 戶號+車號登入）', () => {
+describe('登記儲存層 localStorage 後端（登記即註冊 / 戶號+車號登入）', () => {
   beforeEach(() => _reset())
 
   it('登記建立整戶，第幾輛依序、車號正規化', () => {

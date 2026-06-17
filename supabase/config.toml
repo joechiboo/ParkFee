@@ -1,0 +1,10 @@
+# Supabase 本機設定。實際遠端專案以 `supabase link --project-ref <ref>` 連結。
+project_id = "parkfee"
+
+# Edge Functions：verify_jwt = true → 呼叫端須帶有效 JWT。
+# 前端用 supabase-js functions.invoke 時會自動帶 anon key（本身即合法 JWT），故通過。
+[functions.register]
+verify_jwt = true
+
+[functions.login]
+verify_jwt = true

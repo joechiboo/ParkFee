@@ -5,15 +5,23 @@ import { login } from '../store/db.js'
 const creds = reactive({ 戶號: '', 車號: '' })
 const household = ref(null)
 const error = ref('')
+const loading = ref(false)
 
-function doLogin() {
+async function doLogin() {
   error.value = ''
-  const h = login(creds.戶號, creds.車號)
-  if (!h) {
-    error.value = '查無此登記，請確認戶號與車號（需為該戶登記過的任一台車）'
-    return
+  loading.value = true
+  try {
+    const h = await login(creds.戶號, creds.車號)
+    if (!h) {
+      error.value = '查無此登記，請確認戶號與車號（需為該戶登記過的任一台車）'
+      return
+    }
+    household.value = h
+  } catch {
+    error.value = '登入失敗，請檢查網路後再試一次'
+  } finally {
+    loading.value = false
   }
-  household.value = h
 }
 function logout() {
   household.value = null
@@ -23,7 +31,7 @@ function logout() {
 </script>
 
 <template>
-  <section class="max-w-2xl">
+  <section class="mx-auto max-w-2xl">
     <h1 class="text-2xl font-bold">我的登記 / 抽籤結果</h1>
 
     <!-- 已登入 -->
@@ -74,7 +82,7 @@ function logout() {
       <p class="text-sm text-slate-500">用 <b>戶號 ＋ 任一已登記車號</b> 登入。</p>
       <label class="block">
         <span class="text-sm font-medium text-slate-700">戶號</span>
-        <input v-model="creds.戶號" type="text" placeholder="A-5-3"
+        <input v-model="creds.戶號" type="text" placeholder="H3-6（店面 S1-6）"
           class="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none" />
       </label>
       <label class="block">
@@ -84,7 +92,7 @@ function logout() {
       </label>
       <p v-if="error" class="rounded bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ error }}</p>
       <div class="flex items-center gap-3">
-        <button type="submit" class="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">登入</button>
+        <button type="submit" :disabled="loading" class="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50">{{ loading ? '登入中…' : '登入' }}</button>
         <RouterLink to="/register" class="text-sm text-slate-500 hover:underline">還沒登記？前往登記 →</RouterLink>
       </div>
     </form>

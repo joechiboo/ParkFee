@@ -1,0 +1,9 @@
+# Supabase CLI 本機狀態（不入 repo）
+.branches
+.temp
+
+# 函式環境變數
+.env
+.env.keys
+.env.local
+.env.*.local

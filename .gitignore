@@ -4,6 +4,11 @@ dist-ssr
 *.local
 .DS_Store
 
+# env / secrets — 不可進 repo（含 Supabase 金鑰）
+.env
+.env.*
+!.env.example
+
 # editor / tooling
 .vscode/*
 !.vscode/extensions.json
