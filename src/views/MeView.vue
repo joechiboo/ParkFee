@@ -11,7 +11,8 @@ const loading = ref(false)
 const router = useRouter()
 
 function startEdit() {
-  editTarget.value = household.value
+  // 帶上登入用的車號作為擁有權證明，server 端編輯時會驗證
+  editTarget.value = { ...household.value, 認證車號: creds.車號 }
   router.push('/register')
 }
 

@@ -8,3 +8,6 @@ verify_jwt = true
 
 [functions.login]
 verify_jwt = true
+
+[functions.update-household]
+verify_jwt = true

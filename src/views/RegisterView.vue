@@ -17,12 +17,14 @@ const form = reactive({
 const error = ref('')
 const done = ref(null) // 成功後的整戶資料
 const isEdit = ref(false) // 由 MeView 帶資料進來編輯時為 true
+const authPlate = ref('') // 登入時的車號，編輯送出時當擁有權證明
 
 // 編輯模式：載入 MeView 傳來的整戶資料、預填表單、鎖戶號
 onMounted(() => {
   const h = editTarget.value
   if (!h) return
   isEdit.value = true
+  authPlate.value = h.認證車號 || ''
   form.戶號 = h.戶號
   form.電話 = h.電話 || ''
   const vs = (h.vehicles || []).map((v) => ({
@@ -63,7 +65,9 @@ async function submit() {
   submitting.value = true
   try {
     const payload = { 戶號: form.戶號, 電話: form.電話, vehicles: form.vehicles }
-    done.value = isEdit.value ? await updateHousehold(payload) : await register(payload)
+    done.value = isEdit.value
+      ? await updateHousehold({ ...payload, 認證車號: authPlate.value })
+      : await register(payload)
   } catch (e) {
     if (e instanceof RegistrationError) error.value = e.message
     else error.value = '送出失敗，請檢查網路後再試一次'
