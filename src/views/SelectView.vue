@@ -3,6 +3,7 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import { motorSeats, DISP_W, DISP_H } from '../map/seats.js'
 import { sessionHousehold } from '../store/session.js'
 import { loadWishes, saveWishes } from '../store/wishes.js'
+import { loadOccupied } from '../store/occupied.js'
 
 // 全機車位（含 public 旗標）：大/小可選、無障礙與公益僅顯示不可選。
 const seats = motorSeats()
@@ -17,7 +18,11 @@ const orderMap = computed(() => {
 })
 const isSel = (id) => orderMap.value.has(String(id))
 const orderOf = (id) => orderMap.value.get(String(id))
-const selectable = (s) => !s.public && (s.type === '大' || s.type === '小')
+
+// 已被選定/已繳費的車位：不可選。
+const occupied = new Set(loadOccupied())
+const isOccupied = (id) => occupied.has(String(id))
+const selectable = (s) => !s.public && !isOccupied(s.id) && (s.type === '大' || s.type === '小')
 
 const TYPE_LABEL = { 大: '大位', 小: '小位', 無障礙: '無障礙' }
 function seatLabel(id) {
@@ -49,6 +54,7 @@ function submit() {
 // 顏色：選中=紅、公益=金、大=琥珀、小=紫、無障礙=灰。
 function fill(s) {
   if (isSel(s.id)) return '#ef4444'
+  if (isOccupied(s.id)) return '#475569' // 已售：深灰實心
   if (s.public) return 'rgba(234,179,8,.55)'
   if (s.type === '大') return 'rgba(245,158,11,.45)'
   if (s.type === '小') return 'rgba(139,92,246,.6)'
@@ -56,6 +62,7 @@ function fill(s) {
 }
 function stroke(s) {
   if (isSel(s.id)) return '#b91c1c'
+  if (isOccupied(s.id)) return '#1e293b'
   if (s.public) return '#a16207'
   if (s.type === '大') return '#d97706'
   if (s.type === '小') return '#6d28d9'
@@ -205,7 +212,7 @@ onMounted(focusSeats)
               <g
                 v-for="s in seats"
                 :key="s.id + '-' + s.x + '-' + s.y"
-                :style="{ cursor: selectable(s) ? 'pointer' : 'default' }"
+                :style="{ cursor: selectable(s) ? 'pointer' : isOccupied(s.id) ? 'not-allowed' : 'default' }"
                 @click="onSeatClick(s)"
               >
                 <!-- 透明大點擊區：手機上座位小、放大可點範圍 -->
@@ -225,7 +232,7 @@ onMounted(focusSeats)
                   text-anchor="middle"
                   :font-size="s.type === '小' ? 5 : 5.5"
                   :font-weight="isSel(s.id) ? 700 : 400"
-                  :fill="isSel(s.id) ? '#fff' : '#0f172a'"
+                  :fill="isSel(s.id) || isOccupied(s.id) ? '#e2e8f0' : '#0f172a'"
                   style="pointer-events: none; user-select: none"
                 >{{ isSel(s.id) ? orderOf(s.id) : s.id }}</text>
               </g>
@@ -265,6 +272,7 @@ onMounted(focusSeats)
             <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(245,158,11,.6)"></span> 大位</span>
             <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(139,92,246,.7)"></span> 小位</span>
             <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(234,179,8,.6);outline:1.5px solid #a16207"></span> 公益(不可選)</span>
+            <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:#475569"></span> 已售(不可選)</span>
             <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-rose-500"></span> 已選</span>
           </div>
         </div>
