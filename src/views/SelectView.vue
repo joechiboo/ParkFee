@@ -267,13 +267,17 @@ onMounted(focusSeats)
         <p v-if="saved" class="mt-2 text-center text-sm text-emerald-600">✓ 已儲存{{ householdId ? `（戶號 ${householdId}）` : '於本機' }}</p>
 
         <div class="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
-          <div class="mb-1 font-medium text-slate-600">圖例</div>
+          <div class="mb-1 font-medium text-slate-600">可選</div>
           <div class="flex flex-wrap gap-x-3 gap-y-1">
             <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(245,158,11,.6)"></span> 大位</span>
             <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(139,92,246,.7)"></span> 小位</span>
-            <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(234,179,8,.6);outline:1.5px solid #a16207"></span> 公益(不可選)</span>
-            <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:#475569"></span> 已售(不可選)</span>
             <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-rose-500"></span> 已選</span>
+          </div>
+          <div class="mb-1 mt-2 font-medium text-slate-600">不可選</div>
+          <div class="flex flex-wrap gap-x-3 gap-y-1">
+            <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(234,179,8,.6);outline:1.5px solid #a16207"></span> 公益</span>
+            <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(148,163,184,.45)"></span> 無障礙</span>
+            <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:#475569"></span> 已承租</span>
           </div>
         </div>
       </aside>
