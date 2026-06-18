@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { motorSeats, DISP_W, DISP_H } from '../map/seats.js'
 import { sessionHousehold } from '../store/session.js'
 import { loadWishes, saveWishes } from '../store/wishes.js'
@@ -50,6 +50,15 @@ function submit() {
   saved.value = true
   setTimeout(() => (saved.value = false), 2500)
 }
+
+// 自動存到本機（選了就存，不靠按鈕）。
+watch(wishes, (list) => saveWishes(householdId.value, list), { deep: true })
+// 登入後若該戶尚無存檔，把目前（匿名）選擇接管過去；有存檔則載入該戶的。
+watch(householdId, (id) => {
+  const savedList = loadWishes(id)
+  if (savedList.length) wishes.value = savedList
+  else if (wishes.value.length) saveWishes(id, wishes.value)
+})
 
 // 顏色：選中=紅、公益=金、大=琥珀、小=紫、無障礙=灰。
 function fill(s) {
