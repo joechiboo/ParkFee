@@ -12,6 +12,12 @@ const routes = [
   { path: '/export', name: 'export', component: () => import('../views/ExportView.vue'), meta: { title: '匯出' } },
 ]
 
+// 工程師專區：只在開發模式註冊；正式 build（npm run build / GitHub Pages）import.meta.env.DEV=false
+// → 此路由與 DevView/mock 程式碼一併被 tree-shake，不會上線。
+if (import.meta.env.DEV) {
+  routes.push({ path: '/dev', name: 'dev', component: () => import('../views/DevView.vue'), meta: { title: '工程師專區' } })
+}
+
 export default createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
   routes,

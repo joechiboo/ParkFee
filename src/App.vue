@@ -21,6 +21,9 @@ const nav = [
   { to: '/patrol', label: '巡邏稽核' },
   { to: '/export', label: '匯出' },
 ]
+
+// 工程師專區入口：只在開發模式顯示（正式 build import.meta.env.DEV=false → 不渲染、路由也未註冊）
+const isDev = import.meta.env.DEV
 </script>
 
 <template>
@@ -39,6 +42,14 @@ const nav = [
             active-class="bg-slate-900 text-white hover:bg-slate-900"
           >
             {{ item.label }}
+          </RouterLink>
+          <RouterLink
+            v-if="isDev"
+            to="/dev"
+            class="shrink-0 rounded border border-dashed border-amber-400 px-3 py-1.5 text-amber-700 hover:bg-amber-50"
+            active-class="bg-amber-500 text-white hover:bg-amber-500"
+          >
+            🛠 dev
           </RouterLink>
         </nav>
         <div v-if="sessionHousehold" class="ml-auto flex shrink-0 items-center gap-2">
