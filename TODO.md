@@ -36,11 +36,11 @@
 
 ## 🟢 卡點解除後的開發
 
-- [~] 登記加**志願序欄位**：紙本(04) ✅、CSV schema(HANDOFF §8) ✅、`registry.js` ✅（車位志願/保底戶層級）；**未做：線上登記頁 `RegisterView.vue` 的志願序選擇 UI**（demo 已有志願序選擇器可移植）
+- [x] 登記加**志願序欄位**：紙本(04) ✅、CSV schema(HANDOFF §8) ✅、`registry.js` ✅；**線上選位頁 `SelectView.vue` ✅**（地圖排志願 → 存 Supabase）。後端：household 加 `車位志願 text[]`/`志願落選保底`（migration 0003）+ Edge Function `save-wishes`（認證車號驗擁有權）+ login 帶回志願，皆已部署
 - [~] 正式化 `src/map/`：`seats.js`（編號/type/public/x/y）✅；**未做**：每格標「靠近棟別 A–H/S」（保底用）、座標微調 ~20%
 - [x] **自動分發引擎**（純函式 + 測試）：`src/lottery/distribute.js`（+12 tests）依順序號分配「最高可得志願」、落空者 pass 產**落選名單**；保底補位＝物業第二階段、不入引擎（見 [09 §選位作業模式](docs/09-配位流程設計.md)）。v1 限制：重機走 seq 取雙大位、未填志願直接落選（待擴充）
 - [ ] **Supabase 名冊 → 配位引擎**（線上跑完整分發的關鍵缺口）：撈 DB registrations → `registry.buildRoster` → `distribute` → 結果。（CSV 匯入：`csv.js`/`registry.js` 函式庫已有但**未接 UI**，僅供 eTag/批次/離線；紙本走物業代登打進 DB）
-- [ ] **Vue 選位頁**（地圖排志願 → 接 distribute）、抽籤畫面（設種子/監察 log）、結果頁接引擎
+- [~] **Vue 選位頁** ✅（`SelectView.vue` 地圖排志願 + 存 Supabase + 已售/公益/無障礙狀態 + 登入才存）；**未做**：抽籤畫面（設種子/監察 log）、結果頁接 distribute、occupied 改讀後端（已承租）
 - [x] **持久化層**：登記/登入已上 **Supabase + Edge Functions**（RLS deny-all，`db.js` facade + `supabase-backend.js`）。**未接**：配位結果/選位志願的持久化、以及「Supabase 名冊 → 配位引擎」這條（見下方 🟢）
 - [~] 匯出：**結果→清單/CSV 核心 ✅**（`src/export/result.js` + `src/data/fee.js` + 測試；應繳 1200/3600、狀態、簽約期限=公告+5）；**未接 ExportView UI**（待 B2「Supabase 撈全部」餵資料）。eTag 白名單擱置（需繳費狀態 Phase II）
   > **結果三介面分工**：**MeView**＝住戶看自己（登入）／**ExportView**＝物業看全部＋下載 CSV（Phase I 兼結果預覽）／**ResultView**＝Phase II 繳費狀態維護+候補遞補面板（屆時才與匯出分流）。
