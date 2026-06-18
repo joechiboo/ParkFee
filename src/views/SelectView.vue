@@ -1,0 +1,226 @@
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { motorSeats, DISP_W, DISP_H } from '../map/seats.js'
+import { sessionHousehold } from '../store/session.js'
+import { loadWishes, saveWishes } from '../store/wishes.js'
+
+// 全機車位（含 public 旗標）：大/小可選、無障礙與公益僅顯示不可選。
+const seats = motorSeats()
+const householdId = computed(() => sessionHousehold.value?.戶號 || '')
+
+// 志願序：有序的車位 id 陣列；點選順序即志願序。
+const wishes = ref(loadWishes(householdId.value))
+const orderMap = computed(() => {
+  const m = new Map()
+  wishes.value.forEach((id, i) => m.set(String(id), i + 1))
+  return m
+})
+const isSel = (id) => orderMap.value.has(String(id))
+const orderOf = (id) => orderMap.value.get(String(id))
+const selectable = (s) => !s.public && (s.type === '大' || s.type === '小')
+
+const TYPE_LABEL = { 大: '大位', 小: '小位', 無障礙: '無障礙' }
+function seatLabel(id) {
+  const s = seats.find((x) => String(x.id) === String(id))
+  return s ? `${TYPE_LABEL[s.type] || ''} ${id}` : id
+}
+
+function toggle(s) {
+  if (!selectable(s)) return
+  const id = String(s.id)
+  const i = wishes.value.indexOf(id)
+  if (i >= 0) wishes.value.splice(i, 1)
+  else wishes.value.push(id)
+}
+function removeAt(i) {
+  wishes.value.splice(i, 1)
+}
+function clearAll() {
+  wishes.value = []
+}
+
+const saved = ref(false)
+function submit() {
+  saveWishes(householdId.value, wishes.value)
+  saved.value = true
+  setTimeout(() => (saved.value = false), 2500)
+}
+
+// 顏色：選中=紅、公益=金、大=琥珀、小=紫、無障礙=灰。
+function fill(s) {
+  if (isSel(s.id)) return '#ef4444'
+  if (s.public) return 'rgba(234,179,8,.55)'
+  if (s.type === '大') return 'rgba(245,158,11,.45)'
+  if (s.type === '小') return 'rgba(139,92,246,.6)'
+  return 'rgba(148,163,184,.4)'
+}
+function stroke(s) {
+  if (isSel(s.id)) return '#b91c1c'
+  if (s.public) return '#a16207'
+  if (s.type === '大') return '#d97706'
+  if (s.type === '小') return '#6d28d9'
+  return '#64748b'
+}
+const radius = (s) => (s.type === '小' ? 6 : 7)
+
+// ── 縮放／平移 ───────────────────────────────────────────────
+const BASE_W = 1400 // 底圖基準寬（px），縮放以此為基數
+const zoom = ref(1)
+const wrapW = computed(() => Math.round(BASE_W * zoom.value))
+const stage = ref(null)
+function zoomBy(d) {
+  zoom.value = Math.min(4, Math.max(0.5, +(zoom.value + d).toFixed(2)))
+}
+function onWheel(e) {
+  if (!e.ctrlKey) return // 僅 Ctrl+滾輪縮放，避免擋住頁面捲動
+  e.preventDefault()
+  zoomBy(e.deltaY < 0 ? 0.2 : -0.2)
+}
+
+// 拖曳平移（拖動超過門檻則不觸發選位）
+let down = false
+let moved = false
+let sx = 0
+let sy = 0
+let sl = 0
+let st = 0
+function onDown(e) {
+  down = true
+  moved = false
+  sx = e.clientX
+  sy = e.clientY
+  sl = stage.value.scrollLeft
+  st = stage.value.scrollTop
+}
+function onMove(e) {
+  if (!down) return
+  const dx = e.clientX - sx
+  const dy = e.clientY - sy
+  if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true
+  stage.value.scrollLeft = sl - dx
+  stage.value.scrollTop = st - dy
+}
+function onUp() {
+  down = false
+}
+function onSeatClick(s) {
+  if (moved) return // 剛剛是在拖曳，不當作選位
+  toggle(s)
+}
+
+const mapSrc = import.meta.env.BASE_URL + 'demo/b1.png'
+onMounted(() => {
+  // 進場置中一點，方便看到主要區塊
+  if (stage.value) stage.value.scrollLeft = (wrapW.value - stage.value.clientWidth) / 2
+})
+</script>
+
+<template>
+  <section class="mx-auto max-w-6xl">
+    <div class="flex items-baseline justify-between">
+      <h1 class="text-2xl font-bold">選車位志願序</h1>
+      <RouterLink to="/me" class="text-sm text-slate-500 hover:underline">← 回我的登記</RouterLink>
+    </div>
+
+    <p class="mt-1 text-sm text-slate-500">
+      在地圖上<b>依想要的順序</b>點選車位（點選順序＝志願 1、2、3…）；抽出順序號後，系統依序分發你「志願中仍剩的最高志願」。
+      <span v-if="householdId">目前戶號 <b>{{ householdId }}</b>。</span>
+      <span v-else class="text-amber-700">未登入：志願暫存於本機，<RouterLink to="/me" class="underline">登入</RouterLink>後綁定戶號。</span>
+    </p>
+
+    <div class="mt-3 grid gap-4 lg:grid-cols-[1fr_300px]">
+      <!-- 地圖 -->
+      <div class="rounded-lg border border-slate-200 bg-slate-900">
+        <div class="flex items-center gap-2 border-b border-slate-700 px-3 py-2 text-xs text-slate-300">
+          <button class="rounded bg-slate-700 px-2 py-1 hover:bg-slate-600" @click="zoomBy(0.2)">＋</button>
+          <button class="rounded bg-slate-700 px-2 py-1 hover:bg-slate-600" @click="zoomBy(-0.2)">－</button>
+          <span>{{ Math.round(zoom * 100) }}%</span>
+          <span class="ml-auto">拖曳平移 · Ctrl+滾輪縮放</span>
+        </div>
+        <div
+          ref="stage"
+          class="relative h-[60vh] cursor-grab overflow-auto"
+          @pointerdown="onDown"
+          @pointermove="onMove"
+          @pointerup="onUp"
+          @pointerleave="onUp"
+          @wheel="onWheel"
+        >
+          <div class="relative select-none" :style="{ width: wrapW + 'px' }">
+            <img :src="mapSrc" alt="B1 平面圖" class="block w-full" draggable="false" />
+            <svg
+              class="absolute inset-0 h-full w-full"
+              :viewBox="`0 0 ${DISP_W} ${DISP_H}`"
+              preserveAspectRatio="none"
+            >
+              <g
+                v-for="s in seats"
+                :key="s.id + '-' + s.x + '-' + s.y"
+                :style="{ cursor: selectable(s) ? 'pointer' : 'default' }"
+                @click="onSeatClick(s)"
+              >
+                <circle
+                  :cx="s.x"
+                  :cy="s.y"
+                  :r="radius(s)"
+                  :fill="fill(s)"
+                  :stroke="stroke(s)"
+                  :stroke-width="s.public ? 2.4 : 0.8"
+                />
+                <text
+                  v-if="isSel(s.id)"
+                  :x="s.x"
+                  :y="s.y + 2.5"
+                  text-anchor="middle"
+                  font-size="6"
+                  font-weight="700"
+                  fill="#fff"
+                >{{ orderOf(s.id) }}</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- 志願清單 -->
+      <aside class="rounded-lg border border-slate-200 bg-white p-4">
+        <div class="flex items-center justify-between">
+          <div class="font-semibold">車位志願序 <span class="text-slate-400">({{ wishes.length }})</span></div>
+          <button v-if="wishes.length" class="text-xs text-slate-500 hover:underline" @click="clearAll">清除全部</button>
+        </div>
+
+        <ol v-if="wishes.length" class="mt-3 space-y-1.5">
+          <li v-for="(id, i) in wishes" :key="id" class="flex items-center gap-2 text-sm">
+            <span class="flex h-5 w-5 flex-none items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">{{ i + 1 }}</span>
+            <span class="font-mono">{{ seatLabel(id) }}</span>
+            <button class="ml-auto text-slate-400 hover:text-rose-600" @click="removeAt(i)">✕</button>
+          </li>
+        </ol>
+        <p v-else class="mt-3 text-sm text-slate-400">尚未選擇。點地圖上的車位開始排志願。</p>
+
+        <button
+          class="mt-4 w-full rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+          :disabled="!wishes.length"
+          @click="submit"
+        >
+          儲存志願序
+        </button>
+        <p v-if="saved" class="mt-2 text-center text-sm text-emerald-600">✓ 已儲存{{ householdId ? `（戶號 ${householdId}）` : '於本機' }}</p>
+
+        <div class="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
+          <div class="mb-1 font-medium text-slate-600">圖例</div>
+          <div class="flex flex-wrap gap-x-3 gap-y-1">
+            <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(245,158,11,.6)"></span> 大位</span>
+            <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(139,92,246,.7)"></span> 小位</span>
+            <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(234,179,8,.6);outline:1.5px solid #a16207"></span> 公益(不可選)</span>
+            <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-rose-500"></span> 已選</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <p class="mt-3 text-xs text-slate-400">
+      原型：志願暫存於本機（依戶號），尚未送出後端。志願不限數量、多填越不易落空；志願小位／無障礙位免在此排。
+    </p>
+  </section>
+</template>
