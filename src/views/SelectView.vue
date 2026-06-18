@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { motorSeats, DISP_W, DISP_H } from '../map/seats.js'
 import { sessionHousehold } from '../store/session.js'
 import { loadWishes, saveWishes } from '../store/wishes.js'
@@ -68,50 +68,74 @@ const BASE_W = 1400 // 底圖基準寬（px），縮放以此為基數
 const zoom = ref(1)
 const wrapW = computed(() => Math.round(BASE_W * zoom.value))
 const stage = ref(null)
+const clampZoom = (z) => Math.min(5, Math.max(0.5, +z.toFixed(2)))
 function zoomBy(d) {
-  zoom.value = Math.min(4, Math.max(0.5, +(zoom.value + d).toFixed(2)))
+  zoom.value = clampZoom(zoom.value + d)
 }
 function onWheel(e) {
-  if (!e.ctrlKey) return // 僅 Ctrl+滾輪縮放，避免擋住頁面捲動
+  if (!e.ctrlKey) return // 桌機：Ctrl+滾輪縮放，避免擋住頁面捲動
   e.preventDefault()
-  zoomBy(e.deltaY < 0 ? 0.2 : -0.2)
+  zoomBy(e.deltaY < 0 ? 0.25 : -0.25)
 }
 
-// 拖曳平移（拖動超過門檻則不觸發選位）
-let down = false
+// 觸控/滑鼠手勢：單指(或滑鼠)拖曳平移、雙指 pinch 縮放。
+// stage 設 touch-action:none，由我們接管手勢，避免和原生捲動打架。
+const pointers = new Map()
 let moved = false
-let sx = 0
-let sy = 0
-let sl = 0
-let st = 0
+let panStart = null
+let pinchStart = null
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y)
+
 function onDown(e) {
-  down = true
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
   moved = false
-  sx = e.clientX
-  sy = e.clientY
-  sl = stage.value.scrollLeft
-  st = stage.value.scrollTop
+  if (pointers.size === 1) {
+    panStart = { x: e.clientX, y: e.clientY, sl: stage.value.scrollLeft, st: stage.value.scrollTop }
+  } else if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()]
+    pinchStart = { d: dist(a, b), zoom: zoom.value }
+    panStart = null
+  }
 }
 function onMove(e) {
-  if (!down) return
-  const dx = e.clientX - sx
-  const dy = e.clientY - sy
-  if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true
-  stage.value.scrollLeft = sl - dx
-  stage.value.scrollTop = st - dy
+  if (!pointers.has(e.pointerId)) return
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+  if (pinchStart && pointers.size >= 2) {
+    const [a, b] = [...pointers.values()]
+    const d = dist(a, b)
+    if (d > 0) {
+      zoom.value = clampZoom(pinchStart.zoom * (d / pinchStart.d))
+      moved = true
+    }
+    return
+  }
+  if (panStart) {
+    const dx = e.clientX - panStart.x
+    const dy = e.clientY - panStart.y
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true
+    stage.value.scrollLeft = panStart.sl - dx
+    stage.value.scrollTop = panStart.st - dy
+  }
 }
-function onUp() {
-  down = false
+function onUp(e) {
+  pointers.delete(e.pointerId)
+  if (pointers.size < 2) pinchStart = null
+  if (pointers.size === 0) panStart = null
 }
 function onSeatClick(s) {
-  if (moved) return // 剛剛是在拖曳，不當作選位
+  if (moved) return // 剛剛在拖曳/縮放，不當作選位
   toggle(s)
 }
 
 const mapSrc = import.meta.env.BASE_URL + 'demo/b1.png'
-onMounted(() => {
-  // 進場置中一點，方便看到主要區塊
+function center() {
   if (stage.value) stage.value.scrollLeft = (wrapW.value - stage.value.clientWidth) / 2
+}
+onMounted(async () => {
+  // 手機進場放大些，座位才點得到；桌機維持貼齊寬度。
+  if (window.innerWidth < 768) zoom.value = 2.2
+  await nextTick()
+  center()
 })
 </script>
 
@@ -135,15 +159,16 @@ onMounted(() => {
           <button class="rounded bg-slate-700 px-2 py-1 hover:bg-slate-600" @click="zoomBy(0.2)">＋</button>
           <button class="rounded bg-slate-700 px-2 py-1 hover:bg-slate-600" @click="zoomBy(-0.2)">－</button>
           <span>{{ Math.round(zoom * 100) }}%</span>
-          <span class="ml-auto">拖曳平移 · Ctrl+滾輪縮放</span>
+          <span class="ml-auto">拖曳平移 · 雙指 / Ctrl+滾輪 縮放</span>
         </div>
         <div
           ref="stage"
-          class="relative h-[60vh] cursor-grab overflow-auto"
+          class="relative h-[70vh] cursor-grab touch-none overflow-auto"
           @pointerdown="onDown"
           @pointermove="onMove"
           @pointerup="onUp"
           @pointerleave="onUp"
+          @pointercancel="onUp"
           @wheel="onWheel"
         >
           <div class="relative select-none" :style="{ width: wrapW + 'px' }">
@@ -159,6 +184,8 @@ onMounted(() => {
                 :style="{ cursor: selectable(s) ? 'pointer' : 'default' }"
                 @click="onSeatClick(s)"
               >
+                <!-- 透明大點擊區：手機上座位小、放大可點範圍 -->
+                <circle v-if="selectable(s)" :cx="s.x" :cy="s.y" r="12" fill="transparent" />
                 <circle
                   :cx="s.x"
                   :cy="s.y"
