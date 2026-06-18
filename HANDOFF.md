@@ -135,13 +135,15 @@ parkfee/
 
 ## 9. 演算法規格（純函式，先寫測試）
 
-**分階段配位**
+**配位＝填志願 + 統一分發**（定版引擎 `src/lottery/distribute.js`；舊 seq-based `allocate.js` 已移除）
 ```
-input:  registrations[], spaces[], seed
-output: { byStage[], assigned[], waitlist[], unassigned[], seed, runAt }
+input:  { registrations[], seats(=rentableMotorSeats()), seed, runAt }
+output: { rounds[], assigned[], 落選[], log, summary, seed, seedHash, runAt }
 ```
-- 同輸入＋同 seed → 同結果（mulberry32 之類）。
-- 依 §5.1 跑 階段0 → 1 → 2；每階段可用池＝上一階段剩餘。
+- 同輸入＋同 seed → 同結果（mulberry32）。座位來源＝現場盤點 `seats.js`（數字編號 1..655、type 大/小/無障礙、public 公益位排除）。
+- 輪次：R0 無障礙 → R1 一戶一位（志願小位免抽依登記序）→ R2+ 第二位起。
+- 第一階段（可重現）：依順序號由小到大，分「該戶志願中仍剩的最高志願」；落空者進 `落選` 名單。
+- 第二階段（物業，不入引擎）：落選者勾保底→就近補、未勾→候補。
 - 每步記 log，畫面可展開供監察。
 
 **稽核判定**

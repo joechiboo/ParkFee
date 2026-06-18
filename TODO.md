@@ -8,7 +8,7 @@
 ## ✅ 現況（已完成）
 
 - **M0 骨架**：Vue3 + Vite + Tailwind、GitHub Pages 部署（base `/ParkFee/`）、路由版面。
-- **配位引擎 + 匯入層**（純函式 + 43 tests 全綠）：`spaces` 車位主檔、`rng` 可重現亂數、`allocate` 分輪配位、`csv`/`plate`/`registry` 匯入（含線上/紙本雙管道合併、戶號去重、衝突列出）。
+- **配位引擎 + 匯入層**（純函式 + 測試全綠）：`spaces` 名目主檔、`map/seats` 盤點座位、`rng` 可重現亂數、**`distribute` 志願分發引擎（定版；舊 `allocate` 已移除）**、`csv`/`plate`/`registry` 匯入（含線上/紙本雙管道合併、戶號去重、衝突列出、車位志願/保底戶層級）。
 - **文件**：00 時間線、01 作業辦法、04 紙本、09 流程設計、10 規則總表、11 選位地圖、12 機制合規與建置規劃、財務管理辦法。（已捨棄 Google 表單：原 02 表單設計、03 表單連結與 `scripts/build-google-form.gs` 已移除）
 - **住戶端**：線上登記系統（自家頁面 + Supabase 後端）已接；住戶說明頁 `rules.html`、選位地圖 prototype（B1 可點）已上線。
 - **設計定版**：登記臨櫃模型（線上預填+紙本）、**選位＝填志願 + 統一分發**（大學分發式）、合規檢查、**持久化＝Supabase + Edge Functions**（見下方設計決策）。
@@ -36,11 +36,12 @@
 
 ## 🟢 卡點解除後的開發
 
-- [ ] 登記加**志願序欄位** → 線上登記頁(`RegisterView.vue`)、紙本(04)、CSV schema(HANDOFF §8)、`registry.js`
-- [ ] 正式化 `src/map/`（機車位座標 schema：車位編號/type/公益/樓層/x/y/靠近棟別，對齊 `spaces.js`）
+- [~] 登記加**志願序欄位**：紙本(04) ✅、CSV schema(HANDOFF §8) ✅、`registry.js` ✅（車位志願/保底戶層級）；**未做：線上登記頁 `RegisterView.vue` 的志願序選擇 UI**（demo 已有志願序選擇器可移植）
+- [~] 正式化 `src/map/`：`seats.js`（編號/type/public/x/y）✅；**未做**：每格標「靠近棟別 A–H/S」（保底用）、座標微調 ~20%
 - [x] **自動分發引擎**（純函式 + 測試）：`src/lottery/distribute.js`（+12 tests）依順序號分配「最高可得志願」、落空者 pass 產**落選名單**；保底補位＝物業第二階段、不入引擎（見 [09 §選位作業模式](docs/09-配位流程設計.md)）。v1 限制：重機走 seq 取雙大位、未填志願直接落選（待擴充）
-- [ ] **Vue 選位頁**（地圖 + 填志願）、抽籤畫面（設種子/監察 log）、結果頁接引擎
-- [ ] **持久化層**：`src/data/` 先做 localStorage 介面 → 後換 Supabase（schema/RLS/Edge Function 見 [12-機制合規與建置規劃.md §4](docs/12-機制合規與建置規劃.md)）
+- [ ] **Supabase 名冊 → 配位引擎**（線上跑完整分發的關鍵缺口）：撈 DB registrations → `registry.buildRoster` → `distribute` → 結果。（CSV 匯入：`csv.js`/`registry.js` 函式庫已有但**未接 UI**，僅供 eTag/批次/離線；紙本走物業代登打進 DB）
+- [ ] **Vue 選位頁**（地圖排志願 → 接 distribute）、抽籤畫面（設種子/監察 log）、結果頁接引擎
+- [x] **持久化層**：登記/登入已上 **Supabase + Edge Functions**（RLS deny-all，`db.js` facade + `supabase-backend.js`）。**未接**：配位結果/選位志願的持久化、以及「Supabase 名冊 → 配位引擎」這條（見下方 🟢）
 - [ ] 匯出：配位結果 CSV、eTag 白名單 CSV
 
 ## 📨 對外要資料（lead time 長，先發訊息）
