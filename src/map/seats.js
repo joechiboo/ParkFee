@@ -22,12 +22,24 @@ function seatsOfCat(cat) {
     .sort((a, b) => +a.id - +b.id)
 }
 
-// 所有機車位（大+小+無障礙），含 type；號碼 1..655（498 漏水排除）。
+// 所有機車位（大+小+無障礙），含 type 與 public（公益位）；號碼 1..655（498 漏水排除）。
 export function motorSeats() {
   return classification.seats
     .filter((s) => s.cat in MOTOR_CATS)
-    .map((s) => ({ id: s.id, x: s.x, y: s.y, floor: FLOOR, type: MOTOR_CATS[s.cat] }))
+    .map((s) => ({
+      id: s.id,
+      x: s.x,
+      y: s.y,
+      floor: FLOOR,
+      type: MOTOR_CATS[s.cat],
+      ...(s.public ? { public: true } : {}),
+    }))
     .sort((a, b) => +a.id - +b.id)
+}
+
+// 可承租機車位（排除公益位）— 配位/分發引擎用。
+export function rentableMotorSeats() {
+  return motorSeats().filter((s) => !s.public)
 }
 
 export function carSeats() {
