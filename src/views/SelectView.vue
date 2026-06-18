@@ -10,12 +10,24 @@ import { loadOccupied } from '../store/occupied.js'
 const seats = motorSeats()
 const householdId = computed(() => sessionHousehold.value?.戶號 || '')
 
-// 志願序：登入者優先用後端帶回的；否則本機快取。點選順序即志願序。
-const wishes = ref(
-  sessionHousehold.value?.車位志願?.length
-    ? sessionHousehold.value.車位志願.map(String)
-    : loadWishes(householdId.value),
-)
+// 志願序：登入者優先用後端帶回的 → 該戶本機快取 → 接管匿名試排。點選順序即志願序。
+function initialWishes() {
+  const id = householdId.value
+  if (sessionHousehold.value?.車位志願?.length) return sessionHousehold.value.車位志願.map(String)
+  const own = loadWishes(id)
+  if (own.length) return own
+  // 先匿名試排、後登入：把匿名快取接管到該戶（並清掉匿名，避免登出後又冒出來）
+  if (id) {
+    const anon = loadWishes('')
+    if (anon.length) {
+      saveWishes(id, anon)
+      saveWishes('', [])
+      return anon
+    }
+  }
+  return []
+}
+const wishes = ref(initialWishes())
 const fallback = ref(!!sessionHousehold.value?.志願落選保底)
 const orderMap = computed(() => {
   const m = new Map()
