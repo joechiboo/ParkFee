@@ -6,7 +6,6 @@
 // 正式版：由後端提供（已繳費 household/vehicle → 車位編號）。
 
 const KEY = 'parkfee:occupied'
-const SAMPLE = ['8', '9', '10', '11'] // demo：幾個已被志願小位選走的小位（非公益）
 
 export function loadOccupied() {
   try {
@@ -18,5 +17,5 @@ export function loadOccupied() {
   } catch {
     /* ignore */
   }
-  return SAMPLE
+  return [] // 正式版由後端提供已繳費/已配位車位；原型可寫 localStorage[parkfee:occupied] 測試
 }
