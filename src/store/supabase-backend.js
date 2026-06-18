@@ -45,6 +45,12 @@ export async function updateHousehold({ 戶號, 電話, vehicles, 認證車號 }
   return data.household
 }
 
+// 寫該戶車位志願序（戶層級）。需對應 Edge Function 'save-wishes'（service_role + 認證車號驗擁有權）。
+export async function saveWishes({ 戶號, 車位志願, 志願落選保底, 認證車號 }) {
+  const data = await invoke('save-wishes', { 戶號, 車位志願, 志願落選保底, 認證車號 })
+  return data.household
+}
+
 // 安全考量：以「戶號」單獨查詢會讓任何人列舉他戶的車號/電話（enumeration 洩漏），
 // 故 Supabase 後端不提供此入口。需取整戶資料請走 login(戶號, 車號)（雙因子）。
 export async function getHousehold() {

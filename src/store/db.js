@@ -36,3 +36,7 @@ export async function getHousehold(戶號) {
 export async function updateHousehold(input) {
   return (await backend()).updateHousehold(input)
 }
+// 寫該戶車位志願序（戶層級）+ 志願落選保底。認證車號＝登入車號（擁有權證明）。
+export async function saveWishes(input) {
+  return (await backend()).saveWishes(input)
+}

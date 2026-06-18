@@ -27,7 +27,7 @@ export function adminClient(): SupabaseClient {
 export async function fetchHousehold(db: SupabaseClient, hid: string) {
   const { data: h } = await db
     .from('household')
-    .select('戶號, 電話, created_at')
+    .select('戶號, 電話, created_at, 車位志願, 志願落選保底')
     .eq('戶號', hid)
     .maybeSingle()
   if (!h) return null
@@ -36,5 +36,12 @@ export async function fetchHousehold(db: SupabaseClient, hid: string) {
     .select('車號, 戶號, 車種, 第幾輛, 身障, 志願小位')
     .eq('戶號', hid)
     .order('第幾輛')
-  return { 戶號: h.戶號, 電話: h.電話, createdAt: h.created_at, vehicles: vehicles ?? [] }
+  return {
+    戶號: h.戶號,
+    電話: h.電話,
+    createdAt: h.created_at,
+    車位志願: h.車位志願 ?? [],
+    志願落選保底: !!h.志願落選保底,
+    vehicles: vehicles ?? [],
+  }
 }

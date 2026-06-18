@@ -118,6 +118,25 @@ export function updateHousehold({ 戶號, 電話, vehicles }) {
   return getHousehold(hid)
 }
 
+// 寫該戶車位志願序（戶層級）+ 志願落選保底。單機版不驗認證車號（同裝置）。
+export function saveWishes({ 戶號, 車位志願, 志願落選保底 }) {
+  const hid = normHouse(戶號)
+  const db = load()
+  if (!db.households[hid]) throw new RegistrationError(`戶號 ${hid} 尚未登記`)
+  const seen = new Set()
+  const wishes = []
+  for (const x of Array.isArray(車位志願) ? 車位志願 : []) {
+    const id = String(x).trim()
+    if (id && !seen.has(id)) {
+      seen.add(id)
+      wishes.push(id)
+    }
+  }
+  db.households[hid] = { ...db.households[hid], 車位志願: wishes, 志願落選保底: !!志願落選保底 }
+  save(db)
+  return getHousehold(hid)
+}
+
 // 登入：戶號 + 任一已登記車號。命中回整戶資料，否則 null。
 export function login(戶號, 車號) {
   const hid = normHouse(戶號)
