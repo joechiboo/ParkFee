@@ -20,12 +20,12 @@ const done = ref(null) // 成功後的整戶資料
 const isEdit = ref(false) // 由 MeView 帶資料進來編輯時為 true
 const authPlate = ref('') // 登入時的車號，編輯送出時當擁有權證明
 
-// 編輯模式：載入 MeView 傳來的整戶資料、預填表單、鎖戶號
+// 編輯模式：從 MeView 帶進來的 editTarget，或（直接點「登記」時）已登入的 sessionHousehold。
 onMounted(() => {
-  const h = editTarget.value
-  if (!h) return
+  const h = editTarget.value || sessionHousehold.value
+  if (!h) return // 未登入且非編輯 → 維持新登記空白表
   isEdit.value = true
-  authPlate.value = h.認證車號 || ''
+  authPlate.value = h.認證車號 || sessionPlate.value || ''
   form.戶號 = h.戶號
   form.電話 = h.電話 || ''
   const vs = (h.vehicles || []).map((v) => ({
