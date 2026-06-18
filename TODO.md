@@ -42,7 +42,8 @@
 - [ ] **Supabase 名冊 → 配位引擎**（線上跑完整分發的關鍵缺口）：撈 DB registrations → `registry.buildRoster` → `distribute` → 結果。（CSV 匯入：`csv.js`/`registry.js` 函式庫已有但**未接 UI**，僅供 eTag/批次/離線；紙本走物業代登打進 DB）
 - [ ] **Vue 選位頁**（地圖排志願 → 接 distribute）、抽籤畫面（設種子/監察 log）、結果頁接引擎
 - [x] **持久化層**：登記/登入已上 **Supabase + Edge Functions**（RLS deny-all，`db.js` facade + `supabase-backend.js`）。**未接**：配位結果/選位志願的持久化、以及「Supabase 名冊 → 配位引擎」這條（見下方 🟢）
-- [ ] 匯出：配位結果 CSV、eTag 白名單 CSV
+- [~] 匯出：**結果→清單/CSV 核心 ✅**（`src/export/result.js` + `src/data/fee.js` + 測試；應繳 1200/3600、狀態、簽約期限=公告+5）；**未接 ExportView UI**（待 B2「Supabase 撈全部」餵資料）。eTag 白名單擱置（需繳費狀態 Phase II）
+  > **結果三介面分工**：**MeView**＝住戶看自己（登入）／**ExportView**＝物業看全部＋下載 CSV（Phase I 兼結果預覽）／**ResultView**＝Phase II 繳費狀態維護+候補遞補面板（屆時才與匯出分流）。
 
 ## 📨 對外要資料（lead time 長，先發訊息）
 
