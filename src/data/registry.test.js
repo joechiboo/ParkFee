@@ -6,6 +6,7 @@ import {
   mergeChannels,
   toYN,
   normalizeVehicleType,
+  parseWishes,
   SOURCE,
 } from './registry.js'
 import { sampleRoster } from './sample.js'
@@ -22,6 +23,21 @@ describe('登記列正規化', () => {
   it('車種文字 → 一般/重機', () => {
     expect(normalizeVehicleType('一般（≤250CC）')).toBe('一般')
     expect(normalizeVehicleType('重機（250CC↑，紅／黃牌）')).toBe('重機')
+  })
+
+  it('parseWishes：分隔字串 → 去空白/去重/保序的陣列', () => {
+    expect(parseWishes('123、87，5')).toEqual(['123', '87', '5'])
+    expect(parseWishes('  10  20 ')).toEqual(['10', '20'])
+    expect(parseWishes('5、5、6')).toEqual(['5', '6']) // 去重
+    expect(parseWishes(['1', ' 2 ', ''])).toEqual(['1', '2'])
+    expect(parseWishes('')).toEqual([])
+    expect(parseWishes(undefined)).toEqual([])
+  })
+
+  it('normalizeRow：解析車位志願與志願落選保底', () => {
+    const e = normalizeRow({ 戶號: 'H3-6', 車號: 'ABC-123', 車種: '一般', 第幾輛: 1, 車位志願: '12、34', 志願落選保底: '是' })
+    expect(e.車位志願).toEqual(['12', '34'])
+    expect(e.志願落選保底).toBe('Y')
   })
 
   it('normalizeRow：車號正規化、第2輛強制身障=N', () => {
@@ -94,6 +110,18 @@ describe('名冊去重與雙管道合併', () => {
     ])
     expect(entries).toHaveLength(1)
     expect(invalid).toHaveLength(1)
+  })
+
+  it('車位志願/保底為戶層級：只填在第1輛列 → 傳播到全戶各列', () => {
+    const { entries } = buildRoster([
+      { 戶號: 'H3-6', 車號: 'AAA-1111', 車種: '一般', 第幾輛: 1, 車位志願: '12、34', 志願落選保底: '是' },
+      { 戶號: 'H3-6', 車號: 'BBB-2222', 車種: '一般', 第幾輛: 2 }, // 第2輛沒填志願
+    ])
+    expect(entries).toHaveLength(2)
+    for (const e of entries) {
+      expect(e.車位志願).toEqual(['12', '34'])
+      expect(e.志願落選保底).toBe('Y')
+    }
   })
 })
 
