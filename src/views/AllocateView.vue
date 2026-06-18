@@ -1,8 +1,9 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { distribute } from '../lottery/distribute.js'
 import { rentableMotorSeats } from '../map/seats.js'
 import { buildRoster } from '../data/registry.js'
+import { parseCSVObjects } from '../data/csv.js'
 import { sampleRoster } from '../data/sample.js'
 
 // ── 資料：示範用 20 戶樣本（正式版改接 Supabase 全名冊 → buildRoster → distribute）──
@@ -28,17 +29,43 @@ function buildSampleRegs() {
   }
   return entries.map((e) => ({ ...e, 車位志願: byHouse.get(e.戶號) }))
 }
-const registrations = buildSampleRegs()
-const houseCount = new Set(registrations.map((r) => r.戶號)).size
+const registrations = ref(buildSampleRegs())
+const source = ref(`${SAMPLE_N} 戶樣本`)
+const houseCount = computed(() => new Set(registrations.value.map((r) => r.戶號)).size)
+const importErr = ref('')
+
+// 匯入名冊 CSV（由 scripts/export-roster.mjs 從 Supabase 匯出）→ buildRoster → 取代樣本。
+function onFile(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  importErr.value = ''
+  const reader = new FileReader()
+  reader.onload = () => {
+    try {
+      const { entries, invalid, conflicts } = buildRoster(parseCSVObjects(reader.result))
+      if (!entries.length) {
+        importErr.value = 'CSV 沒有有效登記列（檢查表頭欄位）'
+        return
+      }
+      registrations.value = entries
+      source.value = `匯入 CSV（無效 ${invalid.length}、衝突 ${conflicts.length} 已處理）`
+      result.value = null
+      history.value = []
+    } catch (err) {
+      importErr.value = '匯入失敗：' + (err?.message || 'CSV 格式錯誤')
+    }
+  }
+  reader.readAsText(file)
+}
 
 // ── 抽籤狀態 ──
-const seed = ref('2026樂菲莊園機車車位抽籤')
+const seed = ref('2027樂菲莊園機車車位抽籤')
 const result = ref(null)
 const history = ref([])
 
 function run() {
   const r = distribute({
-    registrations,
+    registrations: registrations.value,
     seats,
     seed: seed.value || 'parkfee',
     runAt: new Date().toISOString(),
@@ -66,8 +93,33 @@ const fmtTime = (iso) => (iso ? iso.slice(0, 19).replace('T', ' ') : '')
     <h1 class="text-2xl font-bold">抽籤配位</h1>
     <p class="mt-1 text-sm text-slate-500">
       電腦以固定種子抽「順序號」→ 依各戶車位志願序統一分發（同種子可重現、供監察）。
-      <span class="text-amber-700">示範資料：{{ houseCount }} 戶樣本（正式版接 Supabase 全名冊）。</span>
+      名冊來源：<b>{{ source }}</b>（{{ houseCount }} 戶）。
     </p>
+
+    <!-- 配位規則說明（可摺疊） -->
+    <details open class="mt-3 rounded-lg border border-slate-200 bg-white p-3 text-sm">
+      <summary class="cursor-pointer font-medium text-slate-700">配位規則說明（填志願 + 統一分發）· 點箭頭收合</summary>
+      <div class="mt-2 space-y-1.5 text-slate-600">
+        <p>採「<b>填志願 + 統一分發</b>」（非隨機抽號碼）：電腦以固定種子抽<b>順序號</b>，依序號由小到大逐戶，分到「該戶志願中、目前仍剩的<b>最高志願</b>」。</p>
+        <ul class="ml-4 list-disc space-y-1">
+          <li><b>Round 0 無障礙</b>：身障第 1 輛優先；登記 &gt; 名額則抽，未中併入下一輪。</li>
+          <li><b>Round 1 一戶一位</b>：志願小位者免抽、依登記序選小位；其餘第 1 輛抽順序號、依志願分發 → <b>保障每戶第 1 輛一位</b>。</li>
+          <li><b>Round 2＋ 第二輛起</b>：用前輪剩餘車位依序取志願；耗盡則落選。</li>
+        </ul>
+        <p><b>重機</b>佔雙大位（機車位足額才配）。<b>志願全落空者</b>列「落選名單」→ 交物業第二階段（勾保底→就近補、未勾→候補），不在引擎內。</p>
+        <p class="text-slate-500">固定種子 → 結果可重現；種子／時間／各輪過程全留存供監察。重抽＝換新種子重跑，歷次紀錄保留。</p>
+      </div>
+    </details>
+
+    <!-- 匯入名冊 -->
+    <div class="mt-4 rounded-lg border border-slate-200 bg-white p-4">
+      <label class="text-sm font-medium text-slate-700">匯入名冊 CSV</label>
+      <input type="file" accept=".csv,text/csv" class="mt-1 block text-sm" @change="onFile" />
+      <p class="mt-1 text-xs text-slate-500">
+        由 <code>scripts/export-roster.mjs</code> 從 Supabase 匯出；未匯入則用樣本示範。
+      </p>
+      <p v-if="importErr" class="mt-1 text-sm text-rose-600">{{ importErr }}</p>
+    </div>
 
     <!-- 控制列 -->
     <div class="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
