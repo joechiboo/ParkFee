@@ -19,6 +19,7 @@ for (const m of demo.matchAll(re)) {
     y: +cy,
     cat,
     ...(extra.includes('verified') ? { verified: true } : {}),
+    ...(extra.includes('public') ? { public: true } : {}),
   });
 }
 if (!seats.length) throw new Error('demo 裡找不到任何 <g class="seat ..."> 點位，格式可能變了');
