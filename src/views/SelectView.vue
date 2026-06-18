@@ -68,7 +68,7 @@ const BASE_W = 1400 // 底圖基準寬（px），縮放以此為基數
 const zoom = ref(1)
 const wrapW = computed(() => Math.round(BASE_W * zoom.value))
 const stage = ref(null)
-const clampZoom = (z) => Math.min(5, Math.max(0.5, +z.toFixed(2)))
+const clampZoom = (z) => Math.min(8, Math.max(0.5, +z.toFixed(2)))
 function zoomBy(d) {
   zoom.value = clampZoom(zoom.value + d)
 }
@@ -128,15 +128,38 @@ function onSeatClick(s) {
 }
 
 const mapSrc = import.meta.env.BASE_URL + 'demo/b1.png'
-function center() {
-  if (stage.value) stage.value.scrollLeft = (wrapW.value - stage.value.clientWidth) / 2
-}
-onMounted(async () => {
-  // 手機進場放大些，座位才點得到；桌機維持貼齊寬度。
-  if (window.innerWidth < 768) zoom.value = 2.2
+
+// 實際座位區範圍（viewBox 座標）——進場聚焦於此，避免停在標題欄/空白、座位又糊成一團。
+const bbox = (() => {
+  const xs = seats.map((s) => s.x)
+  const ys = seats.map((s) => s.y)
+  return {
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minY: Math.min(...ys),
+    maxY: Math.max(...ys),
+  }
+})()
+
+async function focusSeats() {
+  const el = stage.value
+  if (!el) return
+  const bw = Math.max(1, bbox.maxX - bbox.minX)
+  const bh = Math.max(1, bbox.maxY - bbox.minY)
+  const pad = 1.2
+  // 讓座位區的寬與高都塞進視窗，取較保守（小）的縮放。
+  const W = Math.min(
+    (el.clientWidth / pad) * (DISP_W / bw),
+    (el.clientHeight / pad) * (DISP_W / bh),
+  )
+  zoom.value = clampZoom(W / BASE_W)
   await nextTick()
-  center()
-})
+  const w = wrapW.value
+  const h = (w * DISP_H) / DISP_W
+  el.scrollLeft = ((bbox.minX + bbox.maxX) / 2 / DISP_W) * w - el.clientWidth / 2
+  el.scrollTop = ((bbox.minY + bbox.maxY) / 2 / DISP_H) * h - el.clientHeight / 2
+}
+onMounted(focusSeats)
 </script>
 
 <template>
@@ -152,14 +175,15 @@ onMounted(async () => {
       <span v-else class="text-amber-700">未登入：志願暫存於本機，<RouterLink to="/me" class="underline">登入</RouterLink>後綁定戶號。</span>
     </p>
 
-    <div class="mt-3 grid gap-4 lg:grid-cols-[1fr_300px]">
+    <div class="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
       <!-- 地圖 -->
       <div class="rounded-lg border border-slate-200 bg-slate-900">
         <div class="flex items-center gap-2 border-b border-slate-700 px-3 py-2 text-xs text-slate-300">
-          <button class="rounded bg-slate-700 px-2 py-1 hover:bg-slate-600" @click="zoomBy(0.2)">＋</button>
-          <button class="rounded bg-slate-700 px-2 py-1 hover:bg-slate-600" @click="zoomBy(-0.2)">－</button>
+          <button class="rounded bg-slate-700 px-2 py-1 hover:bg-slate-600" @click="zoomBy(0.3)">＋</button>
+          <button class="rounded bg-slate-700 px-2 py-1 hover:bg-slate-600" @click="zoomBy(-0.3)">－</button>
           <span>{{ Math.round(zoom * 100) }}%</span>
-          <span class="ml-auto">拖曳平移 · 雙指 / Ctrl+滾輪 縮放</span>
+          <button class="rounded bg-slate-700 px-2 py-1 hover:bg-slate-600" @click="focusSeats">⊙ 定位座位區</button>
+          <span class="ml-auto hidden sm:inline">拖曳平移 · 雙指 / Ctrl+滾輪 縮放</span>
         </div>
         <div
           ref="stage"
