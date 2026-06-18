@@ -163,7 +163,7 @@ onMounted(focusSeats)
 </script>
 
 <template>
-  <section class="mx-auto max-w-6xl">
+  <section class="mx-auto">
     <div class="flex items-baseline justify-between">
       <h1 class="text-2xl font-bold">選車位志願序</h1>
       <RouterLink to="/me" class="text-sm text-slate-500 hover:underline">← 回我的登記</RouterLink>
@@ -218,15 +218,16 @@ onMounted(focusSeats)
                   :stroke="stroke(s)"
                   :stroke-width="s.public ? 2.4 : 0.8"
                 />
+                <!-- 未選顯示車位編號；選中顯示志願序號 -->
                 <text
-                  v-if="isSel(s.id)"
                   :x="s.x"
-                  :y="s.y + 2.5"
+                  :y="s.y + 2.3"
                   text-anchor="middle"
-                  font-size="6"
-                  font-weight="700"
-                  fill="#fff"
-                >{{ orderOf(s.id) }}</text>
+                  :font-size="s.type === '小' ? 5 : 5.5"
+                  :font-weight="isSel(s.id) ? 700 : 400"
+                  :fill="isSel(s.id) ? '#fff' : '#0f172a'"
+                  style="pointer-events: none; user-select: none"
+                >{{ isSel(s.id) ? orderOf(s.id) : s.id }}</text>
               </g>
             </svg>
           </div>

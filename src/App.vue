@@ -1,8 +1,13 @@
 <script setup>
-import { RouterLink, RouterView, useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { RouterLink, RouterView, useRouter, useRoute } from 'vue-router'
 import { sessionHousehold, clearSession } from './store/session.js'
 
 const router = useRouter()
+const route = useRoute()
+// 選位頁是地圖頁，給更寬版面；其餘頁維持窄版易讀。
+const shellMax = computed(() => (route.name === 'select' ? 'max-w-[1600px]' : 'max-w-5xl'))
+
 function logout() {
   clearSession()
   router.push('/')
@@ -21,7 +26,7 @@ const nav = [
 <template>
   <div class="min-h-screen bg-slate-50 text-slate-900">
     <header class="border-b border-slate-200 bg-white">
-      <div class="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3 sm:gap-6">
+      <div class="mx-auto flex items-center gap-3 px-4 py-3 sm:gap-6" :class="shellMax">
         <RouterLink to="/" class="shrink-0 text-lg font-bold tracking-tight text-slate-900">
           ParkFee
         </RouterLink>
@@ -57,11 +62,11 @@ const nav = [
       </div>
     </header>
 
-    <main class="mx-auto max-w-5xl px-4 py-6">
+    <main class="mx-auto px-4 py-6" :class="shellMax">
       <RouterView />
     </main>
 
-    <footer class="mx-auto max-w-5xl px-4 py-6 text-xs text-slate-400">
+    <footer class="mx-auto px-4 py-6 text-xs text-slate-400" :class="shellMax">
       樂菲莊園機車車位管理工具
     </footer>
   </div>
