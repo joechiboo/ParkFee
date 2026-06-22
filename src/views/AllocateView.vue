@@ -33,12 +33,14 @@ const registrations = ref(buildSampleRegs())
 const source = ref(`${SAMPLE_N} 戶樣本`)
 const houseCount = computed(() => new Set(registrations.value.map((r) => r.戶號)).size)
 const importErr = ref('')
+const importOk = ref('')
 
 // 匯入名冊 CSV（由 scripts/export-roster.mjs 從 Supabase 匯出）→ buildRoster → 取代樣本。
 function onFile(e) {
   const file = e.target.files?.[0]
   if (!file) return
   importErr.value = ''
+  importOk.value = ''
   const reader = new FileReader()
   reader.onload = () => {
     try {
@@ -48,7 +50,10 @@ function onFile(e) {
         return
       }
       registrations.value = entries
-      source.value = `匯入 CSV（無效 ${invalid.length}、衝突 ${conflicts.length} 已處理）`
+      const hh = new Set(entries.map((r) => r.戶號)).size
+      source.value = `匯入 ${file.name}`
+      const extra = invalid.length || conflicts.length ? `（無效 ${invalid.length}、衝突 ${conflicts.length} 已處理）` : ''
+      importOk.value = `✓ 已匯入 ${hh} 戶 / ${entries.length} 筆車輛${extra}，可按下方「執行抽籤」`
       result.value = null
       history.value = []
     } catch (err) {
@@ -114,10 +119,16 @@ const fmtTime = (iso) => (iso ? iso.slice(0, 19).replace('T', ' ') : '')
     <!-- 匯入名冊 -->
     <div class="mt-4 rounded-lg border border-slate-200 bg-white p-4">
       <label class="text-sm font-medium text-slate-700">匯入名冊 CSV</label>
-      <input type="file" accept=".csv,text/csv" class="mt-1 block text-sm" @change="onFile" />
+      <input
+        type="file"
+        accept=".csv,text/csv"
+        class="mt-1 block w-full text-sm text-slate-600 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-slate-700"
+        @change="onFile"
+      />
       <p class="mt-1 text-xs text-slate-500">
         由 <code>scripts/export-roster.mjs</code> 從 Supabase 匯出；未匯入則用樣本示範。
       </p>
+      <p v-if="importOk" class="mt-2 rounded bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700">{{ importOk }}</p>
       <p v-if="importErr" class="mt-1 text-sm text-rose-600">{{ importErr }}</p>
     </div>
 
