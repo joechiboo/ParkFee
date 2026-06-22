@@ -1,22 +1,24 @@
 // 開發用 mock 名冊產生器（dev-only；正式 build 由 import.meta.env.DEV 排除，不會打包上線）。
 // deterministic（依 index 變化、不用亂數）→ 每次產出一致、好比對。
-// 戶號用保留段 A1-901..A1-920（格式合法但戶號極高、不會撞到真實戶）→ 清除只要刪這段。
+// 戶號用測試標記：戶段一律「9X」（90–99，第一碼 9、兩碼）→ 格式合法、寫實，又不會撞真實戶
+//   （真實戶為小號），清除只要刪「戶段 9X」這批。
 //
 // 注意：識別字一律 ASCII（Vite/esbuild 不吃中文綁定名）；中文只當物件 key / 字串值。
 
 import { normalizeTWPlate } from '../data/plate.js'
 import { rentableMotorSeats } from '../map/seats.js'
 
-// mock 戶號標記：跨棟 A–H/S，但「戶」段一律 9xx（901+）→ 全域唯一、且清除只刪這批。
-export const MOCK_HU_RE = /-9\d\d$/
-export const WIPE_SQL = `delete from public.household where 戶號 ~ '-9[0-9][0-9]$';`
+// mock 戶號標記：跨棟 A–H/S，「戶」段為 9X（90–99，第一碼 9、恰兩碼）→ 清除只刪這批。
+export const MOCK_HU_RE = /-9\d$/
+export const WIPE_SQL = `delete from public.household where 戶號 ~ '-9[0-9]$';`
 
 const BUILDINGS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'S']
-// 跨棟分配；戶段 901+i 全域唯一；S 恆 1F、A–H 散 1–5 樓。
+// 跨棟分配；戶段 9X（90+）標記測試、兩碼合法；S 恆 1F、A–H 散 1–5 樓。
 function mockHid(i) {
   const b = BUILDINGS[i % BUILDINGS.length]
   const floor = b === 'S' ? 1 : 1 + (i % 5)
-  return `${b}${floor}-${901 + i}`
+  const unit = 90 + Math.floor(i / BUILDINGS.length) // 90、91、92…（兩碼、第一碼 9）
+  return `${b}${floor}-${unit}`
 }
 
 // 從可承租機車位取 id 供志願取樣，確保志願是「真的存在的車位編號」。

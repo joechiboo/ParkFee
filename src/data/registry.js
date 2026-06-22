@@ -11,6 +11,7 @@
 //     即視為新的一次送出 → 旗標衝突，並以較新（檔案後面）那次取代。
 
 import { normalizeTWPlate } from './plate.js'
+import { normalizeHousehold, isValidHousehold } from './household.js'
 
 export const REGISTRATION_COLUMNS = [
   '戶號',
@@ -28,8 +29,8 @@ export const REGISTRATION_COLUMNS = [
 
 export const SOURCE = { ONLINE: '線上', PAPER: '紙本' }
 
-// 戶號：A–H 棟（住戶）+ S（店家），格式「棟+樓-戶」，例 H3-6、S1-2。
-export const HOUSEHOLD_REGEX = /^[A-HS][0-9]{1,2}-[0-9]{1,2}$/
+// 戶號正規化/驗證的**單一事實來源**＝ household.js（與註冊 Edge Function normalize.ts 對齊）。
+// 此處不再自訂規則，避免「註冊放行、匯入卻擋掉」的不一致（曾因此把 3 碼戶誤判無效）。
 
 // 是/否/Y/N/true/1/勾 → 'Y' or 'N'
 export function toYN(v) {
@@ -63,7 +64,7 @@ export function parseWishes(v) {
 export function normalizeRow(raw, fallbackSource = SOURCE.ONLINE) {
   const 第幾輛 = Number(raw.第幾輛) || 1
   return {
-    戶號: String(raw.戶號 ?? '').trim().toUpperCase(),
+    戶號: normalizeHousehold(raw.戶號),
     車號: normalizeTWPlate(raw.車號),
     車種: normalizeVehicleType(raw.車種),
     第幾輛,
@@ -82,7 +83,7 @@ export function normalizeRow(raw, fallbackSource = SOURCE.ONLINE) {
 export function validateRow(e) {
   const errors = []
   const warnings = []
-  if (!HOUSEHOLD_REGEX.test(e.戶號)) errors.push(`戶號格式錯誤：「${e.戶號}」（應如 H3-6、S1-2）`)
+  if (!isValidHousehold(e.戶號)) errors.push(`戶號格式錯誤：「${e.戶號}」（應如 H3-6、S1-2）`)
   if (!e.車號) errors.push('車號為空')
   if (!['一般', '重機'].includes(e.車種)) errors.push(`車種非法：「${e.車種}」`)
   if (!Number.isInteger(e.第幾輛) || e.第幾輛 < 1) errors.push(`第幾輛非法：「${e.第幾輛}」`)
