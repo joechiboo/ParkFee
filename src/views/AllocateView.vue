@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { distribute } from '../lottery/distribute.js'
+import { distribute, VIA } from '../lottery/distribute.js'
 import { rentableMotorSeats } from '../map/seats.js'
 import { buildRoster } from '../data/registry.js'
 import { parseCSVObjects } from '../data/csv.js'
@@ -91,6 +91,20 @@ function redraw() {
 }
 
 const fmtTime = (iso) => (iso ? iso.slice(0, 19).replace('T', ' ') : '')
+
+// 配位結果分兩組：
+//   抽籤分發＝真的抽順序號的（一般/重機），依輪次→順序號排序 = 主結果。
+//   免抽已定＝志願小位 / 無障礙（登記時已選位繳費、抽籤前確定），另列、不混入。
+const lotteryRows = computed(() =>
+  (result.value?.assigned ?? [])
+    .filter((a) => a.配位方式 === VIA.WISH)
+    .sort((x, y) => x.輪次 - y.輪次 || (x.順序號 ?? 0) - (y.順序號 ?? 0)),
+)
+const presetRows = computed(() =>
+  (result.value?.assigned ?? []).filter(
+    (a) => a.配位方式 === VIA.VOLUNTEER_SMALL || a.配位方式 === VIA.ACCESSIBLE,
+  ),
+)
 </script>
 
 <template>
@@ -181,38 +195,67 @@ const fmtTime = (iso) => (iso ? iso.slice(0, 19).replace('T', ' ') : '')
         · 執行時間 {{ fmtTime(result.runAt) }} · 同種子重跑結果一致（可驗算）
       </div>
 
-      <!-- 配位結果 -->
+      <!-- 配位結果（抽籤分發，依順序號排序） -->
       <div>
-        <div class="mb-2 text-sm font-medium text-slate-700">配位結果（{{ result.assigned.length }}）</div>
+        <div class="mb-2 text-sm font-medium text-slate-700">配位結果 · 抽籤分發（{{ lotteryRows.length }}）— 依輪次／順序號</div>
         <div class="overflow-x-auto rounded-lg border border-slate-200">
           <table class="w-full text-sm">
             <thead class="bg-slate-50 text-slate-500">
               <tr>
+                <th class="px-3 py-2 text-left font-medium">順序號</th>
+                <th class="px-3 py-2 text-left font-medium">輪次</th>
                 <th class="px-3 py-2 text-left font-medium">戶號</th>
                 <th class="px-3 py-2 text-left font-medium">車號</th>
                 <th class="px-3 py-2 text-left font-medium">車種</th>
                 <th class="px-3 py-2 text-left font-medium">第幾輛</th>
                 <th class="px-3 py-2 text-left font-medium">車位</th>
                 <th class="px-3 py-2 text-left font-medium">類型</th>
-                <th class="px-3 py-2 text-left font-medium">方式</th>
-                <th class="px-3 py-2 text-left font-medium">順序號</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(a, i) in result.assigned" :key="i" class="border-t border-slate-100">
+              <tr v-for="(a, i) in lotteryRows" :key="i" class="border-t border-slate-100">
+                <td class="px-3 py-1.5 font-semibold">{{ a.順序號 ?? '—' }}</td>
+                <td class="px-3 py-1.5">{{ a.輪次 }}</td>
                 <td class="px-3 py-1.5">{{ a.戶號 }}</td>
                 <td class="px-3 py-1.5 font-mono text-xs">{{ a.車號 }}</td>
                 <td class="px-3 py-1.5">{{ a.車種 }}</td>
                 <td class="px-3 py-1.5">{{ a.第幾輛 }}</td>
                 <td class="px-3 py-1.5 font-mono">{{ a.車位編號 }}</td>
                 <td class="px-3 py-1.5">{{ a.車位類型 }}</td>
-                <td class="px-3 py-1.5">{{ a.配位方式 }}</td>
-                <td class="px-3 py-1.5">{{ a.順序號 ?? '—' }}</td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
+
+      <!-- 免抽已定：志願小位 / 無障礙（抽籤前確定、不參與抽籤） -->
+      <details v-if="presetRows.length" class="rounded-lg border border-slate-200 bg-white p-3">
+        <summary class="cursor-pointer text-sm font-medium text-slate-700">
+          免抽已定（{{ presetRows.length }}）— 志願小位／無障礙，登記時已選位繳費、不參與抽籤
+        </summary>
+        <div class="mt-2 overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-slate-500">
+              <tr>
+                <th class="px-3 py-2 text-left font-medium">戶號</th>
+                <th class="px-3 py-2 text-left font-medium">車號</th>
+                <th class="px-3 py-2 text-left font-medium">車位</th>
+                <th class="px-3 py-2 text-left font-medium">類型</th>
+                <th class="px-3 py-2 text-left font-medium">方式</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(a, i) in presetRows" :key="i" class="border-t border-slate-100">
+                <td class="px-3 py-1.5">{{ a.戶號 }}</td>
+                <td class="px-3 py-1.5 font-mono text-xs">{{ a.車號 }}</td>
+                <td class="px-3 py-1.5 font-mono">{{ a.車位編號 }}</td>
+                <td class="px-3 py-1.5">{{ a.車位類型 }}</td>
+                <td class="px-3 py-1.5">{{ a.配位方式 }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
 
       <!-- 落選名單 -->
       <div v-if="result.落選.length">
@@ -221,19 +264,21 @@ const fmtTime = (iso) => (iso ? iso.slice(0, 19).replace('T', ' ') : '')
           <table class="w-full text-sm">
             <thead class="bg-rose-50 text-rose-700">
               <tr>
+                <th class="px-3 py-2 text-left font-medium">順序號</th>
+                <th class="px-3 py-2 text-left font-medium">輪次</th>
                 <th class="px-3 py-2 text-left font-medium">戶號</th>
                 <th class="px-3 py-2 text-left font-medium">車號</th>
                 <th class="px-3 py-2 text-left font-medium">第幾輛</th>
-                <th class="px-3 py-2 text-left font-medium">輪次</th>
                 <th class="px-3 py-2 text-left font-medium">原因</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(l, i) in result.落選" :key="i" class="border-t border-rose-100">
+                <td class="px-3 py-1.5 font-semibold">{{ l.順序號 ?? '免抽' }}</td>
+                <td class="px-3 py-1.5">{{ l.輪次 }}</td>
                 <td class="px-3 py-1.5">{{ l.戶號 }}</td>
                 <td class="px-3 py-1.5 font-mono text-xs">{{ l.車號 }}</td>
                 <td class="px-3 py-1.5">{{ l.第幾輛 }}</td>
-                <td class="px-3 py-1.5">{{ l.輪次 }}</td>
                 <td class="px-3 py-1.5">{{ l.原因 }}</td>
               </tr>
             </tbody>

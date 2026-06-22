@@ -110,8 +110,8 @@ export function distribute({ registrations, seats = rentableMotorSeats(), seed =
       輪次: round,
     })
   }
-  const lose = (e, round, reason) =>
-    lost.push({ 戶號: e.戶號, 車號: e.車號, 第幾輛: e.第幾輛, 輪次: round, 原因: reason })
+  const lose = (e, round, reason, seqNo = null) =>
+    lost.push({ 戶號: e.戶號, 車號: e.車號, 第幾輛: e.第幾輛, 輪次: round, 順序號: seqNo, 原因: reason })
 
   // 重機：足額（剩餘大位 ≥ 2）才配雙大位；v1 走 seq、不走志願。成功回傳 [s1,s2]，否則 null。
   const takeHeavy = () => {
@@ -172,14 +172,14 @@ export function distribute({ registrations, seats = rentableMotorSeats(), seed =
       if (e.車種 === '重機') {
         const taken = takeHeavy()
         draws.push({ 戶號: e.戶號, 車號: e.車號, 車種: '重機', 順序號: seq, 中籤: !!taken })
-        if (!taken) return lose(e, 1, REASON.HEAVY_SHORT)
+        if (!taken) return lose(e, 1, REASON.HEAVY_SHORT, seq)
         record(e, taken, VIA.WISH, 1, seq)
         assignedHouse.add(e.戶號)
         return a.push({ 戶號: e.戶號, 車位編號: taken.map((s) => s.id).join('、'), 順序號: seq, 配位方式: VIA.WISH })
       }
       const s = pickWish(pool, e.車位志願, COMPAT.general)
       draws.push({ 戶號: e.戶號, 車號: e.車號, 順序號: seq, 中籤: !!s })
-      if (!s) return lose(e, 1, e.車位志願.length ? REASON.LOST : REASON.NO_WISH)
+      if (!s) return lose(e, 1, e.車位志願.length ? REASON.LOST : REASON.NO_WISH, seq)
       record(e, [s], VIA.WISH, 1, seq)
       assignedHouse.add(e.戶號)
       a.push({ 戶號: e.戶號, 車位編號: s.id, 順序號: seq, 配位方式: VIA.WISH })
@@ -203,13 +203,13 @@ export function distribute({ registrations, seats = rentableMotorSeats(), seed =
       if (e.車種 === '重機') {
         const taken = takeHeavy()
         draws.push({ 戶號: e.戶號, 車號: e.車號, 車種: '重機', 順序號: seq, 中籤: !!taken })
-        if (!taken) return lose(e, nth, REASON.HEAVY_SHORT)
+        if (!taken) return lose(e, nth, REASON.HEAVY_SHORT, seq)
         record(e, taken, VIA.WISH, nth, seq)
         return a.push({ 戶號: e.戶號, 車位編號: taken.map((s) => s.id).join('、'), 順序號: seq, 配位方式: VIA.WISH })
       }
       const s = pickWish(pool, e.車位志願, COMPAT.general)
       draws.push({ 戶號: e.戶號, 車號: e.車號, 順序號: seq, 中籤: !!s })
-      if (!s) return lose(e, nth, e.車位志願.length ? REASON.LOST : REASON.NO_WISH)
+      if (!s) return lose(e, nth, e.車位志願.length ? REASON.LOST : REASON.NO_WISH, seq)
       record(e, [s], VIA.WISH, nth, seq)
       a.push({ 戶號: e.戶號, 車位編號: s.id, 順序號: seq, 配位方式: VIA.WISH })
     })
