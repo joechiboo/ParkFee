@@ -95,6 +95,9 @@ export function distribute({ registrations, seats = rentableMotorSeats(), seed =
   const log = []
   const say = (m) => log.push(m)
   const assignedHouse = new Set()
+  // 順序號：跨輪「連續累加」(R1 是 1..N₁、R2 接續 N₁+1…)，每台抽籤車一個唯一號、不重來、不共用。
+  // 免抽者(無障礙/志願小位)不佔號。
+  let seqCounter = 0
 
   const record = (e, taken, via, round, seqNo = null) => {
     assigned.push({
@@ -168,7 +171,7 @@ export function distribute({ registrations, seats = rentableMotorSeats(), seed =
     // 其餘第 1 輛：抽順序號，依序取志願。
     const order = seededShuffle(others, rng)
     order.forEach((e, i) => {
-      const seq = i + 1
+      const seq = ++seqCounter
       if (e.車種 === '重機') {
         const taken = takeHeavy()
         draws.push({ 戶號: e.戶號, 車號: e.車號, 車種: '重機', 順序號: seq, 中籤: !!taken })
@@ -199,7 +202,7 @@ export function distribute({ registrations, seats = rentableMotorSeats(), seed =
     const draws = []
     const order = seededShuffle(cands, rng)
     order.forEach((e, i) => {
-      const seq = i + 1
+      const seq = ++seqCounter
       if (e.車種 === '重機') {
         const taken = takeHeavy()
         draws.push({ 戶號: e.戶號, 車號: e.車號, 車種: '重機', 順序號: seq, 中籤: !!taken })
