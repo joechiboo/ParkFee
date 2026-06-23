@@ -53,3 +53,53 @@ export async function setLocked(ids, password) {
   lockedSeats.value = new Set(clean)
   saveOccupied(clean) // 本機快取
 }
+
+// 呼叫 assign-seat（驗管理員密碼），把錯誤訊息攤平。
+async function callAssign(body) {
+  const { data, error } = await (await client()).functions.invoke('assign-seat', { body })
+  let msg = error?.message
+  try {
+    const j = await error?.context?.json?.()
+    if (j?.error) msg = j.error
+  } catch {
+    /* ignore */
+  }
+  if (error) throw new Error(msg || '操作失敗，請稍後再試')
+  if (data?.error) throw new Error(data.error)
+  return data
+}
+
+// 管理員專屬：讀回目前鎖定清單 + 各位指派（戶號/車號/繳費，來自 deny-all 的 vehicle）。
+// 無 Supabase 時退回「只有 id」（本機無 vehicle 個資）。
+export async function listAssignments(password) {
+  if (!useSupabase) return [...lockedSeats.value].map((id) => ({ 車位編號: id }))
+  const data = await callAssign({ op: 'list', password })
+  return data?.assignments || []
+}
+
+// 指派/鎖定一個車位。rec：{ 車位編號, 車位類型, 車號?, 配位狀態?, 已繳費? }。
+// 帶車號 → 把該車指派到此位（寫 vehicle）；不帶 → 純鎖定（保留/維修）。
+export async function assignSeat(rec, password) {
+  const seat = String(rec?.車位編號 ?? '').trim()
+  if (!seat) throw new Error('缺少車位編號')
+  if (useSupabase) {
+    await callAssign({ op: 'assign', ...rec, 車位編號: seat, password })
+  }
+  const next = new Set(lockedSeats.value)
+  next.add(seat)
+  lockedSeats.value = next
+  saveOccupied([...next])
+}
+
+// 解鎖一個車位；帶車號則一併清掉該車指派。
+export async function unlockSeat(seatId, plate, password) {
+  const seat = String(seatId ?? '').trim()
+  if (!seat) return
+  if (useSupabase) {
+    await callAssign({ op: 'unlock', 車位編號: seat, 車號: plate || '', password })
+  }
+  const next = new Set(lockedSeats.value)
+  next.delete(seat)
+  lockedSeats.value = next
+  saveOccupied([...next])
+}
