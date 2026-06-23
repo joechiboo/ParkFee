@@ -21,3 +21,8 @@ export function loadOccupied() {
   }
   return [] // 正式版由後端提供已繳費/已配位車位；原型可寫 localStorage[parkfee:occupied] 測試
 }
+
+// 物業維護頁寫入鎖定/已佔車位（原型：localStorage）。Supabase 化後改走後端。
+export function saveOccupied(ids) {
+  localStorage.setItem(KEY, JSON.stringify([...new Set((ids || []).map(String))]))
+}

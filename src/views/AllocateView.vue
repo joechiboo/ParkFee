@@ -6,9 +6,12 @@ import { buildRoster } from '../data/registry.js'
 import { parseCSVObjects } from '../data/csv.js'
 import { resultCSV } from '../export/result.js'
 import { sampleRoster } from '../data/sample.js'
+import { loadOccupied } from '../store/occupied.js'
 
 // ── 資料：示範用 20 戶樣本（正式版改接 Supabase 全名冊 → buildRoster → distribute）──
-const seats = rentableMotorSeats()
+// 座位池排除「鎖定/已承租」（物業維護頁 /seat-admin 標的，存 occupied）→ 這些不進抽籤。
+const lockedSet = new Set(loadOccupied())
+const seats = rentableMotorSeats().filter((s) => !lockedSet.has(String(s.id)))
 const SAMPLE_N = 20
 // 志願競爭池：限縮到一小區，讓 20 戶志願重疊 → 抽籤/重抽結果有差異、能看到落選。
 const wishPool = seats

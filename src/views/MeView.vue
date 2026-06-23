@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { login } from '../store/db.js'
 import { editTarget } from '../store/editTarget.js'
 import { sessionHousehold, sessionPlate, clearSession } from '../store/session.js'
+import { tryAdminLogin, isAdmin } from '../store/roles.js'
 
 const creds = reactive({ 戶號: '', 車號: '' })
 const household = sessionHousehold // 登入狀態跨頁保留
@@ -19,6 +20,13 @@ function startEdit() {
 
 async function doLogin() {
   error.value = ''
+  // 管理員特例（前端，免後端）：戶號 admin ＋ 車號 樂菲莊園
+  const admin = tryAdminLogin(creds.戶號, creds.車號)
+  if (admin) {
+    household.value = admin
+    sessionPlate.value = creds.車號
+    return
+  }
   loading.value = true
   try {
     const h = await login(creds.戶號, creds.車號)
@@ -56,7 +64,16 @@ function logout() {
         <button class="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100" @click="logout">登出</button>
       </div>
 
-      <div>
+      <!-- 管理員（物業） -->
+      <div v-if="isAdmin(household)" class="space-y-3 rounded-lg border-2 border-dashed border-emerald-400 bg-emerald-50 p-4">
+        <div class="font-semibold text-emerald-900">🔧 管理員（物業）</div>
+        <div class="flex flex-wrap gap-3">
+          <RouterLink to="/seat-admin" class="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">🔒 車位鎖定維護</RouterLink>
+          <RouterLink to="/allocate" class="rounded border border-emerald-500 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100">🎲 抽籤配位</RouterLink>
+        </div>
+      </div>
+
+      <div v-if="!isAdmin(household)">
         <div class="mb-2 text-sm font-medium text-slate-700">登記機車（{{ household.vehicles.length }} 台）</div>
         <div class="overflow-hidden rounded-lg border border-slate-200">
           <table class="w-full text-sm">
@@ -83,7 +100,7 @@ function logout() {
         </div>
       </div>
 
-      <div class="flex flex-wrap gap-3">
+      <div v-if="!isAdmin(household)" class="flex flex-wrap gap-3">
         <button class="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700" @click="startEdit">
           ✏ 編輯登記（新增 / 移除機車）
         </button>
@@ -92,7 +109,7 @@ function logout() {
         </RouterLink>
       </div>
 
-      <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+      <div v-if="!isAdmin(household)" class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
         🎲 抽籤結果尚未公布。配位完成後，這裡會顯示您各台車分到的車位、應繳金額與簽約期限。
       </div>
     </div>
