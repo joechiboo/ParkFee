@@ -57,9 +57,13 @@ function onFile(e) {
       }
       registrations.value = entries
       const hh = new Set(entries.map((r) => r.戶號)).size
+      const maxCars = entries.reduce((m, r) => Math.max(m, Number(r.第幾輛) || 1), 0) // 一戶最多幾輛 → 抽幾輪
+      const hasAccessible = entries.some((r) => r.身障 === 'Y' && Number(r.第幾輛) === 1) // 身障第1輛 → 另有無障礙輪
       source.value = `匯入 ${file.name}`
-      const extra = invalid.length || conflicts.length ? `（無效 ${invalid.length}、衝突 ${conflicts.length} 已處理）` : ''
-      importOk.value = `✓ 已匯入 ${hh} 戶 / ${entries.length} 筆車輛${extra}，可按下方「執行抽籤」`
+      const extra = invalid.length || conflicts.length ? `；無效 ${invalid.length}、衝突 ${conflicts.length}` : ''
+      importOk.value =
+        `✓ 已匯入 ${hh} 戶 / ${entries.length} 輛 · 最多 ${maxCars} 輛/戶 → 共 ${maxCars} 輪` +
+        `${hasAccessible ? '（另有無障礙輪）' : ''}${extra}，可按下方「執行抽籤」`
       result.value = null
       history.value = []
     } catch (err) {
