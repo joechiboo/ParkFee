@@ -4,6 +4,7 @@ import { distribute, VIA } from '../lottery/distribute.js'
 import { rentableMotorSeats } from '../map/seats.js'
 import { buildRoster } from '../data/registry.js'
 import { parseCSVObjects } from '../data/csv.js'
+import { resultCSV } from '../export/result.js'
 import { sampleRoster } from '../data/sample.js'
 
 // ── 資料：示範用 20 戶樣本（正式版改接 Supabase 全名冊 → buildRoster → distribute）──
@@ -105,6 +106,20 @@ const presetRows = computed(() =>
     (a) => a.配位方式 === VIA.VOLUNTEER_SMALL || a.配位方式 === VIA.ACCESSIBLE,
   ),
 )
+
+// 下載配位結果 CSV（公告日 → 簽約期限=公告+5；加 BOM 供 Excel 中文正確）。
+const announceDate = ref('')
+function downloadResultCSV() {
+  if (!result.value) return
+  const csv = '﻿' + resultCSV(result.value, { 公告日: announceDate.value })
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `配位結果-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 </script>
 
 <template>
@@ -193,6 +208,25 @@ const presetRows = computed(() =>
       <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
         種子 <b class="font-mono">{{ result.seed }}</b> · hash <span class="font-mono">{{ result.seedHash }}</span>
         · 執行時間 {{ fmtTime(result.runAt) }} · 同種子重跑結果一致（可驗算）
+      </div>
+
+      <!-- 下載結果 CSV（含應繳/狀態/簽約期限） -->
+      <div class="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">公告日（→ 簽約期限＝公告+5）</span>
+          <input
+            v-model="announceDate"
+            type="date"
+            class="mt-1 rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          />
+        </label>
+        <button
+          class="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+          @click="downloadResultCSV"
+        >
+          ⬇ 下載配位結果 CSV
+        </button>
+        <span class="text-xs text-slate-500">含分配＋未中、應繳金額、狀態、簽約期限；交住戶/存檔/公告用。</span>
       </div>
 
       <!-- 配位結果（抽籤分發，依順序號排序） -->
