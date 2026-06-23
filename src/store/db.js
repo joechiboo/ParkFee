@@ -40,3 +40,7 @@ export async function updateHousehold(input) {
 export async function saveWishes(input) {
   return (await backend()).saveWishes(input)
 }
+// 物業發佈配位結果（回填 vehicle）。需管理員密碼。
+export async function publishResult(input) {
+  return (await backend()).publishResult(input)
+}

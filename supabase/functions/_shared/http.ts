@@ -33,7 +33,7 @@ export async function fetchHousehold(db: SupabaseClient, hid: string) {
   if (!h) return null
   const { data: vehicles } = await db
     .from('vehicle')
-    .select('車號, 戶號, 車種, 第幾輛, 身障, 志願小位')
+    .select('車號, 戶號, 車種, 第幾輛, 身障, 志願小位, 車位編號, 車位類型, 配位狀態, 簽約期限')
     .eq('戶號', hid)
     .order('第幾輛')
   return {

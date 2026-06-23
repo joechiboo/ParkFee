@@ -1,10 +1,14 @@
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { login } from '../store/db.js'
 import { editTarget } from '../store/editTarget.js'
 import { sessionHousehold, sessionPlate, clearSession } from '../store/session.js'
 import { tryAdminLogin, isAdmin } from '../store/roles.js'
+import { feeFor } from '../data/fee.js'
+
+// 抽籤結果是否已公布（任一車有配位狀態）。
+const hasResult = computed(() => (household.value?.vehicles || []).some((v) => v.配位狀態))
 
 const creds = reactive({ 戶號: '', 車號: '' })
 const household = sessionHousehold // 登入狀態跨頁保留
@@ -82,17 +86,26 @@ function logout() {
                 <th class="px-3 py-2 text-left font-medium">第幾台</th>
                 <th class="px-3 py-2 text-left font-medium">車號</th>
                 <th class="px-3 py-2 text-left font-medium">車種</th>
-                <th class="px-3 py-2 text-left font-medium">註記</th>
+                <th class="px-3 py-2 text-left font-medium">車位</th>
+                <th class="px-3 py-2 text-left font-medium">結果</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="v in household.vehicles" :key="v.車號" class="border-t border-slate-100">
                 <td class="px-3 py-2">{{ v.第幾輛 }}</td>
                 <td class="px-3 py-2 font-mono">{{ v.車號 }}</td>
-                <td class="px-3 py-2">{{ v.車種 }}</td>
-                <td class="px-3 py-2 text-slate-500">
-                  <span v-if="v.身障">身障 </span><span v-if="v.志願小位">志願小位</span>
-                  <span v-if="!v.身障 && !v.志願小位">—</span>
+                <td class="px-3 py-2">
+                  {{ v.車種 }}
+                  <span v-if="v.身障" class="text-xs text-slate-400">·身障</span>
+                  <span v-if="v.志願小位" class="text-xs text-slate-400">·志願小位</span>
+                </td>
+                <td class="px-3 py-2 font-mono">{{ v.車位編號 || '—' }}<span v-if="v.車位類型" class="text-xs text-slate-400">（{{ v.車位類型 }}）</span></td>
+                <td class="px-3 py-2 text-sm">
+                  <template v-if="v.配位狀態">
+                    <span :class="v.配位狀態 === '分配' ? 'font-medium text-emerald-700' : 'text-rose-600'">{{ v.配位狀態 }}</span>
+                    <span v-if="v.配位狀態 === '分配'" class="text-slate-500">· {{ feeFor(v.車種) }} 元 · 簽約 {{ v.簽約期限 || '公告後5日內' }}</span>
+                  </template>
+                  <span v-else class="text-slate-400">未公布</span>
                 </td>
               </tr>
             </tbody>
@@ -109,8 +122,11 @@ function logout() {
         </RouterLink>
       </div>
 
-      <div v-if="!isAdmin(household)" class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+      <div v-if="!isAdmin(household) && !hasResult" class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
         🎲 抽籤結果尚未公布。配位完成後，這裡會顯示您各台車分到的車位、應繳金額與簽約期限。
+      </div>
+      <div v-else-if="!isAdmin(household)" class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+        ✅ 抽籤結果已公布（見上表「車位／結果」）。<b>分配</b>者請於簽約期限內到管理中心簽約繳費；<b>未中</b>者列候補，前位放棄即依序遞補。
       </div>
     </div>
 

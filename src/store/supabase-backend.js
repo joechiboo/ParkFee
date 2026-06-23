@@ -51,6 +51,11 @@ export async function saveWishes({ 戶號, 車位志願, 志願落選保底, 認
   return data.household
 }
 
+// 物業發佈配位結果 → 回填 vehicle。需對應 Edge Function 'publish-result'（驗管理員密碼）。
+export async function publishResult({ rows, password }) {
+  return invoke('publish-result', { rows, password })
+}
+
 // 安全考量：以「戶號」單獨查詢會讓任何人列舉他戶的車號/電話（enumeration 洩漏），
 // 故 Supabase 後端不提供此入口。需取整戶資料請走 login(戶號, 車號)（雙因子）。
 export async function getHousehold() {

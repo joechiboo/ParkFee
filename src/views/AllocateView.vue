@@ -4,9 +4,12 @@ import { distribute, VIA } from '../lottery/distribute.js'
 import { rentableMotorSeats } from '../map/seats.js'
 import { buildRoster } from '../data/registry.js'
 import { parseCSVObjects } from '../data/csv.js'
-import { resultCSV } from '../export/result.js'
+import { resultCSV, resultRows } from '../export/result.js'
 import { sampleRoster } from '../data/sample.js'
 import { lockedSeats, refreshLocked } from '../store/locked.js'
+import { publishResult } from '../store/db.js'
+import { sessionHousehold, sessionPlate } from '../store/session.js'
+import { isAdmin } from '../store/roles.js'
 
 // ── 資料：示範用 20 戶樣本（正式版改接 Supabase 全名冊 → buildRoster → distribute）──
 const seats = rentableMotorSeats() // 全可承租；抽籤時再扣掉鎖定（lockedSeats，物業維護頁設定）
@@ -111,6 +114,25 @@ const presetRows = computed(() =>
 
 // 下載配位結果 CSV（公告日 → 簽約期限=公告+5；加 BOM 供 Excel 中文正確）。
 const announceDate = ref('')
+
+// 發佈結果到後端（回填 vehicle，住戶登入可看）。需管理員登入（sessionPlate=管理員密碼）。
+const canPublish = computed(() => isAdmin(sessionHousehold.value))
+const publishing = ref(false)
+const publishMsg = ref('')
+async function publishToBackend() {
+  if (!result.value) return
+  publishMsg.value = ''
+  publishing.value = true
+  try {
+    const rows = resultRows(result.value, { 公告日: announceDate.value })
+    const { updated } = await publishResult({ rows, password: sessionPlate.value })
+    publishMsg.value = `✓ 已發佈 ${updated} 筆，住戶登入即可看自己的結果`
+  } catch (e) {
+    publishMsg.value = e?.message || '發佈失敗'
+  } finally {
+    publishing.value = false
+  }
+}
 function downloadResultCSV() {
   if (!result.value) return
   const csv = '﻿' + resultCSV(result.value, { 公告日: announceDate.value })
@@ -228,7 +250,16 @@ function downloadResultCSV() {
         >
           ⬇ 下載配位結果 CSV
         </button>
-        <span class="text-xs text-slate-500">含分配＋未中、應繳金額、狀態、簽約期限；交住戶/存檔/公告用。</span>
+        <button
+          v-if="canPublish"
+          class="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+          :disabled="publishing"
+          @click="publishToBackend"
+        >
+          {{ publishing ? '發佈中…' : '📢 發佈結果（住戶可查）' }}
+        </button>
+        <span class="text-xs text-slate-500">CSV：交住戶/存檔/公告。發佈：回填後端，住戶登入看自己的位。</span>
+        <span v-if="publishMsg" class="w-full text-sm" :class="publishMsg.startsWith('✓') ? 'text-emerald-600' : 'text-rose-600'">{{ publishMsg }}</span>
       </div>
 
       <!-- 配位結果（抽籤分發，依順序號排序） -->

@@ -137,6 +137,30 @@ export function saveWishes({ 戶號, 車位志願, 志願落選保底 }) {
   return getHousehold(hid)
 }
 
+// 物業發佈配位結果 → 回填 vehicle（單機版不驗密碼）。
+export function publishResult({ rows }) {
+  const db = load()
+  for (const v of Object.values(db.vehicles)) {
+    v.車位編號 = null
+    v.車位類型 = null
+    v.配位狀態 = null
+    v.簽約期限 = null
+  }
+  let updated = 0
+  for (const r of Array.isArray(rows) ? rows : []) {
+    const plate = normalizeTWPlate(r?.車號)
+    const v = db.vehicles[plate]
+    if (!v) continue
+    v.車位編號 = r.車位編號 || null
+    v.車位類型 = r.車位類型 || null
+    v.配位狀態 = r.狀態 || null
+    v.簽約期限 = r.簽約期限 || null
+    updated += 1
+  }
+  save(db)
+  return { updated }
+}
+
 // 登入：戶號 + 任一已登記車號。命中回整戶資料，否則 null。
 export function login(戶號, 車號) {
   const hid = normHouse(戶號)
