@@ -114,3 +114,45 @@ describe('distribute — 填志願 + 統一分發（第一階段）', () => {
     expect(a.落選).toEqual(b.落選)
   })
 })
+
+describe('順序號連續 + 一人多車位', () => {
+  // 5 大位、3 戶（A 有 2 台）→ 共 4 台抽籤車（皆能中）。
+  const SEATS5 = [
+    { id: '1', type: '大' },
+    { id: '2', type: '大' },
+    { id: '3', type: '大' },
+    { id: '4', type: '大' },
+    { id: '5', type: '大' },
+  ]
+  const REGS = [
+    { 戶號: 'A', 車號: 'A1', 第幾輛: 1, 車位志願: ['1', '2', '3', '4', '5'] },
+    { 戶號: 'A', 車號: 'A2', 第幾輛: 2, 車位志願: ['1', '2', '3', '4', '5'] },
+    { 戶號: 'B', 車號: 'B1', 第幾輛: 1, 車位志願: ['1', '2', '3', '4', '5'] },
+    { 戶號: 'C', 車號: 'C1', 第幾輛: 1, 車位志願: ['1', '2', '3', '4', '5'] },
+  ]
+
+  it('順序號跨輪連續 1..N、每車唯一、不重複（含落選）', () => {
+    const r = distribute({ registrations: REGS, seats: SEATS5, seed: 'seq' })
+    const seqs = [...r.assigned, ...r.落選].map((x) => x.順序號).filter((n) => n != null)
+    expect(seqs.length).toBe(4) // 4 台抽籤車各一號
+    expect(new Set(seqs).size).toBe(4) // 不重複
+    expect([...seqs].sort((a, b) => a - b)).toEqual([1, 2, 3, 4]) // 連續 1..4
+  })
+
+  it('一人多車位：同戶各車不同順序號、不同位、分屬 R1/R2', () => {
+    const r = distribute({ registrations: REGS, seats: SEATS5, seed: 'seq' })
+    const aCars = r.assigned.filter((x) => x.戶號 === 'A')
+    expect(aCars).toHaveLength(2)
+    expect(new Set(aCars.map((x) => x.順序號)).size).toBe(2) // 兩台不同順序號（不共用）
+    expect(aCars[0].車位編號).not.toBe(aCars[1].車位編號) // 不同車位
+    expect(aCars.map((x) => x.輪次).sort()).toEqual([1, 2]) // 第1輛 R1、第2輛 R2
+  })
+
+  it('保障每戶第1輛一位：R1 每戶最多一台、戶數=R1 配位數', () => {
+    const r = distribute({ registrations: REGS, seats: SEATS5, seed: 'seq' })
+    const r1 = r.assigned.filter((x) => x.輪次 === 1)
+    const houses = r1.map((x) => x.戶號)
+    expect(new Set(houses).size).toBe(houses.length) // R1 無同戶重複
+    expect(new Set(houses)).toEqual(new Set(['A', 'B', 'C'])) // 三戶第1輛都有位
+  })
+})

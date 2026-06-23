@@ -8,8 +8,8 @@ import { resultCSV, resultRows } from '../export/result.js'
 import { sampleRoster } from '../data/sample.js'
 import { lockedSeats, refreshLocked } from '../store/locked.js'
 import { publishResult } from '../store/db.js'
-import { sessionHousehold, sessionPlate } from '../store/session.js'
-import { isAdmin } from '../store/roles.js'
+import { sessionHousehold } from '../store/session.js'
+import { isAdmin, ADMIN_PASSWORD } from '../store/roles.js'
 
 // ── 資料：示範用 20 戶樣本（正式版改接 Supabase 全名冊 → buildRoster → distribute）──
 const seats = rentableMotorSeats() // 全可承租；抽籤時再扣掉鎖定（lockedSeats，物業維護頁設定）
@@ -125,7 +125,7 @@ async function publishToBackend() {
   publishing.value = true
   try {
     const rows = resultRows(result.value, { 公告日: announceDate.value })
-    const { updated } = await publishResult({ rows, password: sessionPlate.value })
+    const { updated } = await publishResult({ rows, password: ADMIN_PASSWORD })
     publishMsg.value = `✓ 已發佈 ${updated} 筆，住戶登入即可看自己的結果`
   } catch (e) {
     publishMsg.value = e?.message || '發佈失敗'

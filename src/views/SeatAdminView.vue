@@ -5,8 +5,8 @@ import { ref, computed, onMounted } from 'vue'
 import SeatMap from '../components/SeatMap.vue'
 import { motorSeats } from '../map/seats.js'
 import { lockedSeats, refreshLocked, setLocked } from '../store/locked.js'
-import { sessionHousehold, sessionPlate } from '../store/session.js'
-import { isAdmin } from '../store/roles.js'
+import { sessionHousehold } from '../store/session.js'
+import { isAdmin, ADMIN_PASSWORD } from '../store/roles.js'
 
 const admin = computed(() => isAdmin(sessionHousehold.value))
 const seats = motorSeats()
@@ -22,7 +22,7 @@ async function commit(ids) {
   err.value = ''
   saving.value = true
   try {
-    await setLocked(ids, sessionPlate.value) // 車號＝管理員密碼，後端驗 ADMIN_PASSWORD
+    await setLocked(ids, ADMIN_PASSWORD) // 後端驗 ADMIN_PASSWORD secret
   } catch (e) {
     err.value = e?.message || '儲存失敗'
   } finally {
