@@ -2,7 +2,8 @@
 // 🛠 工程師專區（dev-only）。路由只在 import.meta.env.DEV 註冊，正式 build 不會有這頁。
 import { ref } from 'vue'
 import { makeMockHouseholds, toRows, WIPE_SQL } from '../dev/mock.js'
-import { register, saveWishes, RegistrationError } from '../store/db.js'
+import { register, saveWishes, publishResult, RegistrationError } from '../store/db.js'
+import { ADMIN_PASSWORD } from '../store/roles.js'
 import { distribute } from '../lottery/distribute.js'
 import { resultRows } from '../export/result.js'
 
@@ -43,6 +44,24 @@ async function copyWipe() {
     setTimeout(() => (copied.value = false), 2000)
   } catch {
     /* clipboard 不可用時使用者可手動選取 */
+  }
+}
+
+// ── 清除配位結果（保留住戶/車輛，只清 vehicle 的結果欄）───────────
+// 走 publish-result（service_role + ADMIN_PASSWORD），送空 rows ＝整表清空結果欄。
+const clearing = ref(false)
+const clearMsg = ref('')
+async function clearResult() {
+  if (!window.confirm('清除所有住戶的配位結果（車位編號/類型/狀態/簽約期限）？住戶/車輛資料保留。')) return
+  clearing.value = true
+  clearMsg.value = ''
+  try {
+    await publishResult({ rows: [], password: ADMIN_PASSWORD })
+    clearMsg.value = '✓ 已清除配位結果（vehicle 結果欄全部清空，住戶登入將看不到車位）'
+  } catch (e) {
+    clearMsg.value = e?.message || '清除失敗'
+  } finally {
+    clearing.value = false
   }
 }
 
@@ -103,6 +122,23 @@ function runDemo() {
           {{ copied ? '✓ 已複製' : '複製' }}
         </button>
       </div>
+    </div>
+
+    <!-- 2.5 清除配位結果 -->
+    <div class="rounded-lg border border-slate-200 bg-white p-4">
+      <h2 class="font-semibold">②½ 清除配位結果（保留住戶資料）</h2>
+      <p class="mt-1 text-sm text-slate-500">
+        只清 <code>vehicle</code> 的車位編號／類型／配位狀態／簽約期限（＝撤回發佈）；住戶與車輛保留。
+        走 <code>publish-result</code>（service_role），免貼 SQL。
+      </p>
+      <button
+        class="mt-3 rounded bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+        :disabled="clearing"
+        @click="clearResult"
+      >
+        {{ clearing ? '清除中…' : '清除配位結果' }}
+      </button>
+      <p v-if="clearMsg" class="mt-2 text-sm" :class="clearMsg.startsWith('✓') ? 'text-emerald-600' : 'text-rose-600'">{{ clearMsg }}</p>
     </div>
 
     <!-- 3. 分發 demo -->
