@@ -1,30 +1,42 @@
 <script setup>
 // 物業：車位鎖定維護。點地圖上的車位 → 鎖定/解鎖（鎖定者不進抽籤、選位頁不可選）。
 // v1：鎖定清單存本機 localStorage（occupied）。Supabase 化＋後端 admin 驗證為下一步。
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import SeatMap from '../components/SeatMap.vue'
 import { motorSeats } from '../map/seats.js'
-import { loadOccupied, saveOccupied } from '../store/occupied.js'
-import { sessionHousehold } from '../store/session.js'
+import { lockedSeats, refreshLocked, setLocked } from '../store/locked.js'
+import { sessionHousehold, sessionPlate } from '../store/session.js'
 import { isAdmin } from '../store/roles.js'
 
 const admin = computed(() => isAdmin(sessionHousehold.value))
 const seats = motorSeats()
 
-const lockedIds = ref(loadOccupied().map(String))
-const lockedSet = computed(() => new Set(lockedIds.value))
-const isLocked = (id) => lockedSet.value.has(String(id))
+const lockedIds = computed(() => [...lockedSeats.value])
+const isLocked = (id) => lockedSeats.value.has(String(id))
+const saving = ref(false)
+const err = ref('')
 
+onMounted(refreshLocked) // 載入雲端最新鎖定
+
+async function commit(ids) {
+  err.value = ''
+  saving.value = true
+  try {
+    await setLocked(ids, sessionPlate.value) // 車號＝管理員密碼，後端驗 ADMIN_PASSWORD
+  } catch (e) {
+    err.value = e?.message || '儲存失敗'
+  } finally {
+    saving.value = false
+  }
+}
 function toggle(s) {
   const id = String(s.id)
-  const i = lockedIds.value.indexOf(id)
-  if (i >= 0) lockedIds.value.splice(i, 1)
-  else lockedIds.value.push(id)
-  saveOccupied(lockedIds.value)
+  const set = new Set(lockedSeats.value)
+  set.has(id) ? set.delete(id) : set.add(id)
+  commit([...set])
 }
 function clearAll() {
-  lockedIds.value = []
-  saveOccupied([])
+  commit([])
 }
 
 function typeFill(s) {
@@ -70,6 +82,8 @@ function decorate(s) {
       <p class="mt-1 text-sm text-slate-500">
         點車位 = <b>鎖定／解鎖</b>。鎖定者（保留位、已私下承租、維修…）<b>不進抽籤、選位頁不可選</b>。
         目前鎖定 <b class="text-rose-600">{{ lockedIds.length }}</b> 格。
+        <span v-if="saving" class="text-slate-400">· 儲存中…</span>
+        <span v-if="err" class="text-rose-600">· {{ err }}</span>
       </p>
 
       <div class="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">

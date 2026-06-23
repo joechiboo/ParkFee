@@ -1,17 +1,16 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { distribute, VIA } from '../lottery/distribute.js'
 import { rentableMotorSeats } from '../map/seats.js'
 import { buildRoster } from '../data/registry.js'
 import { parseCSVObjects } from '../data/csv.js'
 import { resultCSV } from '../export/result.js'
 import { sampleRoster } from '../data/sample.js'
-import { loadOccupied } from '../store/occupied.js'
+import { lockedSeats, refreshLocked } from '../store/locked.js'
 
 // ── 資料：示範用 20 戶樣本（正式版改接 Supabase 全名冊 → buildRoster → distribute）──
-// 座位池排除「鎖定/已承租」（物業維護頁 /seat-admin 標的，存 occupied）→ 這些不進抽籤。
-const lockedSet = new Set(loadOccupied())
-const seats = rentableMotorSeats().filter((s) => !lockedSet.has(String(s.id)))
+const seats = rentableMotorSeats() // 全可承租；抽籤時再扣掉鎖定（lockedSeats，物業維護頁設定）
+onMounted(refreshLocked) // 載入雲端最新鎖定
 const SAMPLE_N = 20
 // 志願競爭池：限縮到一小區，讓 20 戶志願重疊 → 抽籤/重抽結果有差異、能看到落選。
 const wishPool = seats
@@ -75,7 +74,7 @@ const history = ref([])
 function run() {
   const r = distribute({
     registrations: registrations.value,
-    seats,
+    seats: seats.filter((s) => !lockedSeats.value.has(String(s.id))), // 扣掉鎖定車位
     seed: seed.value || 'parkfee',
     runAt: new Date().toISOString(),
   })

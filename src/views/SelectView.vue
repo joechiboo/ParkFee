@@ -1,11 +1,11 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import SeatMap from '../components/SeatMap.vue'
 import { motorSeats } from '../map/seats.js'
 import { sessionHousehold, sessionPlate } from '../store/session.js'
 import { loadWishes, saveWishes } from '../store/wishes.js'
 import { saveWishes as saveWishesRemote } from '../store/db.js'
-import { loadOccupied } from '../store/occupied.js'
+import { lockedSeats, refreshLocked } from '../store/locked.js'
 
 // 全機車位（含 public 旗標）：大/小可選、無障礙與公益僅顯示不可選。
 const seats = motorSeats()
@@ -37,9 +37,9 @@ const orderMap = computed(() => {
 const isSel = (id) => orderMap.value.has(String(id))
 const orderOf = (id) => orderMap.value.get(String(id))
 
-// 已被選定/已繳費的車位：不可選。
-const occupied = new Set(loadOccupied())
-const isOccupied = (id) => occupied.has(String(id))
+// 已鎖定/已承租的車位（物業維護、雲端讀）：不可選。
+onMounted(refreshLocked)
+const isOccupied = (id) => lockedSeats.value.has(String(id))
 const selectable = (s) => !s.public && !isOccupied(s.id) && (s.type === '大' || s.type === '小')
 
 const TYPE_LABEL = { 大: '大位', 小: '小位', 無障礙: '無障礙' }
