@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { RouterLink, RouterView, useRouter, useRoute } from 'vue-router'
 import { sessionHousehold, clearSession } from './store/session.js'
+import { isAdmin } from './store/roles.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -42,6 +43,14 @@ const isDev = import.meta.env.DEV
             active-class="bg-slate-900 text-white hover:bg-slate-900"
           >
             {{ item.label }}
+          </RouterLink>
+          <RouterLink
+            v-if="isAdmin(sessionHousehold)"
+            to="/seat-admin"
+            class="shrink-0 rounded border border-dashed border-emerald-400 px-3 py-1.5 text-emerald-700 hover:bg-emerald-50"
+            active-class="bg-emerald-600 text-white hover:bg-emerald-600"
+          >
+            🔧 管理
           </RouterLink>
           <RouterLink
             v-if="isDev"
