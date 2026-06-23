@@ -15,7 +15,14 @@ const routes = [
     meta: { title: '車位鎖定維護' },
     beforeEnter: (to) => (isAdmin(sessionHousehold.value) ? true : { name: 'me' }), // 僅管理員
   },
-  { path: '/allocate', name: 'allocate', component: () => import('../views/AllocateView.vue'), meta: { title: '配位' } },
+  {
+    path: '/allocate',
+    name: 'allocate',
+    component: () => import('../views/AllocateView.vue'),
+    meta: { title: '配位' },
+    // 抽籤頁會匯入全名冊（個資）→ 限管理員，或本機開發（DEV）。
+    beforeEnter: () => (isAdmin(sessionHousehold.value) || import.meta.env.DEV ? true : { name: 'me' }),
+  },
   { path: '/result', name: 'result', component: () => import('../views/ResultView.vue'), meta: { title: '結果' } },
   { path: '/patrol', name: 'patrol', component: () => import('../views/PatrolView.vue'), meta: { title: '巡邏稽核' } },
   { path: '/export', name: 'export', component: () => import('../views/ExportView.vue'), meta: { title: '匯出' } },

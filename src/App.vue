@@ -14,10 +14,10 @@ function logout() {
   router.push('/')
 }
 
-// 主導覽（管委會作業）；登入 (/me) 另放右側
+// 主導覽（管委會作業）；登入 (/me) 另放右側。adminOnly：限管理員或本機(dev)。
 const nav = [
   { to: '/register', label: '登記' },
-  { to: '/allocate', label: '配位' },
+  { to: '/allocate', label: '配位', adminOnly: true },
   { to: '/result', label: '結果' },
   { to: '/patrol', label: '巡邏稽核' },
   { to: '/export', label: '匯出' },
@@ -25,6 +25,9 @@ const nav = [
 
 // 工程師專區入口：只在開發模式顯示（正式 build import.meta.env.DEV=false → 不渲染、路由也未註冊）
 const isDev = import.meta.env.DEV
+// 配位等管理功能：管理員或本機可見/可進。
+const canAdmin = computed(() => isAdmin(sessionHousehold.value) || isDev)
+const visibleNav = computed(() => nav.filter((i) => !i.adminOnly || canAdmin.value))
 </script>
 
 <template>
@@ -36,7 +39,7 @@ const isDev = import.meta.env.DEV
         </RouterLink>
         <nav class="-mx-1 flex flex-nowrap gap-1 overflow-x-auto px-1 text-sm sm:flex-wrap">
           <RouterLink
-            v-for="item in nav"
+            v-for="item in visibleNav"
             :key="item.to"
             :to="item.to"
             class="shrink-0 rounded px-3 py-1.5 text-slate-600 hover:bg-slate-100"
