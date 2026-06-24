@@ -20,8 +20,7 @@ const routes = [
     name: 'allocate',
     component: () => import('../views/AllocateView.vue'),
     meta: { title: '配位' },
-    // 抽籤頁會匯入全名冊（個資）→ 限管理員，或本機開發（DEV）。
-    beforeEnter: () => (isAdmin(sessionHousehold.value) || import.meta.env.DEV ? true : { name: 'me' }),
+    // 公開：預設跑範例 demo（鄰居可玩、看演算法）。真實名冊匯入在 dev 專區（限管理員）。
   },
   { path: '/result', name: 'result', component: () => import('../views/ResultView.vue'), meta: { title: '結果' } },
   { path: '/patrol', name: 'patrol', component: () => import('../views/PatrolView.vue'), meta: { title: '巡邏稽核' } },
@@ -31,7 +30,13 @@ const routes = [
 // 工程師專區：只在開發模式註冊；正式 build（npm run build / GitHub Pages）import.meta.env.DEV=false
 // → 此路由與 DevView/mock 程式碼一併被 tree-shake，不會上線。
 if (import.meta.env.DEV) {
-  routes.push({ path: '/dev', name: 'dev', component: () => import('../views/DevView.vue'), meta: { title: '工程師專區' } })
+  routes.push({
+    path: '/dev',
+    name: 'dev',
+    component: () => import('../views/DevView.vue'),
+    meta: { title: '工程師專區' },
+    beforeEnter: () => (isAdmin(sessionHousehold.value) ? true : { name: 'me' }), // dev 專區（含真實名冊匯入）限管理員
+  })
 }
 
 export default createRouter({

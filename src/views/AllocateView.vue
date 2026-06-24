@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { distribute, VIA } from '../lottery/distribute.js'
 import { rentableMotorSeats } from '../map/seats.js'
 import { buildRoster } from '../data/registry.js'
-import { parseCSVObjects } from '../data/csv.js'
+import { importedRoster, importInfo } from '../store/roster.js'
 import { resultCSV, resultRows } from '../export/result.js'
 import { sampleRoster } from '../data/sample.js'
 import { lockedSeats, refreshLocked } from '../store/locked.js'
@@ -35,43 +35,12 @@ function buildSampleRegs() {
   }
   return entries.map((e) => ({ ...e, 車位志願: byHouse.get(e.戶號) }))
 }
-const registrations = ref(buildSampleRegs())
-const source = ref(`${SAMPLE_N} 戶樣本`)
+const sampleRegs = buildSampleRegs()
+// 名冊：dev 匯入真實名冊則用它，否則用範例 demo（鄰居可試跑看演算法）。
+const usingImport = computed(() => !!importedRoster.value)
+const registrations = computed(() => importedRoster.value ?? sampleRegs)
+const source = computed(() => (usingImport.value ? importInfo.value || '匯入名冊' : `${SAMPLE_N} 戶樣本`))
 const houseCount = computed(() => new Set(registrations.value.map((r) => r.戶號)).size)
-const importErr = ref('')
-const importOk = ref('')
-
-// 匯入名冊 CSV（由 scripts/export-roster.mjs 從 Supabase 匯出）→ buildRoster → 取代樣本。
-function onFile(e) {
-  const file = e.target.files?.[0]
-  if (!file) return
-  importErr.value = ''
-  importOk.value = ''
-  const reader = new FileReader()
-  reader.onload = () => {
-    try {
-      const { entries, invalid, conflicts } = buildRoster(parseCSVObjects(reader.result))
-      if (!entries.length) {
-        importErr.value = 'CSV 沒有有效登記列（檢查表頭欄位）'
-        return
-      }
-      registrations.value = entries
-      const hh = new Set(entries.map((r) => r.戶號)).size
-      const maxCars = entries.reduce((m, r) => Math.max(m, Number(r.第幾輛) || 1), 0) // 一戶最多幾輛 → 抽幾輪
-      const hasAccessible = entries.some((r) => r.身障 === 'Y' && Number(r.第幾輛) === 1) // 身障第1輛 → 另有無障礙輪
-      source.value = `匯入 ${file.name}`
-      const extra = invalid.length || conflicts.length ? `；無效 ${invalid.length}、衝突 ${conflicts.length}` : ''
-      importOk.value =
-        `✓ 已匯入 ${hh} 戶 / ${entries.length} 輛 · 最多 ${maxCars} 輛/戶 → 共 ${maxCars} 輪` +
-        `${hasAccessible ? '（另有無障礙輪）' : ''}${extra}，可按下方「執行抽籤」`
-      result.value = null
-      history.value = []
-    } catch (err) {
-      importErr.value = '匯入失敗：' + (err?.message || 'CSV 格式錯誤')
-    }
-  }
-  reader.readAsText(file)
-}
 
 // ── 抽籤狀態 ──
 const seed = ref('2027樂菲莊園機車車位抽籤')
@@ -119,8 +88,8 @@ const presetRows = computed(() =>
 // 下載配位結果 CSV（公告日 → 簽約期限=公告+5；加 BOM 供 Excel 中文正確）。
 const announceDate = ref('')
 
-// 發佈結果到後端（回填 vehicle，住戶登入可看）。需管理員登入（sessionPlate=管理員密碼）。
-const canPublish = computed(() => isAdmin(sessionHousehold.value))
+// 發佈結果（回填 vehicle）＝寫真實資料 → 只有管理員看得到此鈕，後端再驗 ADMIN_PASSWORD。
+const admin = computed(() => isAdmin(sessionHousehold.value))
 const publishing = ref(false)
 const publishMsg = ref('')
 async function publishToBackend() {
@@ -158,6 +127,13 @@ function downloadResultCSV() {
       名冊來源：<b>{{ source }}</b>（{{ houseCount }} 戶）。
     </p>
 
+    <p v-if="!usingImport" class="mt-2 rounded bg-sky-50 px-3 py-1.5 text-xs text-sky-700">
+      🎲 目前是<b>範例 demo</b>（{{ SAMPLE_N }} 戶樣本）— 任何人可試跑看演算法。抽籤日請在 <b>dev 專區</b>匯入真實名冊。
+    </p>
+    <p v-else class="mt-2 rounded bg-emerald-50 px-3 py-1.5 text-xs text-emerald-700">
+      ✓ 已載入<b>匯入名冊</b>，可執行正式抽籤與發佈。
+    </p>
+
     <!-- 配位規則說明（可摺疊） -->
     <details open class="mt-3 rounded-lg border border-slate-200 bg-white p-3 text-sm">
       <summary class="cursor-pointer font-medium text-slate-700">配位規則說明（填志願 + 統一分發）· 點箭頭收合</summary>
@@ -172,22 +148,6 @@ function downloadResultCSV() {
         <p class="text-slate-500">固定種子 → 結果可重現；種子／時間／各輪過程全留存供監察。重抽＝換新種子重跑，歷次紀錄保留。</p>
       </div>
     </details>
-
-    <!-- 匯入名冊 -->
-    <div class="mt-4 rounded-lg border border-slate-200 bg-white p-4">
-      <label class="text-sm font-medium text-slate-700">匯入名冊 CSV</label>
-      <input
-        type="file"
-        accept=".csv,text/csv"
-        class="mt-1 block w-full text-sm text-slate-600 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-slate-700"
-        @change="onFile"
-      />
-      <p class="mt-1 text-xs text-slate-500">
-        由 <code>scripts/export-roster.mjs</code> 從 Supabase 匯出；未匯入則用樣本示範。
-      </p>
-      <p v-if="importOk" class="mt-2 rounded bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700">{{ importOk }}</p>
-      <p v-if="importErr" class="mt-1 text-sm text-rose-600">{{ importErr }}</p>
-    </div>
 
     <!-- 控制列 -->
     <div class="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
@@ -255,7 +215,7 @@ function downloadResultCSV() {
           ⬇ 下載配位結果 CSV
         </button>
         <button
-          v-if="canPublish"
+          v-if="admin"
           class="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
           :disabled="publishing"
           @click="publishToBackend"

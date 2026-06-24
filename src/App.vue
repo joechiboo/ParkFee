@@ -14,20 +14,17 @@ function logout() {
   router.push('/')
 }
 
-// 主導覽（管委會作業）；登入 (/me) 另放右側。adminOnly：限管理員或本機(dev)。
-const nav = [
+// 主導覽（管委會作業）；登入 (/me) 另放右側。配位＝公開範例 demo（鄰居可玩）。
+const visibleNav = [
   { to: '/register', label: '登記' },
-  { to: '/allocate', label: '配位', adminOnly: true },
+  { to: '/allocate', label: '配位' },
   { to: '/result', label: '結果' },
   { to: '/patrol', label: '巡邏稽核' },
   { to: '/export', label: '匯出' },
 ]
 
-// 工程師專區入口：只在開發模式顯示（正式 build import.meta.env.DEV=false → 不渲染、路由也未註冊）
+// 工程師專區入口：開發模式 + 管理員才顯示（含真實名冊匯入；正式 build 整個 tree-shake 掉）。
 const isDev = import.meta.env.DEV
-// 配位等管理功能：管理員或本機可見/可進。
-const canAdmin = computed(() => isAdmin(sessionHousehold.value) || isDev)
-const visibleNav = computed(() => nav.filter((i) => !i.adminOnly || canAdmin.value))
 </script>
 
 <template>
@@ -56,7 +53,7 @@ const visibleNav = computed(() => nav.filter((i) => !i.adminOnly || canAdmin.val
             🔧 管理
           </RouterLink>
           <RouterLink
-            v-if="isDev"
+            v-if="isDev && isAdmin(sessionHousehold)"
             to="/dev"
             class="shrink-0 rounded border border-dashed border-amber-400 px-3 py-1.5 text-amber-700 hover:bg-amber-50"
             active-class="bg-amber-500 text-white hover:bg-amber-500"
