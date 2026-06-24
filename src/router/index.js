@@ -24,7 +24,6 @@ const routes = [
   },
   { path: '/result', name: 'result', component: () => import('../views/ResultView.vue'), meta: { title: '結果' } },
   { path: '/patrol', name: 'patrol', component: () => import('../views/PatrolView.vue'), meta: { title: '巡邏稽核' } },
-  { path: '/export', name: 'export', component: () => import('../views/ExportView.vue'), meta: { title: '匯出' } },
 ]
 
 // 工程師專區：只在開發模式註冊；正式 build（npm run build / GitHub Pages）import.meta.env.DEV=false

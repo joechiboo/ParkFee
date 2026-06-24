@@ -1,6 +1,6 @@
 // 配位結果 → 清單列 / CSV（純函式）。
 //   來源：distribute() 的回傳（assigned / 落選）。欄位依 HANDOFF §8 + 備註。
-//   供 ExportView 下載 CSV，亦供 ResultView 顯示清單（同一份資料）。
+//   供 AllocateView 下載配位結果 CSV，亦供 ResultView 顯示清單（同一份資料）。
 
 import { feeFor } from '../data/fee.js'
 import { toCSV } from '../data/csv.js'

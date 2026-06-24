@@ -20,7 +20,6 @@ const visibleNav = [
   { to: '/allocate', label: '配位' },
   { to: '/result', label: '結果' },
   { to: '/patrol', label: '巡邏稽核' },
-  { to: '/export', label: '匯出' },
 ]
 
 // 工程師專區入口：開發模式 + 管理員才顯示（含真實名冊匯入；正式 build 整個 tree-shake 掉）。
