@@ -1,9 +1,9 @@
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { login } from '../store/db.js'
 import { editTarget } from '../store/editTarget.js'
-import { sessionHousehold, sessionPlate, clearSession } from '../store/session.js'
+import { sessionHousehold, sessionPlate, clearSession, refreshHousehold } from '../store/session.js'
 import { tryAdminLogin, isAdmin } from '../store/roles.js'
 import { feeFor } from '../data/fee.js'
 
@@ -15,6 +15,8 @@ const household = sessionHousehold // 登入狀態跨頁保留
 const error = ref('')
 const loading = ref(false)
 const router = useRouter()
+
+onMounted(refreshHousehold) // 已登入時重抓最新戶資料（後台指派/繳費/發佈後免重新登入）
 
 function startEdit() {
   // 帶上登入用的車號作為擁有權證明，server 端編輯時會驗證

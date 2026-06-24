@@ -2,12 +2,13 @@
 // 結果確認頁（住戶）：登入後看自己每台車的「配位 + 繳費」狀態（涵蓋全流程，含已登記未繳費）。
 //   狀態：已登記·待配位 → 待繳費（中籤/指派、限期）→ 已繳費確認；未中者列候補。
 //   登入與 MeView 共用（sessionHousehold）；未登入導去 /me。流程說明常駐，幫助理解整體。
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
-import { sessionHousehold } from '../store/session.js'
+import { sessionHousehold, refreshHousehold } from '../store/session.js'
 import { feeFor } from '../data/fee.js'
 
 const household = sessionHousehold // 跨頁共用登入狀態
+onMounted(refreshHousehold) // 進頁時重抓最新戶資料（後台指派/繳費後免重新登入）
 const vehicles = computed(() => household.value?.vehicles || [])
 
 // 每台車的狀態分類（涵蓋全流程）

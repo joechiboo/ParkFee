@@ -43,3 +43,19 @@ export function clearSession() {
   safeSet(HKEY, null)
   safeSet(PKEY, null)
 }
+
+// 用儲存的登入憑證（戶號＋登入車號）重抓最新整戶資料，覆蓋 session。
+// 用途：物業在後台指派/標記繳費後，住戶頁面（結果/我的登記）能拿到最新狀態，免重新登入。
+// 失敗或查無（如 admin 特例帳號無 DB 記錄）則維持現值、不清空。
+export async function refreshHousehold() {
+  const hid = sessionHousehold.value?.戶號
+  const plate = sessionPlate.value
+  if (!hid || !plate) return
+  try {
+    const { login } = await import('./db.js') // 動態載入避免 session↔db 循環相依
+    const fresh = await login(hid, plate)
+    if (fresh) sessionHousehold.value = fresh
+  } catch {
+    /* 網路失敗就維持現值 */
+  }
+}
