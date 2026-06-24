@@ -3,8 +3,9 @@
 //          → 重生 b1-classification.json（本檔讀取）。
 //   座標系：b1.png 顯示空間（dispW×dispH，左上原點，y 向下）。
 //
-// 機車位實體分類：大(motor) / 小(small) / 無障礙(access)；另有 car / bike / noise(雜訊) / excl(排除，如498漏水)。
-// 號碼為單一序列 1..655，498 漏水排除 → 實體可用 654 格。大/小/無障礙分佈仍在盤點中。
+// 機車位實體分類：大(motor) / 小(small) / 無障礙(access)；另有 car / bike / noise(雜訊) / excl(排除，盤點工具保留；目前 0 筆)。
+// 號碼為單一序列 1..655，實體 655 格全在（無缺號）。498（漏水）已恢復為大位，改用 locked_seat「維修」鎖定排除
+//   （與保留/動線位同一機制，物業維護頁可解鎖）。大/小/無障礙分佈仍在盤點中。
 
 import classification from './b1-classification.json'
 
@@ -22,7 +23,7 @@ function seatsOfCat(cat) {
     .sort((a, b) => +a.id - +b.id)
 }
 
-// 所有機車位（大+小+無障礙），含 type 與 public（公益位）；號碼 1..655（498 漏水排除）。
+// 所有機車位（大+小+無障礙），含 type 與 public（公益位）；號碼 1..655 全在（498 漏水改 locked_seat 鎖定，不再缺號）。
 export function motorSeats() {
   return classification.seats
     .filter((s) => s.cat in MOTOR_CATS)
