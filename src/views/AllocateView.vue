@@ -96,8 +96,14 @@ async function publishToBackend() {
   publishing.value = true
   try {
     const rows = resultRows(result.value, { 公告日: announceDate.value })
-    const { updated } = await publishResult({ rows, password: ADMIN_PASSWORD })
-    publishMsg.value = `✓ 已發佈 ${updated} 筆，住戶登入即可看自己的結果`
+    const { updated, notFound = [] } = await publishResult({ rows, password: ADMIN_PASSWORD })
+    const total = rows.filter((r) => r.車號).length
+    if (notFound.length) {
+      const show = notFound.slice(0, 10).join('、') + (notFound.length > 10 ? ` …等 ${notFound.length} 筆` : '')
+      publishMsg.value = `⚠️ 已發佈 ${updated}/${total} 筆；${notFound.length} 筆車號未在系統登記、未寫入：${show}（多半是匯入了非本資料庫的名冊）`
+    } else {
+      publishMsg.value = `✓ 已發佈 ${updated}/${total} 筆，住戶登入即可看自己的結果`
+    }
   } catch (e) {
     publishMsg.value = e?.message || '發佈失敗'
   } finally {

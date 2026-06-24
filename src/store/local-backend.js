@@ -147,10 +147,15 @@ export function publishResult({ rows }) {
     v.簽約期限 = null
   }
   let updated = 0
+  const notFound = []
   for (const r of Array.isArray(rows) ? rows : []) {
     const plate = normalizeTWPlate(r?.車號)
+    if (!plate) continue
     const v = db.vehicles[plate]
-    if (!v) continue
+    if (!v) {
+      notFound.push(plate)
+      continue
+    }
     v.車位編號 = r.車位編號 || null
     v.車位類型 = r.車位類型 || null
     v.配位狀態 = r.狀態 || null
@@ -158,7 +163,7 @@ export function publishResult({ rows }) {
     updated += 1
   }
   save(db)
-  return { updated }
+  return { updated, notFound }
 }
 
 // 登入：戶號 + 任一已登記車號。命中回整戶資料，否則 null。
