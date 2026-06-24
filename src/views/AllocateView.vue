@@ -80,9 +80,7 @@ const lotteryRows = computed(() =>
     .sort((x, y) => x.輪次 - y.輪次 || (x.順序號 ?? 0) - (y.順序號 ?? 0)),
 )
 const presetRows = computed(() =>
-  (result.value?.assigned ?? []).filter(
-    (a) => a.配位方式 === VIA.VOLUNTEER_SMALL || a.配位方式 === VIA.ACCESSIBLE,
-  ),
+  (result.value?.assigned ?? []).filter((a) => a.配位方式 !== VIA.WISH),
 )
 
 // 下載配位結果 CSV（公告日 → 簽約期限=公告+5；加 BOM 供 Excel 中文正確）。
@@ -262,7 +260,7 @@ function downloadResultCSV() {
       <!-- 免抽已定：志願小位 / 無障礙（抽籤前確定、不參與抽籤） -->
       <details v-if="presetRows.length" class="rounded-lg border border-slate-200 bg-white p-3">
         <summary class="cursor-pointer text-sm font-medium text-slate-700">
-          免抽已定（{{ presetRows.length }}）— 志願小位／無障礙，登記時已選位繳費、不參與抽籤
+          免抽已定（{{ presetRows.length }}）— 物業指派／志願小位／無障礙，抽籤前確定、不參與抽籤
         </summary>
         <div class="mt-2 overflow-x-auto">
           <table class="w-full text-sm">

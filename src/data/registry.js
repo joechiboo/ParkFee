@@ -76,6 +76,9 @@ export function normalizeRow(raw, fallbackSource = SOURCE.ONLINE) {
     車位志願: parseWishes(raw.車位志願), // 戶層級；buildRoster 會傳播到全戶
     志願落選保底: toYN(raw.志願落選保底),
     來源: raw.來源 || fallbackSource,
+    // 物業抽籤前指派（維護頁寫入、export 帶出）：有車位編號＝該車已定位 → distribute 跳過並記入結果。
+    車位編號: String(raw.車位編號 ?? '').trim(), // 重機＝兩位頓號分隔
+    已繳費: toYN(raw.已繳費),
   }
 }
 

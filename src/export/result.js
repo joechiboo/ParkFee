@@ -24,14 +24,15 @@ export function resultRows(result, { 公告日 = '' } = {}) {
   const 期限 = signDeadline(公告日)
   const rows = []
   for (const a of result.assigned || []) {
+    const paid = !!a.已繳費 // 物業抽籤前已指派+繳費（小位/無障礙/保留）→ 已結清
     rows.push({
       戶號: a.戶號,
       車號: a.車號,
       車位編號: a.車位編號,
       車位類型: a.車位類型,
       應繳金額: feeFor(a.車種),
-      簽約期限: 期限,
-      狀態: '分配',
+      簽約期限: paid ? '' : 期限, // 已繳者免簽約倒數；大位中籤者才有
+      狀態: paid ? '已繳' : '分配',
       備註: a.配位方式 || '',
     })
   }

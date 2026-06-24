@@ -156,3 +156,55 @@ describe('順序號連續 + 一人多車位', () => {
     expect(new Set(houses)).toEqual(new Set(['A', 'B', 'C'])) // 三戶第1輛都有位
   })
 })
+
+describe('物業抽籤前指派（preset）— 跳過抽籤、直接記入結果', () => {
+  it('已指派小位：記入結果(VIA.VOLUNTEER_SMALL)、不進 R1 抽籤、不落選', () => {
+    const r = run([{ 戶號: 'A', 車號: 'A1', 第幾輛: 1, 車位志願: ['2'], 車位編號: '1', 已繳費: 'Y' }])
+    expect(r.assigned).toHaveLength(1)
+    expect(r.assigned[0].車位編號).toBe('1')
+    expect(r.assigned[0].車位類型).toBe('小')
+    expect(r.assigned[0].配位方式).toBe(VIA.VOLUNTEER_SMALL)
+    expect(r.assigned[0].已繳費).toBe(true)
+    expect(r.rounds.find((x) => x.round === 1).draws).toHaveLength(0) // 免抽
+    expect(r.落選).toHaveLength(0)
+  })
+
+  it('不重複分配：已指派位從池中移除（他人志願指到該位 → 落選），該戶不再得第二位', () => {
+    const r = run([
+      { 戶號: 'A', 車號: 'A1', 第幾輛: 1, 車位志願: ['2'], 車位編號: '1', 已繳費: 'Y' },
+      { 戶號: 'B', 車號: 'B1', 第幾輛: 1, 車位志願: ['1'] }, // 想要 1，但已被 A 指派佔走
+    ])
+    expect(r.assigned.filter((x) => x.戶號 === 'A')).toHaveLength(1) // A 只有一位（無重複）
+    expect(r.落選.find((x) => x.戶號 === 'B').原因).toBe(REASON.LOST) // 1 被佔 → B 志願落選
+  })
+
+  it('已指派無障礙：身障第1輛不在 R0 重配', () => {
+    const r = run([{ 戶號: 'A', 車號: 'A1', 第幾輛: 1, 身障: 'Y', 車位編號: '10', 已繳費: 'Y' }])
+    expect(r.assigned).toHaveLength(1)
+    expect(r.assigned[0].車位編號).toBe('10')
+    expect(r.assigned[0].配位方式).toBe(VIA.ACCESSIBLE)
+    expect(r.rounds.find((x) => x.round === 0).assignments).toHaveLength(0) // R0 不重配
+  })
+
+  it('已指派重機：兩車位掛同車號 → 占用2位、VIA.PRESET、型別大、大', () => {
+    const r = run([{ 戶號: 'A', 車號: 'A1', 第幾輛: 1, 車種: '重機', 車位編號: '2、3', 已繳費: 'Y' }])
+    expect(r.assigned).toHaveLength(1)
+    expect(r.assigned[0].車位編號).toBe('2、3')
+    expect(r.assigned[0].占用位數).toBe(2)
+    expect(r.assigned[0].車位類型).toBe('大、大')
+    expect(r.assigned[0].配位方式).toBe(VIA.PRESET)
+  })
+
+  it('混合：已指派戶+待抽戶同跑，待抽照常抽、已指派免抽', () => {
+    const r = run([
+      { 戶號: 'A', 車號: 'A1', 第幾輛: 1, 車位編號: '1', 已繳費: 'Y' }, // 指派
+      { 戶號: 'B', 車號: 'B1', 第幾輛: 1, 車位志願: ['2'] }, // 待抽
+    ])
+    const a = r.assigned.find((x) => x.戶號 === 'A')
+    const b = r.assigned.find((x) => x.戶號 === 'B')
+    expect(a.順序號).toBeNull() // 免抽無順序號
+    expect(b.車位編號).toBe('2')
+    expect(b.配位方式).toBe(VIA.WISH)
+    expect(b.順序號).toBe(1) // 待抽者順序號從 1 起（preset 不佔號）
+  })
+})

@@ -21,12 +21,13 @@
 //   - 未填志願者直接列落選（原因「未填志願」），交物業第二階段保底/候補。
 
 import { mulberry32, hashSeed, seededShuffle } from './rng.js'
-import { rentableMotorSeats } from '../map/seats.js'
+import { rentableMotorSeats, motorSeats } from '../map/seats.js'
 
 export const VIA = {
   ACCESSIBLE: '無障礙',
   VOLUNTEER_SMALL: '志願小位',
   WISH: '志願分發',
+  PRESET: '物業指派', // 抽籤前由物業指派（保留/大位保底/重機雙位等），免抽、直接記入結果
 }
 
 export const REASON = {
@@ -48,6 +49,8 @@ function toEntry(r, index) {
     身障: r.身障 === true || r.身障 === 'Y' || r.身障 === 'y',
     志願小位: r.志願小位 === true || r.志願小位 === 'Y' || r.志願小位 === 'y',
     車位志願: Array.isArray(r.車位志願) ? r.車位志願.map((x) => String(x)) : [], // 戶層級
+    車位編號: String(r.車位編號 ?? '').trim(), // 物業抽籤前已指派（空＝待抽）；重機兩位頓號分隔
+    已繳費: r.已繳費 === true || r.已繳費 === 'Y' || r.已繳費 === 'y',
     _order: index, // 穩定登記序：志願小位選位序、並列決勝
   }
 }
@@ -88,6 +91,9 @@ export function distribute({ registrations, seats = rentableMotorSeats(), seed =
   const rng = mulberry32(hashSeed(seed))
   const pool = makePool(seats)
   const entries = registrations.map(toEntry)
+  // 物業抽籤前已指派者（vehicle 已有車位編號）：直接列入結果、佔住該戶名額，不進任何抽籤輪。
+  const preset = entries.filter((e) => e.車位編號)
+  const pending = entries.filter((e) => !e.車位編號)
 
   const assigned = []
   const lost = [] // 落選名單 → 交物業第二階段（勾保底→就近補、未勾→候補）
@@ -111,6 +117,7 @@ export function distribute({ registrations, seats = rentableMotorSeats(), seed =
       配位方式: via,
       順序號: seqNo,
       輪次: round,
+      已繳費: !!e.已繳費, // 物業已指派+繳費者為 true → 結果狀態顯「已繳」；大位中籤者 false →「分配」
     })
   }
   const lose = (e, round, reason, seqNo = null) =>
@@ -122,9 +129,39 @@ export function distribute({ registrations, seats = rentableMotorSeats(), seed =
     return [pool.takeLowest('大'), pool.takeLowest('大')]
   }
 
+  // 車位編號 → 型別查詢：優先用傳入 pool，否則查完整主檔（已指派位多半已 locked、不在 pool）。
+  const masterType = new Map(motorSeats().map((s) => [String(s.id), s.type]))
+  const lookupType = (id) => pool.typeOf(id) ?? masterType.get(String(id)) ?? ''
+
+  // ── 已指派（物業抽籤前確定：志願小位/無障礙/保留/大位保底 + 繳費）──────────
+  if (preset.length) {
+    const a = []
+    for (const e of preset) {
+      const ids = e.車位編號.split('、').map((x) => x.trim()).filter(Boolean)
+      const taken = ids.map((id) => {
+        pool.take(id) // 防呆：若該位仍在池中則移除，避免重複分配
+        return { id, type: lookupType(id) }
+      })
+      const types = taken.map((s) => s.type)
+      const via =
+        taken.length > 1
+          ? VIA.PRESET
+          : types[0] === '無障礙'
+            ? VIA.ACCESSIBLE
+            : types[0] === '小'
+              ? VIA.VOLUNTEER_SMALL
+              : VIA.PRESET
+      record(e, taken, via, 0)
+      assignedHouse.add(e.戶號)
+      a.push({ 戶號: e.戶號, 車位編號: taken.map((s) => s.id).join('、'), 配位方式: via })
+    }
+    say(`已指派（物業抽籤前確定）：${preset.length} 台，免抽、直接記入結果`)
+    rounds.push({ round: '指派', name: '物業指派（免抽）', draws: [], assignments: a })
+  }
+
   // ── Round 0：無障礙（身障第 1 輛優先）──────────────────────────────
   {
-    const cands = entries.filter((e) => e.身障 && e.第幾輛 === 1)
+    const cands = pending.filter((e) => e.身障 && e.第幾輛 === 1)
     const cap = pool.countOf('無障礙')
     const draws = []
     let winners
@@ -150,7 +187,7 @@ export function distribute({ registrations, seats = rentableMotorSeats(), seed =
 
   // ── Round 1：一戶一位（每戶第 1 個，未在 R0 取得者）──────────────────
   {
-    const firstCars = entries.filter((e) => e.第幾輛 === 1 && !assignedHouse.has(e.戶號))
+    const firstCars = pending.filter((e) => e.第幾輛 === 1 && !assignedHouse.has(e.戶號))
     const volunteers = firstCars.filter((e) => e.志願小位).sort((a, b) => a._order - b._order)
     const others = firstCars.filter((e) => !e.志願小位)
     const a = []
@@ -193,11 +230,11 @@ export function distribute({ registrations, seats = rentableMotorSeats(), seed =
   }
 
   // ── Round 2+：第二位起（依序用前一輪剩餘；耗盡則自然全落選）──────────
-  const extraNths = [...new Set(entries.filter((e) => e.第幾輛 >= 2).map((e) => e.第幾輛))].sort(
+  const extraNths = [...new Set(pending.filter((e) => e.第幾輛 >= 2).map((e) => e.第幾輛))].sort(
     (x, y) => x - y,
   )
   for (const nth of extraNths) {
-    const cands = entries.filter((e) => e.第幾輛 === nth)
+    const cands = pending.filter((e) => e.第幾輛 === nth)
     const a = []
     const draws = []
     const order = seededShuffle(cands, rng)
