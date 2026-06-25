@@ -23,7 +23,13 @@ const routes = [
     // 公開：預設跑範例 demo（鄰居可玩、看演算法）。真實名冊匯入在 dev 專區（限管理員）。
   },
   { path: '/result', name: 'result', component: () => import('../views/ResultView.vue'), meta: { title: '結果' } },
-  { path: '/patrol', name: 'patrol', component: () => import('../views/PatrolView.vue'), meta: { title: '巡邏稽核' } },
+  {
+    path: '/patrol',
+    name: 'patrol',
+    component: () => import('../views/PatrolView.vue'),
+    meta: { title: '巡邏稽核' },
+    beforeEnter: () => (isAdmin(sessionHousehold.value) ? true : { name: 'me' }), // 巡邏讀指派個資 → 限管理員
+  },
 ]
 
 // 工程師專區：只在開發模式註冊；正式 build（npm run build / GitHub Pages）import.meta.env.DEV=false

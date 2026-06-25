@@ -15,13 +15,15 @@ function logout() {
 }
 
 // 主導覽（管委會作業）；登入 (/me) 另放右側。配位＝公開範例 demo（鄰居可玩）。
-const visibleNav = [
+// adminOnly：限管理員（巡邏讀指派個資）。
+const nav = [
   { to: '/register', label: '登記' },
   { to: '/select', label: '選位' },
   { to: '/allocate', label: '配位' },
   { to: '/result', label: '結果' },
-  { to: '/patrol', label: '巡邏稽核' },
+  { to: '/patrol', label: '巡邏稽核', adminOnly: true },
 ]
+const visibleNav = computed(() => nav.filter((i) => !i.adminOnly || isAdmin(sessionHousehold.value)))
 
 // 工程師專區入口：開發模式 + 管理員才顯示（含真實名冊匯入；正式 build 整個 tree-shake 掉）。
 const isDev = import.meta.env.DEV
