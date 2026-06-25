@@ -17,6 +17,7 @@ function logout() {
 // 主導覽（管委會作業）；登入 (/me) 另放右側。配位＝公開範例 demo（鄰居可玩）。
 const visibleNav = [
   { to: '/register', label: '登記' },
+  { to: '/select', label: '選位' },
   { to: '/allocate', label: '配位' },
   { to: '/result', label: '結果' },
   { to: '/patrol', label: '巡邏稽核' },
