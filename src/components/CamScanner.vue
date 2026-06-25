@@ -1,8 +1,9 @@
 <script setup>
-// 即時相機辨識（getUserMedia 連續預覽 + 取景框 + Tesseract.js OCR）。掃「車牌」或「車位號」。
-// 連續讀到相同有效值兩次 → emit('recognized', {type, value})；也可按「填入」手動採用目前候選。
+// 即時相機辨識（getUserMedia 連續預覽 + PaddleOCR 偵測+辨識）。掃「車牌」或「車位號」。
+// PaddleOCR 內建文字「偵測」→ 會自動找出框內任意位置/大小的文字（車牌不必對齊填滿）→ 再辨識，
+// 我從偵測到的多個文字中挑「符合該模式格式」者（車牌 6–7 碼英數 / 車位 1–655 數字）。
+// 連續讀到相同有效值兩次 → emit('recognized')；也可按「填入」採用目前候選。
 // ⚠️ 相機需 https（GitHub Pages ✓；本機 http 不給）。辨不到/辨錯 → 父層仍可手動輸入。
-// 引擎可換：把 scanOnce 內的 Tesseract 換成 onnxruntime-web（RoboEye ANPR）即可，其餘不動。
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 
 const emit = defineEmits(['recognized', 'close'])
@@ -26,23 +27,18 @@ const mode = ref('plate') // 'plate' | 'seat'
 const status = ref('啟動中…')
 const camErr = ref('')
 const candidate = ref('')
-const confidence = ref(0)
 
 let stream = null
-let worker = null
+let ocr = null // PaddleOCR 模組
+let ready = false
 let running = false
 let busy = false
 let lastValid = ''
 const workCanvas = document.createElement('canvas')
 
-const WHITELIST = {
-  seat: '0123456789',
-  plate: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-',
-}
-
-// 依模式驗證 OCR 文字 → 回有效字串或 ''。車位＝1..655 數字；車牌＝5~8 碼英數。
+// 依模式驗證一段 OCR 文字 → 回有效字串或 ''。車位＝1..655 數字；車牌＝6~7 碼英數。
 function validate(text) {
-  const t = (text || '').toUpperCase().replace(/\s/g, '')
+  const t = (text || '').toUpperCase()
   if (mode.value === 'seat') {
     const n = t.replace(/\D/g, '')
     return n && +n >= 1 && +n <= 655 ? n : ''
@@ -75,54 +71,48 @@ async function startCamera() {
   }
 }
 
-// 擷取取景框內影像 → 灰階+提對比 → 回 canvas 供 OCR。
+// 擷取取景框內影像（彩色，給 PaddleOCR 自己做偵測/前處理）→ 回 canvas。
 function captureBox() {
   const v = videoEl.value
   if (!v || !v.videoWidth) return null
   const vw = v.videoWidth
   const vh = v.videoHeight
-  const bw = vw * 0.84
-  const bh = vh * 0.18
+  const bw = vw * 0.9
+  const bh = vh * 0.45
   const bx = (vw - bw) / 2
   const by = (vh - bh) / 2
-  const targetW = Math.min(900, Math.round(bw))
+  const targetW = Math.min(720, Math.round(bw))
   const scale = targetW / bw
   const c = workCanvas
   c.width = targetW
   c.height = Math.round(bh * scale)
-  const ctx = c.getContext('2d', { willReadFrequently: true })
-  ctx.drawImage(v, bx, by, bw, bh, 0, 0, c.width, c.height)
-  const img = ctx.getImageData(0, 0, c.width, c.height)
-  const d = img.data
-  for (let i = 0; i < d.length; i += 4) {
-    let g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]
-    g = g > 130 ? 255 : g < 90 ? 0 : g // 簡單分段拉對比
-    d[i] = d[i + 1] = d[i + 2] = g
-  }
-  ctx.putImageData(img, 0, 0)
+  c.getContext('2d').drawImage(v, bx, by, bw, bh, 0, 0, c.width, c.height)
   return c
 }
 
 async function scanOnce() {
-  if (!running || busy || !worker) return
+  if (!running || busy || !ready) return
   const c = captureBox()
   if (!c) return
   busy = true
   try {
-    await worker.setParameters({
-      tessedit_char_whitelist: WHITELIST[mode.value],
-      tessedit_pageseg_mode: '7', // 單行
-    })
-    const { data } = await worker.recognize(c)
-    confidence.value = Math.round(data.confidence || 0)
-    const val = validate(data.text)
-    if (val) {
-      candidate.value = val
-      if (val === lastValid) {
-        emit('recognized', { type: mode.value, value: val }) // 連兩次相同 → 採用
+    const res = await ocr.recognize(c)
+    const texts = Array.isArray(res?.text) ? res.text : res?.text ? [res.text] : []
+    let found = ''
+    for (const t of texts) {
+      const v = validate(t)
+      if (v) {
+        found = v
+        break
+      }
+    }
+    if (found) {
+      candidate.value = found
+      if (found === lastValid) {
+        emit('recognized', { type: mode.value, value: found }) // 連兩次相同 → 採用
         lastValid = ''
       } else {
-        lastValid = val
+        lastValid = found
       }
     }
   } catch {
@@ -135,7 +125,7 @@ async function scanOnce() {
 async function loop() {
   while (running) {
     await scanOnce()
-    await new Promise((r) => setTimeout(r, 350))
+    await new Promise((r) => setTimeout(r, 500))
   }
 }
 
@@ -146,16 +136,21 @@ function accept() {
 onMounted(async () => {
   await startCamera()
   if (camErr.value) return
-  status.value = '辨識引擎載入中…'
-  const { createWorker } = await import('tesseract.js')
-  worker = await createWorker('eng')
-  status.value = '對準框內，自動辨識中…'
+  status.value = '辨識引擎載入中…（首次需下載模型，請稍候）'
+  try {
+    ocr = await import('@paddlejs-models/ocr')
+    await ocr.init()
+    ready = true
+    status.value = '把車牌放進框內，自動辨識中…'
+  } catch (e) {
+    camErr.value = '辨識引擎載入失敗：' + (e?.message || e?.name || '未知')
+    return
+  }
   running = true
   loop()
 })
 onBeforeUnmount(() => {
   running = false
-  if (worker) worker.terminate().catch(() => {})
   if (stream) stream.getTracks().forEach((t) => t.stop())
 })
 </script>
@@ -166,10 +161,10 @@ onBeforeUnmount(() => {
     <div class="relative flex-1 overflow-hidden">
       <video ref="videoEl" playsinline muted autoplay class="h-full w-full object-cover"></video>
 
-      <!-- 取景框（對準此框內的車牌/車位號）-->
+      <!-- 取景框（把車牌放進這個範圍即可，不必對齊填滿）-->
       <div
         class="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-        style="width: 84%; height: 18%"
+        style="width: 90%; height: 45%"
       >
         <div class="h-full w-full rounded-lg border-2 border-emerald-400 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]"></div>
       </div>
@@ -190,7 +185,7 @@ onBeforeUnmount(() => {
       <div v-else class="absolute inset-x-0 bottom-0 bg-black/60 p-3 text-center text-white">
         <div class="text-xs text-slate-300">{{ status }}</div>
         <div class="mt-1 font-mono text-2xl font-bold tracking-wider">{{ candidate || '—' }}</div>
-        <div v-if="candidate" class="text-xs text-emerald-300">信心 {{ confidence }}%（穩定自動帶入，或按「填入」）</div>
+        <div v-if="candidate" class="text-xs text-emerald-300">穩定後自動帶入，或按「填入」</div>
       </div>
     </div>
 
