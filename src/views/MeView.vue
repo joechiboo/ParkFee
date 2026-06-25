@@ -70,14 +70,7 @@ function logout() {
         <button class="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100" @click="logout">登出</button>
       </div>
 
-      <!-- 管理員（物業） -->
-      <div v-if="isAdmin(household)" class="space-y-3 rounded-lg border-2 border-dashed border-emerald-400 bg-emerald-50 p-4">
-        <div class="font-semibold text-emerald-900">🔧 管理員（物業）</div>
-        <div class="flex flex-wrap gap-3">
-          <RouterLink to="/seat-admin" class="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">🔒 車位鎖定維護</RouterLink>
-          <RouterLink to="/allocate" class="rounded border border-emerald-500 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100">🎲 抽籤配位</RouterLink>
-        </div>
-      </div>
+      <!-- 管理員登入後此頁不另做管理功能：管理入口在上方導覽列（🔧 管理／配位／🛠 dev）。 -->
 
       <div v-if="!isAdmin(household)">
         <div class="mb-2 text-sm font-medium text-slate-700">登記機車（{{ household.vehicles.length }} 台）</div>
