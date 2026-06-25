@@ -21,19 +21,36 @@ Deno.serve(async (req) => {
     const op = body.op
 
     if (op === 'list') {
+      // 「不可選」的位 = locked_seat（物業指派/保留/維修） ∪ vehicle 已分配（抽籤回填）。
+      // → 抽籤後物業代選落選戶時，不會誤選到中籤者已得的位。
       const { data: locks } = await db.from('locked_seat').select('車位編號')
-      const ids = (locks || []).map((l: { 車位編號: string }) => l.車位編號)
-      let vs: Array<Record<string, unknown>> = []
-      if (ids.length) {
-        const { data } = await db
-          .from('vehicle')
-          .select('車號, 戶號, 車種, 車位編號, 配位狀態, 已繳費')
-          .in('車位編號', ids)
-        vs = data || []
+      const lockedIds = new Set((locks || []).map((l: { 車位編號: string }) => String(l.車位編號)))
+
+      const { data: vs } = await db
+        .from('vehicle')
+        .select('車號, 戶號, 車種, 車位編號, 配位狀態, 已繳費')
+        .not('車位編號', 'is', null)
+
+      // 一台車的車位編號可能是「150、151」(重機雙位) → 逐位攤平到 seat→vehicle。
+      const bySeat = new Map<string, Record<string, unknown>>()
+      for (const v of vs || []) {
+        for (const id of String(v.車位編號).split('、').map((s) => s.trim()).filter(Boolean)) {
+          bySeat.set(id, v)
+        }
       }
-      const assignments = ids.map((id: string) => {
-        const v = vs.find((x) => x.車位編號 === id)
-        return { 車位編號: id, ...(v || {}) }
+
+      const allIds = new Set<string>([...lockedIds, ...bySeat.keys()])
+      const assignments = [...allIds].map((id) => {
+        const v = bySeat.get(id)
+        return {
+          車位編號: id,
+          戶號: v?.戶號 ?? null,
+          車號: v?.車號 ?? null,
+          車種: v?.車種 ?? null,
+          配位狀態: v?.配位狀態 ?? null,
+          已繳費: v?.已繳費 ?? false,
+          locked: lockedIds.has(id), // true＝物業鎖定(可解鎖)；false＝抽籤分配(僅顯示、不可解鎖)
+        }
       })
       return json({ assignments })
     }
