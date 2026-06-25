@@ -6,19 +6,31 @@ import { computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { sessionHousehold, refreshHousehold } from '../store/session.js'
 import { feeFor } from '../data/fee.js'
+import { vehicleResultStatus } from '../data/vehicleStatus.js'
 
 const household = sessionHousehold // 跨頁共用登入狀態
 onMounted(refreshHousehold) // 進頁時重抓最新戶資料（後台指派/繳費後免重新登入）
 const vehicles = computed(() => household.value?.vehicles || [])
 
-// 每台車的狀態分類（涵蓋全流程）
-function statusOf(v) {
-  if (v.已繳費 && v.車位編號) return { key: 'paid', label: '✅ 已繳費確認', cls: 'bg-emerald-50 text-emerald-700' }
-  if (v.車位編號) return { key: 'pending', label: '⚠️ 待繳費', cls: 'bg-amber-50 text-amber-700' }
-  if (v.配位狀態) return { key: 'waitlist', label: '❌ ' + v.配位狀態, cls: 'bg-rose-50 text-rose-600' }
-  return { key: 'registered', label: '🔄 已登記·待配位', cls: 'bg-slate-100 text-slate-500' }
+// 狀態鍵（純函式，見 data/vehicleStatus.js）→ 顯示用 label/底色。
+const CLS = {
+  paid: 'bg-emerald-50 text-emerald-700',
+  pending: 'bg-amber-50 text-amber-700',
+  waitlist: 'bg-rose-50 text-rose-600',
+  registered: 'bg-slate-100 text-slate-500',
 }
-const rows = computed(() => vehicles.value.map((v) => ({ v, s: statusOf(v) })))
+function labelOf(key, v) {
+  if (key === 'paid') return '✅ 已繳費確認'
+  if (key === 'pending') return '⚠️ 待繳費'
+  if (key === 'waitlist') return '❌ ' + v.配位狀態
+  return '🔄 已登記·待配位'
+}
+const rows = computed(() =>
+  vehicles.value.map((v) => {
+    const key = vehicleResultStatus(v)
+    return { v, s: { key, label: labelOf(key, v), cls: CLS[key] } }
+  }),
+)
 const hasPending = computed(() => rows.value.some((r) => r.s.key === 'pending'))
 </script>
 
