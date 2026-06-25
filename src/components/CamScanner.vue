@@ -5,7 +5,7 @@
 // 連續讀到相同有效值兩次 → emit('recognized')；也可按「填入」採用目前候選。
 // ⚠️ 相機需 https（GitHub Pages ✓；本機 http 不給）。辨不到/辨錯 → 父層仍可手動輸入。
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import { ensureOcr, ocrRecognizeTexts } from '../lib/ocr.js'
+import { ensureOcr, ocrRecognizeTexts, ocrStage, ocrProgress } from '../lib/ocr.js'
 
 const emit = defineEmits(['recognized', 'close'])
 // 父層檢查結果 → 相機上浮層顯示（連續巡查不用離開相機）。
@@ -179,11 +179,20 @@ onBeforeUnmount(() => {
         車位 {{ flash.seatId }} · {{ flash.message }}
       </div>
 
-      <!-- 候選顯示 -->
+      <!-- 載入中（含下載進度）/ 候選顯示 -->
       <div v-else class="absolute inset-x-0 bottom-0 bg-black/60 p-3 text-center text-white">
-        <div class="text-xs text-slate-300">{{ status }}</div>
-        <div class="mt-1 font-mono text-2xl font-bold tracking-wider">{{ candidate || '—' }}</div>
-        <div v-if="candidate" class="text-xs text-emerald-300">穩定後自動帶入，或按「填入」</div>
+        <template v-if="ocrStage">
+          <div class="text-sm">辨識引擎準備中 · {{ ocrStage }}<span v-if="ocrStage === '下載模型'"> {{ ocrProgress }}%</span></div>
+          <div v-if="ocrStage === '下載模型'" class="mx-auto mt-2 h-2 w-4/5 overflow-hidden rounded-full bg-slate-700">
+            <div class="h-full rounded-full bg-emerald-400 transition-all" :style="{ width: ocrProgress + '%' }"></div>
+          </div>
+          <div class="mt-1 text-xs text-slate-400">首次約 12MB，下載後快取、下次免下載</div>
+        </template>
+        <template v-else>
+          <div class="text-xs text-slate-300">{{ status }}</div>
+          <div class="mt-1 font-mono text-2xl font-bold tracking-wider">{{ candidate || '—' }}</div>
+          <div v-if="candidate" class="text-xs text-emerald-300">穩定後自動帶入，或按「填入」</div>
+        </template>
       </div>
     </div>
 
