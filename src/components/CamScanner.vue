@@ -5,6 +5,7 @@
 // 連續讀到相同有效值兩次 → emit('recognized')；也可按「填入」採用目前候選。
 // ⚠️ 相機需 https（GitHub Pages ✓；本機 http 不給）。辨不到/辨錯 → 父層仍可手動輸入。
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ensureOcr, ocrRecognizeTexts } from '../lib/ocr.js'
 
 const emit = defineEmits(['recognized', 'close'])
 // 父層檢查結果 → 相機上浮層顯示（連續巡查不用離開相機）。
@@ -29,7 +30,6 @@ const camErr = ref('')
 const candidate = ref('')
 
 let stream = null
-let ocr = null // PaddleOCR 模組
 let ready = false
 let running = false
 let busy = false
@@ -96,8 +96,7 @@ async function scanOnce() {
   if (!c) return
   busy = true
   try {
-    const res = await ocr.recognize(c)
-    const texts = Array.isArray(res?.text) ? res.text : res?.text ? [res.text] : []
+    const texts = await ocrRecognizeTexts(c)
     let found = ''
     for (const t of texts) {
       const v = validate(t)
@@ -136,10 +135,9 @@ function accept() {
 onMounted(async () => {
   await startCamera()
   if (camErr.value) return
-  status.value = '辨識引擎載入中…（首次需下載模型，請稍候）'
+  status.value = '辨識引擎載入中…（首次需下載模型，請稍候；之後快取不再下載）'
   try {
-    ocr = await import('@paddlejs-models/ocr')
-    await ocr.init()
+    await ensureOcr()
     ready = true
     status.value = '把車牌放進框內，自動辨識中…'
   } catch (e) {
