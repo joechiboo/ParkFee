@@ -27,6 +27,10 @@ const visibleNav = computed(() => nav.filter((i) => !i.adminOnly || isAdmin(sess
 
 // 工程師專區入口：開發模式 + 管理員才顯示（含真實名冊匯入；正式 build 整個 tree-shake 掉）。
 const isDev = import.meta.env.DEV
+
+// 版號＝建置（發佈）時間，vite.config 的 define 注入；藏頁尾方便確認線上版本。
+// eslint-disable-next-line no-undef
+const version = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'Vdev'
 </script>
 
 <template>
@@ -89,7 +93,7 @@ const isDev = import.meta.env.DEV
     </main>
 
     <footer class="mx-auto px-4 py-6 text-xs text-slate-400" :class="shellMax">
-      樂菲莊園機車車位管理工具
+      樂菲莊園機車車位管理工具 <span class="text-slate-300">{{ version }}</span>
     </footer>
   </div>
 </template>
