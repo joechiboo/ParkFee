@@ -6,9 +6,10 @@ const demoUrl = `${import.meta.env.BASE_URL}demo/seat-select-demo.html`
 
 const flow = [
   { to: '/register', step: '1', label: '登記', desc: '匯入名冊 / 掃描帶車號' },
-  { to: '/allocate', step: '2', label: '分階段配位', desc: '固定種子抽籤、可重現' },
-  { to: '/result', step: '3', label: '結果與繳費', desc: '車位、應繳、簽約期限' },
-  { to: '/patrol', step: '4', label: '巡邏稽核', desc: '辨識比對、勸導單' },
+  { to: '/select', step: '2', label: '選車位志願序', desc: '地圖排志願 → 抽籤依此分發' },
+  { to: '/allocate', step: '3', label: '分階段配位', desc: '固定種子抽籤、可重現' },
+  { to: '/result', step: '4', label: '結果與繳費', desc: '車位、應繳、簽約期限' },
+  { to: '/patrol', step: '5', label: '巡邏稽核', desc: '辨識比對、勸導單' },
 ]
 </script>
 

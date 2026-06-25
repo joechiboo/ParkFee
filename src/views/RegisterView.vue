@@ -99,8 +99,20 @@ async function submit() {
           <span v-if="v.身障"> · 身障</span><span v-if="v.志願小位"> · 志願小位</span>
         </li>
       </ul>
-      <div class="mt-4 flex gap-2">
-        <button class="rounded bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800" @click="router.push('/me')">
+      <p class="mt-3 rounded border border-emerald-300 bg-white/60 p-2 text-sm text-emerald-900">
+        <b>下一步：排「車位志願序」</b> — 抽籤會依你的志願由高到低分發，建議至少排幾個。
+      </p>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <RouterLink
+          to="/select"
+          class="rounded bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800"
+        >
+          🗺️ 下一步：選車位志願序
+        </RouterLink>
+        <button
+          class="rounded border border-emerald-600 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+          @click="router.push('/me')"
+        >
           查看我的登記
         </button>
       </div>
