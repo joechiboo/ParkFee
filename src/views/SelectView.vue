@@ -3,7 +3,6 @@ import { ref, computed, watch, onMounted } from 'vue'
 import SeatMap from '../components/SeatMap.vue'
 import { motorSeats } from '../map/seats.js'
 import { sessionHousehold, sessionPlate } from '../store/session.js'
-import { loadWishes, saveWishes } from '../store/wishes.js'
 import { saveWishes as saveWishesRemote } from '../store/db.js'
 import { lockedSeats, refreshLocked } from '../store/locked.js'
 
@@ -11,23 +10,9 @@ import { lockedSeats, refreshLocked } from '../store/locked.js'
 const seats = motorSeats()
 const householdId = computed(() => sessionHousehold.value?.戶號 || '')
 
-// 志願序：登入者優先用後端帶回的 → 該戶本機快取 → 接管匿名試排。點選順序即志願序。
-function initialWishes() {
-  const id = householdId.value
-  if (sessionHousehold.value?.車位志願?.length) return sessionHousehold.value.車位志願.map(String)
-  const own = loadWishes(id)
-  if (own.length) return own
-  if (id) {
-    const anon = loadWishes('')
-    if (anon.length) {
-      saveWishes(id, anon)
-      saveWishes('', [])
-      return anon
-    }
-  }
-  return []
-}
-const wishes = ref(initialWishes())
+// 志願序＝純綁登入住戶：來源為登入時後端帶回的 車位志願（sessionHousehold）；未登入時為記憶體試排。
+// 不寫任何裝置儲存 → 同台電腦換住戶/登出即歸零，不會看到上一位的志願。點選順序即志願序。
+const wishes = ref(sessionHousehold.value?.車位志願?.map(String) || [])
 const fallback = ref(!!sessionHousehold.value?.志願落選保底)
 const orderMap = computed(() => {
   const m = new Map()
@@ -80,7 +65,6 @@ async function submit() {
       認證車號: sessionPlate.value,
     })
     if (h) sessionHousehold.value = h
-    saveWishes(householdId.value, wishes.value)
     saved.value = true
     setTimeout(() => (saved.value = false), 2500)
   } catch (e) {
@@ -90,12 +74,16 @@ async function submit() {
   }
 }
 
-// 自動存本機；登入後若該戶無存檔，把匿名選擇接管過去。
-watch(wishes, (list) => saveWishes(householdId.value, list), { deep: true })
-watch(householdId, (id) => {
-  const savedList = loadWishes(id)
-  if (savedList.length) wishes.value = savedList
-  else if (wishes.value.length) saveWishes(id, wishes.value)
+// 換登入身分時重置志願：登出→清空；換戶→載入該戶後端志願或重來；匿名試排→登入(且該戶無存檔)後接管。
+watch(householdId, (newId, oldId) => {
+  if (!newId) {
+    wishes.value = [] // 登出 → 清空
+    return
+  }
+  const saved = sessionHousehold.value?.車位志願?.map(String) || []
+  if (saved.length) wishes.value = saved // 該戶後端已存 → 載入
+  else if (oldId) wishes.value = [] // 由別戶切換來、且無存檔 → 重來
+  // 匿名(oldId='')→登入且無存檔：保留目前試排
 })
 
 // 座位外觀：選中=紅、已售=深灰、公益=金、大=琥珀、小=紫、無障礙=灰。
