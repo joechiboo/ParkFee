@@ -3,9 +3,23 @@
 // 連續讀到相同有效值兩次 → emit('recognized', {type, value})；也可按「填入」手動採用目前候選。
 // ⚠️ 相機需 https（GitHub Pages ✓；本機 http 不給）。辨不到/辨錯 → 父層仍可手動輸入。
 // 引擎可換：把 scanOnce 內的 Tesseract 換成 onnxruntime-web（RoboEye ANPR）即可，其餘不動。
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 
 const emit = defineEmits(['recognized', 'close'])
+// 父層檢查結果 → 相機上浮層顯示（連續巡查不用離開相機）。
+const props = defineProps({ feedback: { type: Object, default: null } })
+const flash = ref(null)
+watch(
+  () => props.feedback,
+  (f) => {
+    if (!f) return
+    flash.value = f
+    if (f.status === 'error' && navigator.vibrate) navigator.vibrate(200) // 違規震動提示
+    setTimeout(() => {
+      if (flash.value === f) flash.value = null
+    }, 2800)
+  },
+)
 
 const videoEl = ref(null)
 const mode = ref('plate') // 'plate' | 'seat'
@@ -34,7 +48,7 @@ function validate(text) {
     return n && +n >= 1 && +n <= 655 ? n : ''
   }
   const clean = t.replace(/[^A-Z0-9]/g, '')
-  return clean.length >= 5 && clean.length <= 8 ? clean : ''
+  return clean.length >= 6 && clean.length <= 7 ? clean : '' // 機車車牌約 6–7 碼
 }
 
 function setMode(m) {
@@ -161,6 +175,16 @@ onBeforeUnmount(() => {
       </div>
 
       <div v-if="camErr" class="absolute inset-x-4 top-4 rounded bg-rose-600/90 p-3 text-sm text-white">{{ camErr }}</div>
+
+      <!-- 檢查結果浮層（自動檢查後顯示，連續巡查不用離開相機）-->
+      <div
+        v-if="flash"
+        class="absolute inset-x-3 top-3 rounded-lg border-2 p-3 text-center text-sm font-bold text-white"
+        :class="flash.status === 'error' ? 'border-rose-300 bg-rose-600/90' : flash.status === 'warn' ? 'border-amber-300 bg-amber-500/90' : 'border-emerald-300 bg-emerald-600/90'"
+      >
+        {{ flash.status === 'error' ? '🔴' : flash.status === 'warn' ? '⚠️' : '🟢' }}
+        車位 {{ flash.seatId }} · {{ flash.message }}
+      </div>
 
       <!-- 候選顯示 -->
       <div v-else class="absolute inset-x-0 bottom-0 bg-black/60 p-3 text-center text-white">

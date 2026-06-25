@@ -16,6 +16,7 @@ const scanning = ref(false)
 function onRecognized({ type, value }) {
   if (type === 'seat') seat.value = value
   else plate.value = value
+  if (seat.value && plate.value) check() // 兩格都有 → 自動檢查（結果由 CamScanner 浮層顯示）
 }
 
 // ── 參考表（巡邏前載入一次，之後純本地比對）─────────────────────
@@ -176,7 +177,7 @@ const BANNER = {
         </div>
       </div>
 
-      <CamScanner v-if="scanning" @recognized="onRecognized" @close="scanning = false" />
+      <CamScanner v-if="scanning" :feedback="result" @recognized="onRecognized" @close="scanning = false" />
 
       <!-- 結果紅綠燈 -->
       <div v-if="result" class="mt-3 rounded-lg border-2 p-4" :class="BANNER[result.status].box">
