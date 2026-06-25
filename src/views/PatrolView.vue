@@ -7,8 +7,16 @@ import { sessionHousehold } from '../store/session.js'
 import { isAdmin, ADMIN_PASSWORD } from '../store/roles.js'
 import { listAssignments } from '../store/locked.js'
 import { normalizeTWPlate } from '../data/plate.js'
+import CamScanner from '../components/CamScanner.vue'
 
 const admin = computed(() => isAdmin(sessionHousehold.value))
+
+// 即時相機辨識：辨到的值自動填入對應欄位（車位號/車牌）。
+const scanning = ref(false)
+function onRecognized({ type, value }) {
+  if (type === 'seat') seat.value = value
+  else plate.value = value
+}
 
 // ── 參考表（巡邏前載入一次，之後純本地比對）─────────────────────
 const refLoaded = ref(false)
@@ -151,14 +159,24 @@ const BANNER = {
             />
           </label>
         </div>
-        <button
-          class="mt-3 w-full rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
-          :disabled="!seat || !refLoaded"
-          @click="check"
-        >
-          檢查
-        </button>
+        <div class="mt-3 flex gap-2">
+          <button
+            class="flex-1 rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+            :disabled="!seat || !refLoaded"
+            @click="check"
+          >
+            檢查
+          </button>
+          <button
+            class="rounded border border-emerald-500 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+            @click="scanning = true"
+          >
+            📷 即時辨識
+          </button>
+        </div>
       </div>
+
+      <CamScanner v-if="scanning" @recognized="onRecognized" @close="scanning = false" />
 
       <!-- 結果紅綠燈 -->
       <div v-if="result" class="mt-3 rounded-lg border-2 p-4" :class="BANNER[result.status].box">
