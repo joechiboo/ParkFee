@@ -22,3 +22,7 @@ export function tryAdminLogin(id, plate) {
 
 export const isAdmin = (household) =>
   !!household?.is_admin || ADMIN_HOUSEHOLDS.includes(household?.戶號)
+
+// 是否為「特例管理帳號」（admin/樂菲莊園，無真實登記）。
+// 真實住戶就算具管理權（白名單，如 H3-6）也回 false → 仍看得到自己的車輛/編輯/選位。
+export const isAdminAccount = (household) => household?.戶號 === ADMIN_ID

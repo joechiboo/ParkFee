@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { login } from '../store/db.js'
 import { editTarget } from '../store/editTarget.js'
 import { sessionHousehold, sessionPlate, clearSession, refreshHousehold } from '../store/session.js'
-import { tryAdminLogin, isAdmin } from '../store/roles.js'
+import { tryAdminLogin, isAdminAccount } from '../store/roles.js'
 import { feeFor } from '../data/fee.js'
 
 // 抽籤結果是否已公布（任一車有配位狀態）。
@@ -72,7 +72,7 @@ function logout() {
 
       <!-- 管理員登入後此頁不另做管理功能：管理入口在上方導覽列（🔧 管理／配位／🛠 dev）。 -->
 
-      <div v-if="!isAdmin(household)">
+      <div v-if="!isAdminAccount(household)">
         <div class="mb-2 text-sm font-medium text-slate-700">登記機車（{{ household.vehicles.length }} 台）</div>
         <div class="overflow-hidden rounded-lg border border-slate-200">
           <table class="w-full text-sm">
@@ -108,7 +108,7 @@ function logout() {
         </div>
       </div>
 
-      <div v-if="!isAdmin(household)" class="flex flex-wrap gap-3">
+      <div v-if="!isAdminAccount(household)" class="flex flex-wrap gap-3">
         <button class="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700" @click="startEdit">
           ✏ 編輯登記（新增 / 移除機車）
         </button>
@@ -117,10 +117,10 @@ function logout() {
         </RouterLink>
       </div>
 
-      <div v-if="!isAdmin(household) && !hasResult" class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+      <div v-if="!isAdminAccount(household) && !hasResult" class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
         🎲 抽籤結果尚未公布。配位完成後，這裡會顯示您各台車分到的車位、應繳金額與簽約期限。
       </div>
-      <div v-else-if="!isAdmin(household)" class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+      <div v-else-if="!isAdminAccount(household)" class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
         ✅ 抽籤結果已公布（見上表「車位／結果」）。<b>分配</b>者請於簽約期限內到管理中心簽約繳費；<b>未中</b>者列候補，前位放棄即依序遞補。
       </div>
     </div>
