@@ -31,7 +31,7 @@ async function loadRef() {
     const p = new Map()
     for (const a of list) {
       if (!a.車號) continue
-      const k = String(a.車號).toUpperCase()
+      const k = normalizeTWPlate(a.車號) // 與 OCR/手動查詢同一正規化 → 對得上(含補連字號)
       if (!p.has(k)) p.set(k, { 車位: [], 戶號: a.戶號, 車種: a.車種, 已繳費: a.已繳費 })
       p.get(k).車位.push(String(a.車位編號))
     }

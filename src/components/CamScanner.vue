@@ -67,8 +67,9 @@ function captureBox() {
   if (!v || !v.videoWidth) return null
   const vw = v.videoWidth
   const vh = v.videoHeight
-  const bw = vw * 0.7 // 框比例貼近車牌(約 3:1)→ 車牌填滿框、字才夠大
-  const bh = vh * 0.38
+  // 細長框：只框「號碼那一行」(避開電動車/重型等上方字樣與兩行排版，單行辨識器才讀得準)
+  const bw = vw * 0.76
+  const bh = vh * 0.14
   const bx = (vw - bw) / 2
   const by = (vh - bh) / 2
   const c = workCanvas
@@ -120,7 +121,7 @@ onMounted(async () => {
   try {
     await ensureOcr()
     ready = true
-    status.value = '把車牌放進框內，自動辨識中…'
+    status.value = '把框對準「號碼」那一行（電動車等字樣別框進去）'
   } catch (e) {
     camErr.value = '辨識引擎載入失敗：' + (e?.message || e?.name || '未知')
     return
@@ -139,8 +140,8 @@ onBeforeUnmount(() => {
     <div class="relative flex-1 overflow-hidden">
       <video ref="videoEl" playsinline muted autoplay class="h-full w-full object-cover"></video>
 
-      <!-- 車牌形取景框：靠近一點，把車牌「塞滿」這個框 -->
-      <div class="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" style="width: 70%; height: 38%">
+      <!-- 細長取景框：對準「號碼那一行」（電動車/重型等字樣別框進去）-->
+      <div class="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" style="width: 76%; height: 14%">
         <div class="h-full w-full rounded-lg border-2 border-emerald-400 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]"></div>
       </div>
 
