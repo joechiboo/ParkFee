@@ -32,7 +32,7 @@ async function loadRef() {
     for (const a of list) {
       if (!a.車號) continue
       const k = normalizeTWPlate(a.車號) // 與 OCR/手動查詢同一正規化 → 對得上(含補連字號)
-      if (!p.has(k)) p.set(k, { 車位: [], 戶號: a.戶號, 車種: a.車種, 已繳費: a.已繳費 })
+      if (!p.has(k)) p.set(k, { 車位: [], 車種: a.車種, 已繳費: a.已繳費 }) // 不存戶號（個資從簡）
       p.get(k).車位.push(String(a.車位編號))
     }
     byPlate.value = p
@@ -66,7 +66,7 @@ function lookup() {
       tone: 'blue',
       plate: pl,
       seat: info.車位.join('、'),
-      text: `🅿️ 應停 ${info.車位.join('、')}　戶 ${info.戶號}　${info.車種 || ''} ${paid} — 請確認車是否停此位`,
+      text: `🅿️ 應停 ${info.車位.join('、')}　${info.車種 || ''} ${paid}`,
       time,
     }
   } else {
