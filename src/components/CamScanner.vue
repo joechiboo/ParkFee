@@ -3,7 +3,7 @@
 // 連續讀到相同有效車牌兩次 → emit('recognized')；也可按「填入」採用目前候選。辨不到/錯 → 父層手動輸入。
 // ⚠️ 相機需 https（GitHub Pages ✓；本機 localhost 也可）。
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import { ensureOcr, ocrRecognize, ocrStage, ocrProgress } from '../lib/ocr.js'
+import { ensureOcr, ocrRecognizePlate, ocrStage, ocrProgress } from '../lib/ocr.js'
 
 const emit = defineEmits(['recognized', 'close'])
 const props = defineProps({ feedback: { type: Object, default: null } }) // {tone,text} 父層結果浮層
@@ -67,9 +67,9 @@ function captureBox() {
   if (!v || !v.videoWidth) return null
   const vw = v.videoWidth
   const vh = v.videoHeight
-  // 細長框：只框「號碼那一行」(避開電動車/重型等上方字樣與兩行排版，單行辨識器才讀得準)
-  const bw = vw * 0.76
-  const bh = vh * 0.14
+  // 寬鬆框：車牌大致放進來即可，偵測會自動找出文字行（含號碼那行），不必對準
+  const bw = vw * 0.84
+  const bh = vh * 0.5
   const bx = (vw - bw) / 2
   const by = (vh - bh) / 2
   const c = workCanvas
@@ -85,9 +85,16 @@ async function scanOnce() {
   if (!c) return
   busy = true
   try {
-    const text = await ocrRecognize(c)
-    raw.value = text
-    const v = validate(text)
+    const texts = await ocrRecognizePlate(c)
+    raw.value = texts.filter(Boolean).join(' | ') // 顯示所有偵測到的文字行（除錯/觀察）
+    let v = ''
+    for (const t of texts) {
+      const x = validate(t)
+      if (x) {
+        v = x
+        break
+      }
+    }
     if (v) {
       candidate.value = v
       if (v === lastValid) {
@@ -121,7 +128,7 @@ onMounted(async () => {
   try {
     await ensureOcr()
     ready = true
-    status.value = '把框對準「號碼」那一行（電動車等字樣別框進去）'
+    status.value = '把車牌大致放進框內，會自動找出號碼…'
   } catch (e) {
     camErr.value = '辨識引擎載入失敗：' + (e?.message || e?.name || '未知')
     return
@@ -140,8 +147,8 @@ onBeforeUnmount(() => {
     <div class="relative flex-1 overflow-hidden">
       <video ref="videoEl" playsinline muted autoplay class="h-full w-full object-cover"></video>
 
-      <!-- 細長取景框：對準「號碼那一行」（電動車/重型等字樣別框進去）-->
-      <div class="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" style="width: 76%; height: 14%">
+      <!-- 寬鬆取景框：車牌大致放進來即可，偵測會自動找出號碼那行 -->
+      <div class="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" style="width: 84%; height: 50%">
         <div class="h-full w-full rounded-lg border-2 border-emerald-400 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]"></div>
       </div>
 
