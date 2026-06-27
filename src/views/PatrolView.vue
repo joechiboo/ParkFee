@@ -7,8 +7,14 @@ import { sessionHousehold } from '../store/session.js'
 import { isAdmin, ADMIN_PASSWORD } from '../store/roles.js'
 import { listAssignments } from '../store/locked.js'
 import { normalizeTWPlate } from '../data/plate.js'
+import CamScanner from '../components/CamScanner.vue'
 
 const admin = computed(() => isAdmin(sessionHousehold.value))
+const scanning = ref(false)
+function onRecognized({ value }) {
+  plate.value = value
+  lookup()
+}
 
 // ── 參考表（巡邏前載一次）：車號 → { 車位[], 戶號, 車種, 已繳費 } ──
 const refLoaded = ref(false)
@@ -95,8 +101,8 @@ const TONE = {
 
     <template v-else>
       <p class="mt-1 text-sm text-slate-500">
-        輸入<b>車牌</b> → 顯示該車<b>應停的車位</b> → 你<b>用眼睛核對</b>車是否真的停在那一格。
-        <span class="text-slate-400">（即時相機辨識暫停，先用穩定手動；OCR 之後改用 onnxruntime-web 重做）</span>
+        掃（或輸入）<b>車牌</b> → 顯示該車<b>應停的車位</b> → 你<b>用眼睛核對</b>車是否真的停在那一格。
+        車位號看地面即可、不必掃。
       </p>
 
       <!-- 參考表狀態 -->
@@ -111,7 +117,7 @@ const TONE = {
 
       <!-- 查詢輸入 -->
       <div class="mt-3 rounded-lg border border-slate-200 bg-white p-4">
-        <label class="block text-xs font-medium text-slate-600">車牌</label>
+        <label class="block text-xs font-medium text-slate-600">車牌（掃描或手動輸入）</label>
         <div class="mt-1 flex gap-2">
           <input
             v-model="plate"
@@ -126,8 +132,16 @@ const TONE = {
           >
             查詢
           </button>
+          <button
+            class="rounded border border-emerald-500 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+            @click="scanning = true"
+          >
+            📷
+          </button>
         </div>
       </div>
+
+      <CamScanner v-if="scanning" :feedback="result" @recognized="onRecognized" @close="scanning = false" />
 
       <!-- 結果 -->
       <div v-if="result" class="mt-3 rounded-lg border-2 p-4" :class="TONE[result.tone]">
