@@ -158,7 +158,7 @@ onBeforeUnmount(() => {
       <div
         v-if="flash"
         class="absolute inset-x-3 top-3 rounded-lg border-2 p-3 text-center text-sm font-bold text-white"
-        :class="flash.tone === 'red' ? 'border-rose-300 bg-rose-600/90' : 'border-blue-300 bg-blue-600/90'"
+        :class="flash.tone === 'red' ? 'border-rose-300 bg-rose-600/90' : flash.tone === 'amber' ? 'border-amber-300 bg-amber-500/90' : 'border-emerald-300 bg-emerald-600/90'"
       >
         {{ flash.text }}
       </div>

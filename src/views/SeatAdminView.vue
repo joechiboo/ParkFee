@@ -6,8 +6,8 @@ import { ref, computed, onMounted } from 'vue'
 import SeatMap from '../components/SeatMap.vue'
 import { motorSeats } from '../map/seats.js'
 import { lockedSeats, refreshLocked, listAssignments, assignSeat, unlockSeat } from '../store/locked.js'
-import { sessionHousehold } from '../store/session.js'
-import { isAdmin, ADMIN_PASSWORD } from '../store/roles.js'
+import { sessionHousehold, sessionPlate } from '../store/session.js'
+import { isAdmin } from '../store/roles.js'
 
 const admin = computed(() => isAdmin(sessionHousehold.value))
 const seats = motorSeats()
@@ -46,7 +46,7 @@ onMounted(async () => {
 
 async function reloadAssignments() {
   try {
-    assignments.value = await listAssignments(ADMIN_PASSWORD)
+    assignments.value = await listAssignments(sessionPlate.value)
   } catch (e) {
     err.value = e?.message || '讀取指派失敗'
   }
@@ -77,7 +77,7 @@ async function doAssign() {
         配位狀態: form.value.配位狀態,
         已繳費: form.value.已繳費,
       },
-      ADMIN_PASSWORD,
+      sessionPlate.value,
     )
     await reloadAssignments()
     selected.value = null
@@ -93,7 +93,7 @@ async function doUnlock(seatId) {
   saving.value = true
   try {
     const a = assignMap.value.get(String(seatId))
-    await unlockSeat(seatId, a?.車號 || '', ADMIN_PASSWORD)
+    await unlockSeat(seatId, a?.車號 || '', sessionPlate.value)
     await reloadAssignments()
     if (selected.value && String(selected.value.id) === String(seatId)) selected.value = null
   } catch (e) {

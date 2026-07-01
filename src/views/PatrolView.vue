@@ -3,8 +3,8 @@
 // 不掃車位號（地面號碼肉眼讀即可）。查無車牌＝未登記/未配位 → 可能違停。
 // 參考表（車號→車位）巡邏前載一次，之後純本地查、可離線。
 import { ref, computed, onMounted } from 'vue'
-import { sessionHousehold } from '../store/session.js'
-import { isAdmin, ADMIN_PASSWORD } from '../store/roles.js'
+import { sessionHousehold, sessionPlate } from '../store/session.js'
+import { isAdmin } from '../store/roles.js'
 import { listAssignments } from '../store/locked.js'
 import { normalizeTWPlate } from '../data/plate.js'
 import CamScanner from '../components/CamScanner.vue'
@@ -27,7 +27,7 @@ async function loadRef() {
   loadingRef.value = true
   refErr.value = ''
   try {
-    const list = await listAssignments(ADMIN_PASSWORD)
+    const list = await listAssignments(sessionPlate.value)
     const p = new Map()
     for (const a of list) {
       if (!a.車號) continue
@@ -53,6 +53,7 @@ const result = ref(null)
 const log = ref([])
 const checked = computed(() => log.value.length)
 const unknownCount = computed(() => log.value.filter((r) => r.tone === 'red').length)
+const unpaidCount = computed(() => log.value.filter((r) => r.tone === 'amber').length)
 
 function lookup() {
   const pl = normalizeTWPlate(plate.value)
@@ -61,16 +62,20 @@ function lookup() {
   const time = new Date().toTimeString().slice(0, 8)
   let r
   if (info) {
-    const paid = info.已繳費 ? '✓已繳' : '未繳'
+    const seat = info.車位.join('、')
+    const paid = !!info.已繳費
     r = {
-      tone: 'blue',
+      tone: paid ? 'green' : 'amber', // 🟢已繳 / 🟡未繳
       plate: pl,
-      seat: info.車位.join('、'),
-      text: `🅿️ 應停 ${info.車位.join('、')}　${info.車種 || ''} ${paid}`,
+      seat,
+      text: paid
+        ? `✅ 應停 ${seat}　${info.車種 || ''}　已繳費`
+        : `⚠️ 應停 ${seat}　${info.車種 || ''}　未繳費`,
       time,
     }
   } else {
-    r = { tone: 'red', plate: pl, seat: '', text: `查無車牌 ${pl}：未登記/未配位 → 可能違停`, time }
+    // 🔴 未登記 / 未配位
+    r = { tone: 'red', plate: pl, seat: '', text: `🔴 查無車牌 ${pl}：未登記／未配位 → 可能違停`, time }
   }
   result.value = r
   log.value.unshift(r)
@@ -82,7 +87,8 @@ function clearLog() {
 }
 
 const TONE = {
-  blue: 'border-blue-300 bg-blue-50 text-blue-800',
+  green: 'border-emerald-300 bg-emerald-50 text-emerald-800',
+  amber: 'border-amber-300 bg-amber-50 text-amber-800',
   red: 'border-rose-300 bg-rose-50 text-rose-800',
 }
 </script>
@@ -153,7 +159,7 @@ const TONE = {
       <div v-if="checked" class="mt-4">
         <div class="flex items-center justify-between">
           <div class="text-sm font-medium text-slate-700">
-            本次查 {{ checked }} 台 · 查無/可能違停 <b class="text-rose-600">{{ unknownCount }}</b>
+            本次查 {{ checked }} 台 · 未繳 <b class="text-amber-600">{{ unpaidCount }}</b> · 查無/違停 <b class="text-rose-600">{{ unknownCount }}</b>
           </div>
           <button class="text-xs text-slate-500 hover:underline" @click="clearLog">清空記錄</button>
         </div>
@@ -162,7 +168,7 @@ const TONE = {
             v-for="(r, i) in log"
             :key="i"
             class="flex items-start gap-2 rounded px-2 py-1 text-xs"
-            :class="r.tone === 'red' ? 'bg-rose-50' : 'bg-slate-50'"
+            :class="r.tone === 'red' ? 'bg-rose-50' : r.tone === 'amber' ? 'bg-amber-50' : 'bg-emerald-50'"
           >
             <span class="font-mono font-semibold">{{ r.plate }}</span>
             <span class="flex-1 text-slate-600">{{ r.seat ? '應停 ' + r.seat : '查無 / 未配位' }}</span>

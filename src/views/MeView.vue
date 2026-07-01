@@ -26,8 +26,8 @@ function startEdit() {
 
 async function doLogin() {
   error.value = ''
-  // 管理員特例（前端，免後端）：戶號 admin ＋ 車號 樂菲莊園
-  const admin = tryAdminLogin(creds.戶號, creds.車號)
+  // 管理員登入：戶號 admin ＋「車號」欄輸入管理密碼（前端不比對＝樂觀；密碼存 sessionPlate、由後端 secret 把關）
+  const admin = tryAdminLogin(creds.戶號)
   if (admin) {
     household.value = admin
     sessionPlate.value = creds.車號
