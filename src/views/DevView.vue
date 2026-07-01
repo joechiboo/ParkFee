@@ -10,6 +10,9 @@ import { buildRoster } from '../data/registry.js'
 import { parseCSVObjects } from '../data/csv.js'
 import { setImportedRoster, clearImportedRoster } from '../store/roster.js'
 
+// 正式部署也對「管理員」開放此頁（抽籤日免架本機）；純測試工具（灌 mock／清除測試／demo）只在開發模式顯示。
+const isDev = import.meta.env.DEV
+
 // ── 灌 mock 進 Supabase ───────────────────────────────────────
 const seeding = ref(false)
 const seedLog = ref([])
@@ -117,15 +120,15 @@ function runDemo() {
 <template>
   <section class="mx-auto max-w-3xl space-y-6">
     <div class="rounded-lg border-2 border-dashed border-amber-400 bg-amber-50 p-4">
-      <h1 class="text-2xl font-bold text-amber-900">🛠 工程師專區</h1>
+      <h1 class="text-2xl font-bold text-amber-900">🛠 進階作業（管理員）</h1>
       <p class="mt-1 text-sm text-amber-800">
-        僅開發模式可見（<code>import.meta.env.DEV</code>），正式部署不含此頁。
-        mock 戶號**跨棟 A–H/S**、戶段一律 <b>9xx</b>（901+），清除只刪「戶段 9xx」這批。
+        限管理員。<b>抽籤日</b>用「④ 匯入真實名冊」→ 配位頁抽籤；「②½ 清除配位結果」可撤回發佈重做。
+        <span v-if="isDev">灌 mock／清除測試／demo 僅開發模式顯示（mock 戶段一律 <b>9xx</b>，清除只刪 9xx）。</span>
       </p>
     </div>
 
-    <!-- 1. 灌 mock -->
-    <div class="rounded-lg border border-slate-200 bg-white p-4">
+    <!-- 1. 灌 mock（僅開發模式）-->
+    <div v-if="isDev" class="rounded-lg border border-slate-200 bg-white p-4">
       <h2 class="font-semibold">① 灌 20 筆 mock 進 Supabase</h2>
       <p class="mt-1 text-sm text-slate-500">含單/多車、一般/重機、身障、志願小位；志願有少選/未填/多選。寫入 household+vehicle，並存車位志願。</p>
       <button
@@ -150,8 +153,8 @@ function runDemo() {
       </p>
     </div>
 
-    <!-- 2. 清除 -->
-    <div class="rounded-lg border border-slate-200 bg-white p-4">
+    <!-- 2. 清除測試資料（僅開發模式）-->
+    <div v-if="isDev" class="rounded-lg border border-slate-200 bg-white p-4">
       <h2 class="font-semibold">② 清除測試資料</h2>
       <p class="mt-1 text-sm text-slate-500">RLS 禁止前端刪除 → 複製下列 SQL，貼到 Supabase Dashboard → SQL Editor 執行（cascade 連車輛一起刪）。</p>
       <div class="mt-2 flex items-center gap-2">
@@ -200,8 +203,8 @@ function runDemo() {
       </div>
     </div>
 
-    <!-- 3. 分發 demo -->
-    <div class="rounded-lg border border-slate-200 bg-white p-4">
+    <!-- 3. 分發 demo（僅開發模式）-->
+    <div v-if="isDev" class="rounded-lg border border-slate-200 bg-white p-4">
       <h2 class="font-semibold">③ 跑分發 demo（記憶體、不寫 DB）</h2>
       <p class="mt-1 text-sm text-slate-500">把 mock 餵真 <code>distribute()</code> 引擎，看配位結果（含應繳/狀態/簽約期限）。</p>
       <button class="mt-3 rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700" @click="runDemo">

@@ -32,17 +32,15 @@ const routes = [
   },
 ]
 
-// 工程師專區：只在開發模式註冊；正式 build（npm run build / GitHub Pages）import.meta.env.DEV=false
-// → 此路由與 DevView/mock 程式碼一併被 tree-shake，不會上線。
-if (import.meta.env.DEV) {
-  routes.push({
-    path: '/dev',
-    name: 'dev',
-    component: () => import('../views/DevView.vue'),
-    meta: { title: '工程師專區' },
-    beforeEnter: () => (isAdmin(sessionHousehold.value) ? true : { name: 'me' }), // dev 專區（含真實名冊匯入）限管理員
-  })
-}
+// 進階作業（含真實名冊匯入、清除配位結果）：正式版也註冊，但**限管理員**（抽籤日免架本機 dev）。
+// DevView 內純測試工具（灌 mock／清除測試／demo）以 import.meta.env.DEV 於正式版隱藏。
+routes.push({
+  path: '/dev',
+  name: 'dev',
+  component: () => import('../views/DevView.vue'),
+  meta: { title: '進階作業' },
+  beforeEnter: () => (isAdmin(sessionHousehold.value) ? true : { name: 'me' }),
+})
 
 export default createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),

@@ -25,9 +25,6 @@ const nav = [
 ]
 const visibleNav = computed(() => nav.filter((i) => !i.adminOnly || isAdmin(sessionHousehold.value)))
 
-// 工程師專區入口：開發模式 + 管理員才顯示（含真實名冊匯入；正式 build 整個 tree-shake 掉）。
-const isDev = import.meta.env.DEV
-
 // 版號＝建置（發佈）時間，vite.config 的 define 注入；藏頁尾方便確認線上版本。
 // eslint-disable-next-line no-undef
 const version = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'Vdev'
@@ -59,12 +56,12 @@ const version = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'Vdev
             🔧 管理
           </RouterLink>
           <RouterLink
-            v-if="isDev && isAdmin(sessionHousehold)"
+            v-if="isAdmin(sessionHousehold)"
             to="/dev"
             class="shrink-0 rounded border border-dashed border-amber-400 px-3 py-1.5 text-amber-700 hover:bg-amber-50"
             active-class="bg-amber-500 text-white hover:bg-amber-500"
           >
-            🛠 dev
+            🛠 進階
           </RouterLink>
         </nav>
         <div v-if="sessionHousehold" class="ml-auto flex shrink-0 items-center gap-2">
