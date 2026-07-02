@@ -122,6 +122,15 @@ function accept() {
   if (candidate.value) emit('recognized', { type: 'plate', value: candidate.value })
 }
 
+// 辨識不到/辨錯 → 手動輸入車牌送出（與辨識同一條路）。
+const manual = ref('')
+function submitManual() {
+  const v = manual.value.trim()
+  if (!v) return
+  emit('recognized', { type: 'plate', value: v })
+  manual.value = ''
+}
+
 onMounted(async () => {
   await startCamera()
   if (camErr.value) return
@@ -180,14 +189,29 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div class="flex items-center gap-2 bg-slate-900 p-3">
-      <span class="text-sm text-slate-300">對準車牌</span>
-      <button
-        class="rounded bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white disabled:opacity-40"
-        :disabled="!candidate"
-        @click="accept"
-      >填入</button>
-      <button class="ml-auto rounded border border-slate-600 px-4 py-1.5 text-sm text-slate-200" @click="emit('close')">關閉</button>
+    <div class="space-y-2 bg-slate-900 p-3">
+      <!-- 辨識不到？直接手動輸入車牌 -->
+      <div class="flex items-center gap-2">
+        <input
+          v-model="manual"
+          placeholder="辨識不到？手動輸入車牌（例 ABC-1234）"
+          class="min-w-0 flex-1 rounded border border-slate-600 bg-slate-800 px-3 py-1.5 font-mono text-sm uppercase text-white placeholder:text-slate-500 focus:outline-none"
+          @keyup.enter="submitManual"
+        />
+        <button
+          class="flex-none rounded bg-slate-600 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40"
+          :disabled="!manual.trim()"
+          @click="submitManual"
+        >手動送出</button>
+      </div>
+      <div class="flex items-center gap-2">
+        <button
+          class="rounded bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white disabled:opacity-40"
+          :disabled="!candidate"
+          @click="accept"
+        >填入辨識值{{ candidate ? '：' + candidate : '' }}</button>
+        <button class="ml-auto rounded border border-slate-600 px-4 py-1.5 text-sm text-slate-200" @click="emit('close')">關閉</button>
+      </div>
     </div>
   </div>
 </template>

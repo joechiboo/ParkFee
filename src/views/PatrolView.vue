@@ -69,8 +69,8 @@ function lookup() {
       plate: pl,
       seat,
       text: paid
-        ? `✅ 應停 ${seat}　${info.車種 || ''}　已繳費`
-        : `⚠️ 應停 ${seat}　${info.車種 || ''}　未繳費`,
+        ? `✅ ${pl}　應停 ${seat}　${info.車種 || ''}　已繳費`
+        : `⚠️ ${pl}　應停 ${seat}　${info.車種 || ''}　未繳費`,
       time,
     }
   } else {
