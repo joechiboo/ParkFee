@@ -6,7 +6,7 @@
 //   list   → 回傳目前鎖定清單 + 各位指派（管理員專屬讀，含個資）。
 //   assign → 鎖定該位；若帶車號則把該車指派到此位（寫 vehicle）。
 //   unlock → 解鎖該位；若帶車號則清掉該車的指派。
-import { corsHeaders, json, adminClient } from '../_shared/http.ts'
+import { corsHeaders, json, adminClient, verifyAdmin } from '../_shared/http.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -14,10 +14,8 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json()
-    const ADMIN = Deno.env.get('ADMIN_PASSWORD')
-    if (!ADMIN || String(body?.password ?? '') !== ADMIN) return json({ error: '管理員驗證失敗' }, 403)
-
     const db = adminClient()
+    if (!(await verifyAdmin(db, body))) return json({ error: '管理員驗證失敗' }, 403)
     const op = body.op
 
     if (op === 'list') {

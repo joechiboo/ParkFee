@@ -37,6 +37,16 @@ export const sessionPlate = ref(safeGet(PKEY) || '')
 watch(sessionHousehold, (v) => safeSet(HKEY, v ? JSON.stringify(v) : null), { deep: true })
 watch(sessionPlate, (v) => safeSet(PKEY, v || null))
 
+// 管理員驗證 body（送 Edge Function 寫入/管理讀取）：後端二擇一——
+//   admin 帳號 → password 路；真實白名單戶號(如 H3-6) → 戶號+認證車號(車牌)擁有權路。
+export function adminAuth() {
+  return {
+    password: sessionPlate.value, // admin 帳號：車號欄輸入的密碼
+    戶號: sessionHousehold.value?.戶號 || '',
+    認證車號: sessionPlate.value, // 白名單戶號：登入用的車牌
+  }
+}
+
 export function clearSession() {
   sessionHousehold.value = null
   sessionPlate.value = ''

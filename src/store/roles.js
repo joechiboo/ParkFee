@@ -6,6 +6,9 @@
 // ⚠️ 仍是「共用密碼」等級。要更嚴（per-household）＝ household.is_admin + 認證車號擁有權驗證（A 版，後續）。
 
 const ADMIN_ID = 'admin'
+// 真實戶號登入即具管理權（如本人 H3-6）。與後端 _shared/http.ts 的 verifyAdmin 白名單保持一致。
+// 這些戶號寫入時走「車牌擁有權」驗證（免共用密碼）；admin 帳號走密碼。要加管理員兩邊都改。
+const ADMIN_HOUSEHOLDS = ['H3-6']
 
 // 戶號 admin → 回 admin 假戶（帶 is_admin）。輸入的「車號」＝管理密碼，由呼叫端存為 sessionPlate；此處不比對。
 export function tryAdminLogin(id) {
@@ -15,7 +18,8 @@ export function tryAdminLogin(id) {
   return null
 }
 
-export const isAdmin = (household) => !!household?.is_admin
+export const isAdmin = (household) =>
+  !!household?.is_admin || ADMIN_HOUSEHOLDS.includes(household?.戶號)
 
 // 是否為「特例管理帳號」（admin/樂菲莊園，無真實登記）。
 // 真實住戶就算具管理權（白名單，如 H3-6）也回 false → 仍看得到自己的車輛/編輯/選位。

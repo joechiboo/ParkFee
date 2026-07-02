@@ -5,6 +5,7 @@
 
 import { ref } from 'vue'
 import { loadOccupied, saveOccupied } from './occupied.js' // 本機快取（離線/抽籤同機用）
+import { adminAuth } from './session.js' // 管理員驗證 body（密碼 or 車牌擁有權）
 
 const useSupabase = !!import.meta.env?.VITE_SUPABASE_URL
 
@@ -33,12 +34,12 @@ export async function refreshLocked() {
   }
 }
 
-// 設定鎖定清單（整批取代）。password＝管理員密碼（登入時的車號）。
-export async function setLocked(ids, password) {
+// 設定鎖定清單（整批取代）。管理員驗證由 adminAuth() 提供（密碼 or 車牌擁有權）。
+export async function setLocked(ids) {
   const clean = [...new Set((ids || []).map(String))]
   if (useSupabase) {
     const { data, error } = await (await client()).functions.invoke('set-locked', {
-      body: { 車位編號: clean, password },
+      body: { 車位編號: clean, ...adminAuth() },
     })
     let msg = error?.message
     try {
@@ -71,19 +72,19 @@ async function callAssign(body) {
 
 // 管理員專屬：讀回目前鎖定清單 + 各位指派（戶號/車號/繳費，來自 deny-all 的 vehicle）。
 // 無 Supabase 時退回「只有 id」（本機無 vehicle 個資）。
-export async function listAssignments(password) {
+export async function listAssignments() {
   if (!useSupabase) return [...lockedSeats.value].map((id) => ({ 車位編號: id }))
-  const data = await callAssign({ op: 'list', password })
+  const data = await callAssign({ op: 'list', ...adminAuth() })
   return data?.assignments || []
 }
 
 // 指派/鎖定一個車位。rec：{ 車位編號, 車位類型, 車號?, 配位狀態?, 已繳費? }。
 // 帶車號 → 把該車指派到此位（寫 vehicle）；不帶 → 純鎖定（保留/維修）。
-export async function assignSeat(rec, password) {
+export async function assignSeat(rec) {
   const seat = String(rec?.車位編號 ?? '').trim()
   if (!seat) throw new Error('缺少車位編號')
   if (useSupabase) {
-    await callAssign({ op: 'assign', ...rec, 車位編號: seat, password })
+    await callAssign({ op: 'assign', ...rec, 車位編號: seat, ...adminAuth() })
   }
   const next = new Set(lockedSeats.value)
   next.add(seat)
@@ -92,11 +93,11 @@ export async function assignSeat(rec, password) {
 }
 
 // 解鎖一個車位；帶車號則一併清掉該車指派。
-export async function unlockSeat(seatId, plate, password) {
+export async function unlockSeat(seatId, plate) {
   const seat = String(seatId ?? '').trim()
   if (!seat) return
   if (useSupabase) {
-    await callAssign({ op: 'unlock', 車位編號: seat, 車號: plate || '', password })
+    await callAssign({ op: 'unlock', 車位編號: seat, 車號: plate || '', ...adminAuth() })
   }
   const next = new Set(lockedSeats.value)
   next.delete(seat)

@@ -8,7 +8,7 @@ import { resultCSV, resultRows } from '../export/result.js'
 import { sampleRoster } from '../data/sample.js'
 import { lockedSeats, refreshLocked } from '../store/locked.js'
 import { publishResult } from '../store/db.js'
-import { sessionHousehold, sessionPlate } from '../store/session.js'
+import { sessionHousehold, adminAuth } from '../store/session.js'
 import { isAdmin } from '../store/roles.js'
 
 // ── 資料：示範用 20 戶樣本（正式版改接 Supabase 全名冊 → buildRoster → distribute）──
@@ -96,7 +96,7 @@ async function publishToBackend() {
   publishing.value = true
   try {
     const rows = resultRows(result.value, { 公告日: announceDate.value })
-    const { updated, notFound = [] } = await publishResult({ rows, password: sessionPlate.value })
+    const { updated, notFound = [] } = await publishResult({ rows, ...adminAuth() })
     const total = rows.filter((r) => r.車號).length
     if (notFound.length) {
       const show = notFound.slice(0, 10).join('、') + (notFound.length > 10 ? ` …等 ${notFound.length} 筆` : '')

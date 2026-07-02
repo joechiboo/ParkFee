@@ -1,5 +1,9 @@
-// Edge Function 共用：CORS、JSON 回應、admin（service_role）client、整戶查詢。
+// Edge Function 共用：CORS、JSON 回應、admin（service_role）client、整戶查詢、管理員驗證。
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2'
+import { normalizeHousehold, normalizeTWPlate } from './normalize.ts'
+
+// 額外管理員戶號：真實戶號 + 已登記車牌登入即可管理（免共用密碼）。要加管理員就改這裡。
+const ADMIN_HOUSEHOLDS = ['H3-6']
 
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*', // 之後可收斂為 GitHub Pages 來源
@@ -21,6 +25,22 @@ export function adminClient(): SupabaseClient {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     { auth: { persistSession: false } },
   )
+}
+
+// 管理員驗證（寫入/管理讀取用）。任一條成立即通過：
+//   A 路：password === ADMIN_PASSWORD secret（admin 帳號用）。
+//   B 路：戶號在白名單 + 認證車號確屬該戶（擁有權；H3-6 等真實戶號用，免密碼）。
+export async function verifyAdmin(
+  db: SupabaseClient,
+  body: { password?: string; 戶號?: string; 認證車號?: string },
+): Promise<boolean> {
+  const secret = Deno.env.get('ADMIN_PASSWORD')
+  if (secret && String(body?.password ?? '') === secret) return true // A 路：密碼
+  const hid = normalizeHousehold(body?.戶號)
+  const plate = normalizeTWPlate(body?.認證車號)
+  if (!hid || !plate || !ADMIN_HOUSEHOLDS.includes(hid)) return false
+  const { data } = await db.from('vehicle').select('戶號').eq('車號', plate).maybeSingle() // B 路：車牌擁有權
+  return !!data && data.戶號 === hid
 }
 
 // 取整戶（含車輛，依第幾輛排序）；找不到回 null。

@@ -6,7 +6,7 @@ import { ref, computed, onMounted } from 'vue'
 import SeatMap from '../components/SeatMap.vue'
 import { motorSeats } from '../map/seats.js'
 import { lockedSeats, refreshLocked, listAssignments, assignSeat, unlockSeat } from '../store/locked.js'
-import { sessionHousehold, sessionPlate } from '../store/session.js'
+import { sessionHousehold } from '../store/session.js'
 import { isAdmin } from '../store/roles.js'
 
 const admin = computed(() => isAdmin(sessionHousehold.value))
@@ -46,7 +46,7 @@ onMounted(async () => {
 
 async function reloadAssignments() {
   try {
-    assignments.value = await listAssignments(sessionPlate.value)
+    assignments.value = await listAssignments()
   } catch (e) {
     err.value = e?.message || '讀取指派失敗'
   }
@@ -69,16 +69,13 @@ async function doAssign() {
   err.value = ''
   saving.value = true
   try {
-    await assignSeat(
-      {
-        車位編號: String(selected.value.id),
-        車位類型: selected.value.type,
-        車號: form.value.車號.trim().toUpperCase(),
-        配位狀態: form.value.配位狀態,
-        已繳費: form.value.已繳費,
-      },
-      sessionPlate.value,
-    )
+    await assignSeat({
+      車位編號: String(selected.value.id),
+      車位類型: selected.value.type,
+      車號: form.value.車號.trim().toUpperCase(),
+      配位狀態: form.value.配位狀態,
+      已繳費: form.value.已繳費,
+    })
     await reloadAssignments()
     selected.value = null
   } catch (e) {
@@ -93,7 +90,7 @@ async function doUnlock(seatId) {
   saving.value = true
   try {
     const a = assignMap.value.get(String(seatId))
-    await unlockSeat(seatId, a?.車號 || '', sessionPlate.value)
+    await unlockSeat(seatId, a?.車號 || '')
     await reloadAssignments()
     if (selected.value && String(selected.value.id) === String(seatId)) selected.value = null
   } catch (e) {

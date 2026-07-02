@@ -3,7 +3,7 @@
 import { ref } from 'vue'
 import { makeMockHouseholds, toRows, WIPE_SQL } from '../dev/mock.js'
 import { register, saveWishes, publishResult, RegistrationError } from '../store/db.js'
-import { sessionPlate } from '../store/session.js'
+import { adminAuth } from '../store/session.js'
 import { distribute } from '../lottery/distribute.js'
 import { resultRows } from '../export/result.js'
 import { buildRoster } from '../data/registry.js'
@@ -62,7 +62,7 @@ async function clearResult() {
   clearing.value = true
   clearMsg.value = ''
   try {
-    await publishResult({ rows: [], password: sessionPlate.value })
+    await publishResult({ rows: [], ...adminAuth() })
     clearMsg.value = '✓ 已清除配位結果（vehicle 結果欄全部清空，住戶登入將看不到車位）'
   } catch (e) {
     clearMsg.value = e?.message || '清除失敗'

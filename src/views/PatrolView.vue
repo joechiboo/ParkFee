@@ -3,7 +3,7 @@
 // 不掃車位號（地面號碼肉眼讀即可）。查無車牌＝未登記/未配位 → 可能違停。
 // 參考表（車號→車位）巡邏前載一次，之後純本地查、可離線。
 import { ref, computed, onMounted } from 'vue'
-import { sessionHousehold, sessionPlate } from '../store/session.js'
+import { sessionHousehold } from '../store/session.js'
 import { isAdmin } from '../store/roles.js'
 import { listAssignments } from '../store/locked.js'
 import { normalizeTWPlate } from '../data/plate.js'
@@ -27,7 +27,7 @@ async function loadRef() {
   loadingRef.value = true
   refErr.value = ''
   try {
-    const list = await listAssignments(sessionPlate.value)
+    const list = await listAssignments()
     const p = new Map()
     for (const a of list) {
       if (!a.車號) continue
