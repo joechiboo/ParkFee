@@ -27,10 +27,28 @@ function loadOrt() {
   })
 }
 
+// 模型存進 Cache Storage（＝裝置磁碟，刷新/關 App 後仍在）。換模型時把版本號 +1 → 自動重抓。
+const CACHE_NAME = 'parkfee-ocr-v1'
+async function openModelCache() {
+  try {
+    if ('caches' in window) return await caches.open(CACHE_NAME)
+  } catch {
+    /* 隱私模式等不支援 → 退回純下載 */
+  }
+  return null
+}
+
 let loadedBytes = 0
-async function fetchBuf(url) {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error('模型下載失敗 ' + res.status)
+async function fetchBuf(url, cache) {
+  // 1) 先讀裝置快取（存在手機磁碟，刷新後不用重下）。
+  let res = cache ? await cache.match(url).catch(() => null) : null
+  const fromCache = !!res
+  ocrStage.value = fromCache ? '從裝置載入模型' : '下載模型'
+  // 2) 快取沒有才連網下載。
+  if (!res) {
+    res = await fetch(url)
+    if (!res.ok) throw new Error('模型下載失敗 ' + res.status)
+  }
   const reader = res.body.getReader()
   const chunks = []
   for (;;) {
@@ -48,6 +66,14 @@ async function fetchBuf(url) {
     buf.set(c, pos)
     pos += c.length
   }
+  // 3) 首次連網下載成功 → 寫進裝置快取，之後刷新/重開都免下載。
+  if (!fromCache && cache) {
+    try {
+      await cache.put(url, new Response(buf, { headers: { 'Content-Length': String(len) } }))
+    } catch {
+      /* 配額不足等 → 略過，不影響本次使用 */
+    }
+  }
   return buf
 }
 
@@ -61,9 +87,16 @@ export function ensureOcr() {
       loadedBytes = 0
       const ort = await loadOrt()
       ort.env.wasm.wasmPaths = ORT_WASM
+      // 請瀏覽器盡量別驅逐我們的快取（提高模型長存機率；不支援也沒關係）。
+      try {
+        await navigator.storage?.persist?.()
+      } catch {
+        /* ignore */
+      }
+      const cache = await openModelCache()
       ocrStage.value = '下載模型'
-      const detBuf = await fetchBuf(base + 'models/det/det.onnx')
-      const recBuf = await fetchBuf(base + 'models/rec/en_rec.onnx')
+      const detBuf = await fetchBuf(base + 'models/det/det.onnx', cache)
+      const recBuf = await fetchBuf(base + 'models/rec/en_rec.onnx', cache)
       const dictTxt = await (await fetch(base + 'models/rec/en_dict.txt')).text()
       const dict = dictTxt.replace(/\r/g, '').split('\n')
       if (dict[dict.length - 1] === '') dict.pop()
