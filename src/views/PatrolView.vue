@@ -78,7 +78,8 @@ function lookup() {
     r = { tone: 'red', plate: pl, seat: '', text: `🔴 查無車牌 ${pl}：未登記／未配位 → 可能違停`, time }
   }
   result.value = r
-  log.value.unshift(r)
+  // distinct：同一車號只留一列（即時掃描會反覆查同車），重掃＝更新狀態/時間並移到最上。
+  log.value = [r, ...log.value.filter((x) => x.plate !== pl)]
   plate.value = ''
 }
 function clearLog() {
