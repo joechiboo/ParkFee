@@ -5,7 +5,7 @@
 import { ref, computed, onMounted } from 'vue'
 import SeatMap from '../components/SeatMap.vue'
 import { motorSeats } from '../map/seats.js'
-import { lockedSeats, refreshLocked, listAssignments, assignSeat, unlockSeat } from '../store/locked.js'
+import { lockedSeats, refreshLocked, listAssignments, assignSeat, unlockSeat, setLocked } from '../store/locked.js'
 import { sessionHousehold } from '../store/session.js'
 import { isAdmin } from '../store/roles.js'
 
@@ -49,6 +49,36 @@ async function reloadAssignments() {
     assignments.value = await listAssignments()
   } catch (e) {
     err.value = e?.message || '讀取指派失敗'
+  }
+}
+
+// ── 批次鎖定（動線/結構/整區保留）：貼車位編號一次鎖多格。純鎖定(只存 id)、可逐格解除。──
+const seatIdSet = new Set(seats.map((s) => String(s.id)))
+const batchInput = ref('')
+const batchMsg = ref('')
+async function doBatchLock() {
+  batchMsg.value = ''
+  const raw = [...new Set((batchInput.value.match(/\d+/g) || []).map(String))]
+  const valid = raw.filter((id) => seatIdSet.has(id))
+  const unknown = raw.filter((id) => !seatIdSet.has(id))
+  if (!valid.length) {
+    batchMsg.value = '沒讀到有效車位編號'
+    return
+  }
+  saving.value = true
+  try {
+    // 傳「現有鎖定 ∪ 新的」→ setLocked 是整批取代，不聯集會清掉舊鎖。
+    await setLocked([...lockedSeats.value, ...valid])
+    await refreshLocked()
+    await reloadAssignments()
+    batchMsg.value =
+      `已鎖定 ${valid.length} 格` +
+      (unknown.length ? `（略過 ${unknown.length} 個不存在：${unknown.slice(0, 8).join('、')}）` : '')
+    batchInput.value = ''
+  } catch (e) {
+    batchMsg.value = e?.message || '批次鎖定失敗'
+  } finally {
+    saving.value = false
   }
 }
 
@@ -223,6 +253,26 @@ function decorate(s) {
                 >解除</button>
               </div>
             </template>
+          </div>
+
+          <!-- 批次鎖定：動線/結構/整區保留 -->
+          <div class="rounded-lg border border-rose-200 bg-rose-50/40 p-4">
+            <div class="font-semibold text-rose-800">批次鎖定（動線／結構／整區）</div>
+            <p class="mt-1 text-xs text-slate-500">貼上車位編號（逗號/空格/換行皆可），一次鎖定不給選；之後可在下方清單逐格「✕」解除。</p>
+            <textarea
+              v-model="batchInput"
+              rows="2"
+              placeholder="例 271、270、269 490 491 492"
+              class="mt-2 w-full rounded border border-slate-300 px-2 py-1.5 font-mono text-sm"
+            ></textarea>
+            <div class="mt-2 flex items-center gap-2">
+              <button
+                class="rounded bg-rose-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+                :disabled="saving || !batchInput.trim()"
+                @click="doBatchLock"
+              >批次鎖定</button>
+              <span v-if="batchMsg" class="text-xs text-slate-600">{{ batchMsg }}</span>
+            </div>
           </div>
 
           <!-- 已指派清單 -->
