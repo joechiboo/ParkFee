@@ -52,31 +52,50 @@ async function reloadAssignments() {
   }
 }
 
-// ── 批次鎖定（動線/結構/整區保留）：貼車位編號一次鎖多格。純鎖定(只存 id)、可逐格解除。──
+// ── 批次鎖定／解除（動線/結構/整區）：支援範圍語法。純鎖定(只存 id)、可再批次解除。──
 const seatIdSet = new Set(seats.map((s) => String(s.id)))
 const batchInput = ref('')
 const batchMsg = ref('')
-async function doBatchLock() {
+
+// 解析輸入：範圍 423-438 / 423–438 / 423~438，加逗號/空白/換行分隔的單號，混用皆可。
+function parseSeatInput(text) {
+  const ids = new Set()
+  const rest = String(text).replace(/(\d+)\s*[-–—~〜至到]\s*(\d+)/g, (_, a, b) => {
+    let x = +a
+    let y = +b
+    if (x > y) [x, y] = [y, x]
+    for (let i = x; i <= y; i++) ids.add(String(i))
+    return ' '
+  })
+  for (const m of rest.match(/\d+/g) || []) ids.add(m)
+  return [...ids]
+}
+const parsedValid = computed(() => parseSeatInput(batchInput.value).filter((id) => seatIdSet.has(id)))
+
+// mode：'lock' 加入鎖定 ∪、'unlock' 從鎖定移除。setLocked 整批取代，故都以現有清單為基準運算。
+async function runBatch(mode) {
   batchMsg.value = ''
-  const raw = [...new Set((batchInput.value.match(/\d+/g) || []).map(String))]
-  const valid = raw.filter((id) => seatIdSet.has(id))
-  const unknown = raw.filter((id) => !seatIdSet.has(id))
+  const parsed = parseSeatInput(batchInput.value)
+  const valid = parsed.filter((id) => seatIdSet.has(id))
+  const unknown = parsed.filter((id) => !seatIdSet.has(id))
   if (!valid.length) {
     batchMsg.value = '沒讀到有效車位編號'
     return
   }
   saving.value = true
   try {
-    // 傳「現有鎖定 ∪ 新的」→ setLocked 是整批取代，不聯集會清掉舊鎖。
-    await setLocked([...lockedSeats.value, ...valid])
+    const cur = [...lockedSeats.value]
+    const vset = new Set(valid)
+    const next = mode === 'lock' ? [...cur, ...valid] : cur.filter((id) => !vset.has(id))
+    await setLocked(next)
     await refreshLocked()
     await reloadAssignments()
     batchMsg.value =
-      `已鎖定 ${valid.length} 格` +
+      `${mode === 'lock' ? '已鎖定' : '已解除'} ${valid.length} 格` +
       (unknown.length ? `（略過 ${unknown.length} 個不存在：${unknown.slice(0, 8).join('、')}）` : '')
     batchInput.value = ''
   } catch (e) {
-    batchMsg.value = e?.message || '批次鎖定失敗'
+    batchMsg.value = e?.message || '操作失敗'
   } finally {
     saving.value = false
   }
@@ -255,23 +274,31 @@ function decorate(s) {
             </template>
           </div>
 
-          <!-- 批次鎖定：動線/結構/整區保留 -->
+          <!-- 批次鎖定／解除：動線/結構/整區保留 -->
           <div class="rounded-lg border border-rose-200 bg-rose-50/40 p-4">
-            <div class="font-semibold text-rose-800">批次鎖定（動線／結構／整區）</div>
-            <p class="mt-1 text-xs text-slate-500">貼上車位編號（逗號/空格/換行皆可），一次鎖定不給選；之後可在下方清單逐格「✕」解除。</p>
+            <div class="font-semibold text-rose-800">批次鎖定／解除（動線／結構／整區）</div>
+            <p class="mt-1 text-xs text-slate-500">
+              支援<b>範圍</b>：<code class="rounded bg-white px-1">423-438</code>；單號 <code class="rounded bg-white px-1">300 302</code>；混用皆可（逗號/空白/換行/、）。鎖定＝不給選；解除＝放回可選。
+            </p>
             <textarea
               v-model="batchInput"
               rows="2"
-              placeholder="例 271、270、269 490 491 492"
+              placeholder="例 423-438, 300 302, 477–488"
               class="mt-2 w-full rounded border border-slate-300 px-2 py-1.5 font-mono text-sm"
             ></textarea>
-            <div class="mt-2 flex items-center gap-2">
+            <div class="mt-2 flex flex-wrap items-center gap-2">
               <button
                 class="rounded bg-rose-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
-                :disabled="saving || !batchInput.trim()"
-                @click="doBatchLock"
+                :disabled="saving || !parsedValid.length"
+                @click="runBatch('lock')"
               >批次鎖定</button>
-              <span v-if="batchMsg" class="text-xs text-slate-600">{{ batchMsg }}</span>
+              <button
+                class="rounded border border-rose-400 px-3 py-1.5 text-sm font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+                :disabled="saving || !parsedValid.length"
+                @click="runBatch('unlock')"
+              >批次解除</button>
+              <span v-if="parsedValid.length" class="text-xs text-slate-500">解析到 {{ parsedValid.length }} 格</span>
+              <span v-if="batchMsg" class="text-xs text-slate-700">{{ batchMsg }}</span>
             </div>
           </div>
 
