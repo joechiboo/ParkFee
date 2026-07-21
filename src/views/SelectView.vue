@@ -13,7 +13,8 @@ const householdId = computed(() => sessionHousehold.value?.戶號 || '')
 // 志願序＝純綁登入住戶：來源為登入時後端帶回的 車位志願（sessionHousehold）；未登入時為記憶體試排。
 // 不寫任何裝置儲存 → 同台電腦換住戶/登出即歸零，不會看到上一位的志願。點選順序即志願序。
 const wishes = ref(sessionHousehold.value?.車位志願?.map(String) || [])
-const fallback = ref(!!sessionHousehold.value?.志願落選保底)
+// 電腦選號：志願全落選時是否由系統自動配本棟靠電梯剩位。payload 欄位仍沿用 志願落選保底（後端相容）。
+const computerPick = ref(!!sessionHousehold.value?.志願落選保底)
 const orderMap = computed(() => {
   const m = new Map()
   wishes.value.forEach((id, i) => m.set(String(id), i + 1))
@@ -61,7 +62,7 @@ async function submit() {
     const h = await saveWishesRemote({
       戶號: householdId.value,
       車位志願: wishes.value,
-      志願落選保底: fallback.value,
+      志願落選保底: computerPick.value,
       認證車號: sessionPlate.value,
     })
     if (h) sessionHousehold.value = h
@@ -153,8 +154,8 @@ function decorate(s) {
         <p v-else class="mt-3 text-sm text-slate-400">尚未選擇。點地圖上的車位開始排志願。</p>
 
         <label class="mt-4 flex items-start gap-2 text-xs text-slate-600">
-          <input v-model="fallback" type="checkbox" class="mt-0.5 h-4 w-4" />
-          <span>志願全落選時，同意由管理中心就近補位（可能為小位）；不勾＝進候補等下一輪。</span>
+          <input v-model="computerPick" type="checkbox" class="mt-0.5 h-4 w-4" />
+          <span>☑ <b>電腦選號</b>：志願全落選時，改由電腦自動配<b>本棟、靠電梯</b>的剩餘車位（可重現）；不勾＝進候補、等物業處理。</span>
         </label>
 
         <button

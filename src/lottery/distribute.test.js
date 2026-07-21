@@ -208,3 +208,75 @@ describe('物業抽籤前指派（preset）— 跳過抽籤、直接記入結果
     expect(b.順序號).toBe(1) // 待抽者順序號從 1 起（preset 不佔號）
   })
 })
+
+describe('電腦選位 — 志願落空 + 勾電腦選號 → 自動配本棟靠電梯剩位', () => {
+  // 注入 computerPickOrder → 與真實 tower-priority.json 解耦、可控。
+  it('勾電腦選號 + 志願落空 → 配到剩位(VIA.COMPUTER)、移出落選', () => {
+    const r = run([{ 戶號: 'B', 車號: 'B1', 第幾輛: 1, 車位志願: ['99'], 電腦選號: 'Y' }], {
+      computerPickOrder: () => ['3'],
+    })
+    const c = r.assigned.find((x) => x.配位方式 === VIA.COMPUTER)
+    expect(c).toBeTruthy()
+    expect(c.車位編號).toBe('3')
+    expect(r.落選).toHaveLength(0) // 已被電腦選位救回
+  })
+
+  it('沒勾電腦選號 → 維持落選、不自動配', () => {
+    const r = run([{ 戶號: 'B', 車號: 'B1', 第幾輛: 1, 車位志願: ['99'] }], {
+      computerPickOrder: () => ['3'],
+    })
+    expect(r.assigned).toHaveLength(0)
+    expect(r.落選[0].原因).toBe(REASON.LOST)
+  })
+
+  it('相容舊欄位「志願落選保底」＝電腦選號', () => {
+    const r = run([{ 戶號: 'B', 車號: 'B1', 第幾輛: 1, 車位志願: ['99'], 志願落選保底: 'Y' }], {
+      computerPickOrder: () => ['3'],
+    })
+    expect(r.assigned.find((x) => x.配位方式 === VIA.COMPUTER).車位編號).toBe('3')
+  })
+
+  it('本棟＋鄰棟皆無剩（候選皆不可用/型別不符）→ 維持落選', () => {
+    const r = run([{ 戶號: 'B', 車號: 'B1', 第幾輛: 1, 車位志願: ['99'], 電腦選號: 'Y' }], {
+      computerPickOrder: () => ['99', '10'], // 99 不存在、10 為無障礙（不符一般車）
+    })
+    expect(r.assigned).toHaveLength(0)
+    expect(r.落選).toHaveLength(1)
+  })
+
+  it('保底一位優先：唯一剩位給第1輛，第2輛仍落選', () => {
+    const r = run(
+      [
+        { 戶號: 'A', 車號: 'A1', 第幾輛: 1, 車位志願: ['99'], 電腦選號: 'Y' },
+        { 戶號: 'A', 車號: 'A2', 第幾輛: 2, 車位志願: ['99'], 電腦選號: 'Y' },
+      ],
+      { computerPickOrder: () => ['3'] }, // 只有 3 一格可補
+    )
+    const c = r.assigned.find((x) => x.配位方式 === VIA.COMPUTER)
+    expect(c.第幾輛).toBe(1) // 第1輛先拿
+    expect(c.車位編號).toBe('3')
+    expect(r.落選.find((x) => x.第幾輛 === 2)).toBeTruthy() // 第2輛沒補到
+  })
+
+  it('凍結位不被電腦選位挑到：候選位若未在 seats 池中 → 略過', () => {
+    // seats 只給 3；候選序把凍結位 2 排前面 → 2 不在池、跳過、配到 3。
+    const r = distribute({
+      registrations: [{ 戶號: 'B', 車號: 'B1', 第幾輛: 1, 車位志願: ['99'], 電腦選號: 'Y' }],
+      seats: [{ id: '3', type: '大' }],
+      seed: 'test',
+      computerPickOrder: () => ['2', '3'],
+    })
+    expect(r.assigned.find((x) => x.配位方式 === VIA.COMPUTER).車位編號).toBe('3')
+  })
+
+  it('預設本棟序（戶號首字母→棟）：A 戶落空 → 配 AB 棟靠電梯位 274', () => {
+    const r = distribute({
+      registrations: [{ 戶號: 'A1-1', 車號: 'A1', 第幾輛: 1, 車位志願: ['99'], 電腦選號: 'Y' }],
+      seats: [{ id: '274', type: '大' }, { id: '1', type: '小' }],
+      seed: 'test',
+    })
+    const c = r.assigned.find((x) => x.配位方式 === VIA.COMPUTER)
+    expect(c).toBeTruthy()
+    expect(c.車位編號).toBe('274') // AB 棟靠電梯第 1 位
+  })
+})

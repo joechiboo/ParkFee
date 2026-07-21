@@ -80,7 +80,13 @@ const lotteryRows = computed(() =>
     .sort((x, y) => x.輪次 - y.輪次 || (x.順序號 ?? 0) - (y.順序號 ?? 0)),
 )
 const presetRows = computed(() =>
-  (result.value?.assigned ?? []).filter((a) => a.配位方式 !== VIA.WISH),
+  (result.value?.assigned ?? []).filter((a) => a.配位方式 !== VIA.WISH && a.配位方式 !== VIA.COMPUTER),
+)
+// 電腦選位：志願落空+勾電腦選號者，系統自動配本棟靠電梯剩位。另列、依順序號。
+const computerRows = computed(() =>
+  (result.value?.assigned ?? [])
+    .filter((a) => a.配位方式 === VIA.COMPUTER)
+    .sort((x, y) => (x.順序號 ?? 0) - (y.順序號 ?? 0)),
 )
 
 // 下載配位結果 CSV（公告日 → 簽約期限=公告+5；加 BOM 供 Excel 中文正確）。
@@ -148,7 +154,7 @@ function downloadResultCSV() {
           <li><b>Round 1 一戶一位</b>：志願小位者免抽、依登記序選小位；其餘第 1 輛抽順序號、依志願分發 → <b>保障每戶第 1 輛一位</b>。</li>
           <li><b>Round 2＋ 第二輛起</b>：用前輪剩餘車位依序取志願；耗盡則落選。</li>
         </ul>
-        <p><b>重機</b>佔雙大位（機車位足額才配）。<b>志願全落空者</b>列「落選名單」→ 交物業第二階段（勾保底→就近補、未勾→候補），不在引擎內。</p>
+        <p><b>重機</b>佔雙大位（機車位足額才配）。<b>志願全落空者</b>：勾「<b>電腦選號</b>」→ 系統自動配<b>本棟靠電梯剩位</b>（引擎內、可重現）；沒勾 → 列「落選名單」交物業第二階段（候補）。</p>
         <p class="text-slate-500">固定種子 → 結果可重現；種子／時間／各輪過程全留存供監察。重抽＝換新種子重跑，歷次紀錄保留。</p>
       </div>
     </details>
@@ -262,6 +268,37 @@ function downloadResultCSV() {
           </table>
         </div>
       </div>
+
+      <!-- 電腦選位：志願落空且勾電腦選號者，系統自動配本棟靠電梯剩位 -->
+      <details v-if="computerRows.length" open class="rounded-lg border border-sky-200 bg-sky-50/40 p-3">
+        <summary class="cursor-pointer text-sm font-medium text-sky-800">
+          電腦選位（{{ computerRows.length }}）— 志願落空＋勾電腦選號，自動配本棟靠電梯剩位
+        </summary>
+        <div class="mt-2 overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-white text-slate-500">
+              <tr>
+                <th class="px-3 py-2 text-left font-medium">順序號</th>
+                <th class="px-3 py-2 text-left font-medium">戶號</th>
+                <th class="px-3 py-2 text-left font-medium">車號</th>
+                <th class="px-3 py-2 text-left font-medium">車種</th>
+                <th class="px-3 py-2 text-left font-medium">車位</th>
+                <th class="px-3 py-2 text-left font-medium">類型</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(a, i) in computerRows" :key="i" class="border-t border-sky-100">
+                <td class="px-3 py-1.5 font-semibold">{{ a.順序號 ?? '—' }}</td>
+                <td class="px-3 py-1.5">{{ a.戶號 }}</td>
+                <td class="px-3 py-1.5 font-mono text-xs">{{ a.車號 }}</td>
+                <td class="px-3 py-1.5">{{ a.車種 }}</td>
+                <td class="px-3 py-1.5 font-mono">{{ a.車位編號 }}</td>
+                <td class="px-3 py-1.5">{{ a.車位類型 }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
 
       <!-- 免抽已定：志願小位 / 無障礙（抽籤前確定、不參與抽籤） -->
       <details v-if="presetRows.length" class="rounded-lg border border-slate-200 bg-white p-3">

@@ -22,12 +22,38 @@
 
 import { mulberry32, hashSeed, seededShuffle } from './rng.js'
 import { rentableMotorSeats, motorSeats } from '../map/seats.js'
+import towerPriority from '../map/tower-priority.json'
 
 export const VIA = {
   ACCESSIBLE: '無障礙',
   VOLUNTEER_SMALL: '志願小位',
   WISH: '志願分發',
   PRESET: '物業指派', // 抽籤前由物業指派（保留/大位保底/重機雙位等），免抽、直接記入結果
+  COMPUTER: '電腦選號', // 志願落空且勾電腦選號 → 系統自動配本棟靠電梯剩位
+}
+
+// 戶號首字母 → 棟（電梯核心）。A/B→AB、C/D→CD、E/F→EF、G/H→GH。其他（如 S）→ null（無本棟，直接走鄰棟全域序）。
+const LETTER_TOWER = { A: 'AB', B: 'AB', C: 'CD', D: 'CD', E: 'EF', F: 'EF', G: 'GH', H: 'GH' }
+function householdTower(hid) {
+  const m = String(hid || '').toUpperCase().match(/[A-Z]/)
+  return m ? (LETTER_TOWER[m[0]] ?? null) : null
+}
+
+// 電腦選位候選序：本棟優先序（靠電梯）→ 其餘棟（依核心距離「鄰棟先」）串接。tower-priority.json 由 build-tower-priority.mjs 產。
+const TP_CORES = towerPriority.meta?.cores ?? {}
+function towerCandidateIds(tower) {
+  const towers = towerPriority.towers ?? {}
+  const own = (tower && towers[tower]) ? towers[tower] : []
+  const others = Object.keys(towers).filter((t) => t !== tower)
+  if (tower && TP_CORES[tower]) {
+    const c = TP_CORES[tower]
+    others.sort(
+      (a, b) =>
+        (TP_CORES[a].x - c.x) ** 2 + (TP_CORES[a].y - c.y) ** 2 -
+        ((TP_CORES[b].x - c.x) ** 2 + (TP_CORES[b].y - c.y) ** 2),
+    )
+  }
+  return [...own, ...others.flatMap((t) => towers[t] ?? [])]
 }
 
 export const REASON = {
@@ -51,6 +77,10 @@ function toEntry(r, index) {
     車位志願: Array.isArray(r.車位志願) ? r.車位志願.map((x) => String(x)) : [], // 戶層級
     車位編號: String(r.車位編號 ?? '').trim(), // 物業抽籤前已指派（空＝待抽）；重機兩位頓號分隔
     已繳費: r.已繳費 === true || r.已繳費 === 'Y' || r.已繳費 === 'y',
+    // 電腦選號：志願落空時是否要系統自動配本棟剩位。相容舊欄位「志願落選保底」。
+    電腦選號:
+      r.電腦選號 === true || r.電腦選號 === 'Y' || r.電腦選號 === 'y' ||
+      r.志願落選保底 === true || r.志願落選保底 === 'Y' || r.志願落選保底 === 'y',
     _order: index, // 穩定登記序：志願小位選位序、並列決勝
   }
 }
@@ -87,7 +117,14 @@ function pickWish(pool, wishes, compatTypes) {
   return null
 }
 
-export function distribute({ registrations, seats = rentableMotorSeats(), seed = 'parkfee', runAt = null }) {
+export function distribute({
+  registrations,
+  seats = rentableMotorSeats(),
+  seed = 'parkfee',
+  runAt = null,
+  // 電腦選位候選序：戶號 → 依優先度排好的車位 id 陣列。預設＝本棟靠電梯（tower-priority.json）。可注入供測試。
+  computerPickOrder = null,
+}) {
   const rng = mulberry32(hashSeed(seed))
   const pool = makePool(seats)
   const entries = registrations.map(toEntry)
@@ -255,6 +292,43 @@ export function distribute({ registrations, seats = rentableMotorSeats(), seed =
     })
     say(`R${nth} 第 ${nth} 位：登記 ${cands.length}，剩餘 ${pool.remaining()}`)
     rounds.push({ round: nth, name: `第 ${nth} 位`, draws, assignments: a })
+  }
+
+  // ── 電腦選位：志願落空 + 勾「電腦選號」的一般車，自動配「本棟·靠電梯·剩餘」大位（本棟無剩往鄰棟）──
+  //    保底一位優先：先第 1 輛、再第 2 輛+，同組依順序號。凍結/公益位不在池中 → 自動略過。
+  //    重機、志願小位不足（NO_SMALL）不走電腦選位（v1）；配不到者維持落選、交物業。
+  {
+    const key = (x) => `${x.戶號}|${x.車號}|${x.第幾輛}`
+    const pickOrder = computerPickOrder || ((hid) => towerCandidateIds(householdTower(hid)))
+    const entryOf = new Map(pending.map((e) => [key(e), e]))
+    const targets = lost
+      .filter((l) => l.原因 === REASON.LOST || l.原因 === REASON.NO_WISH)
+      .map((l) => ({ l, e: entryOf.get(key(l)) }))
+      .filter(({ e }) => e && e.電腦選號 && e.車種 !== '重機')
+      .sort((p, q) => p.e.第幾輛 - q.e.第幾輛 || (p.l.順序號 ?? 0) - (q.l.順序號 ?? 0))
+
+    const a = []
+    const rescued = new Set()
+    for (const { l, e } of targets) {
+      let picked = null
+      for (const id of pickOrder(e.戶號)) {
+        if (pool.isAvail(id) && COMPAT.general.includes(pool.typeOf(id))) {
+          picked = pool.take(id)
+          break
+        }
+      }
+      if (!picked) continue // 本棟＋鄰棟皆無剩 → 維持落選
+      record(e, [{ id: picked.id, type: picked.type }], VIA.COMPUTER, l.輪次, l.順序號)
+      assignedHouse.add(e.戶號)
+      rescued.add(key(l))
+      a.push({ 戶號: e.戶號, 車位編號: picked.id, 順序號: l.順序號, 配位方式: VIA.COMPUTER, 棟: householdTower(e.戶號) })
+    }
+    // 已被電腦選位救回者，從落選名單移除
+    for (let i = lost.length - 1; i >= 0; i--) if (rescued.has(key(lost[i]))) lost.splice(i, 1)
+    if (targets.length) {
+      say(`電腦選位：勾選且落空 ${targets.length} 台，配到 ${a.length} 台（本棟優先靠電梯）`)
+      rounds.push({ round: '電腦', name: '電腦選位（本棟靠電梯補位）', draws: [], assignments: a })
+    }
   }
 
   return {
