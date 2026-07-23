@@ -1,0 +1,23 @@
+# Supabase 免費版閒置 7 天會自動暫停（暫停連 DNS 都撤掉、全站斷線）。
+# 每 3 天 ping 一次 REST API 當心跳，讓專案永遠算「有活動」→ 不會被暫停。
+# 讀的是公開表 locked_seat + anon key（本就公開、RLS 把關），無任何秘密外洩。
+# 手動測試：Actions 頁面 → keepalive → Run workflow。
+name: Supabase keep-alive
+
+on:
+  schedule:
+    - cron: '0 0 */3 * *' # 每 3 天 00:00 UTC
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST（防閒置暫停）
+        run: |
+          curl -sf --max-time 30 \
+            "${{ vars.VITE_SUPABASE_URL }}/rest/v1/locked_seat?select=%E8%BB%8A%E4%BD%8D%E7%B7%A8%E8%99%9F&limit=1" \
+            -H "apikey: ${{ vars.VITE_SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ vars.VITE_SUPABASE_ANON_KEY }}" \
+            && echo "OK：Supabase 活著、心跳完成" \
+            || { echo "::error::ping 失敗 — 專案可能已被暫停，請到 supabase.com/dashboard 手動 Resume"; exit 1; }
