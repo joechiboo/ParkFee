@@ -39,9 +39,13 @@ const core = (n) => CORES.find((c) => c.name === n)
 const d2 = (s, c) => (s.x - c.x) ** 2 + (s.y - c.y) ** 2
 
 // ── 1) 分區（primary，涵蓋所有座位）──
+// 分界自動抓「數量中位」求均分（2026-07-29 使用者要求比例平均）：
+//   左欄(x<560) 依 y 排序上半=AB、下半=CD；其餘依 x 排序左半=EF、右半=GH。
 const X_MID = 560
-const X_RIGHT = 1240
-const Y_ABCD = 900
+const leftCol = seats.filter((s) => s.x < X_MID).sort((a, b) => a.y - b.y)
+const Y_ABCD = leftCol[Math.floor(leftCol.length / 2)].y
+const midRight = seats.filter((s) => s.x >= X_MID).sort((a, b) => a.x - b.x)
+const X_RIGHT = midRight[Math.floor(midRight.length / 2)].x
 const region = (s) => (s.x >= X_RIGHT ? 'GH' : s.x >= X_MID ? 'EF' : s.y < Y_ABCD ? 'AB' : 'CD')
 const own = { AB: [], CD: [], EF: [], GH: [] }
 for (const s of seats) own[region(s)].push(s)
