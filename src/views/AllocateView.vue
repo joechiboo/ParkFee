@@ -126,14 +126,15 @@ async function publishToBackend() {
     publishing.value = false
   }
 }
-function downloadResultCSV() {
+function downloadResultCSV(pub = true) {
+  // 公告版（預設）＝無戶號，對外公告用；完整版＝含戶號，僅物業內部（管理員鈕）。
   if (!result.value) return
-  const csv = '﻿' + resultCSV(result.value, { 公告日: announceDate.value })
+  const csv = '﻿' + resultCSV(result.value, { 公告日: announceDate.value, 公開版: pub })
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `配位結果-${new Date().toISOString().slice(0, 10)}.csv`
+  a.download = `配位結果-${pub ? '公告版' : '完整版含戶號'}-${new Date().toISOString().slice(0, 10)}.csv`
   a.click()
   URL.revokeObjectURL(url)
 }
@@ -230,9 +231,16 @@ function downloadResultCSV() {
         </label>
         <button
           class="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
-          @click="downloadResultCSV"
+          @click="downloadResultCSV(true)"
         >
-          ⬇ 下載配位結果 CSV
+          ⬇ 公告版 CSV（車號×車位，無戶號）
+        </button>
+        <button
+          v-if="admin"
+          class="rounded border border-emerald-500 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+          @click="downloadResultCSV(false)"
+        >
+          ⬇ 完整版（含戶號·物業）
         </button>
         <a
           :href="resultMapUrl"
@@ -260,7 +268,6 @@ function downloadResultCSV() {
               <tr>
                 <th class="px-3 py-2 text-left font-medium">順序號</th>
                 <th class="px-3 py-2 text-left font-medium">輪次</th>
-                <th class="px-3 py-2 text-left font-medium">戶號</th>
                 <th class="px-3 py-2 text-left font-medium">車號</th>
                 <th class="px-3 py-2 text-left font-medium">車種</th>
                 <th class="px-3 py-2 text-left font-medium">第幾輛</th>
@@ -272,7 +279,6 @@ function downloadResultCSV() {
               <tr v-for="(a, i) in lotteryRows" :key="i" class="border-t border-slate-100">
                 <td class="px-3 py-1.5 font-semibold">{{ a.順序號 ?? '—' }}</td>
                 <td class="px-3 py-1.5">{{ a.輪次 }}</td>
-                <td class="px-3 py-1.5">{{ a.戶號 }}</td>
                 <td class="px-3 py-1.5 font-mono text-xs">{{ a.車號 }}</td>
                 <td class="px-3 py-1.5">{{ a.車種 }}</td>
                 <td class="px-3 py-1.5">{{ a.第幾輛 }}</td>
@@ -294,7 +300,6 @@ function downloadResultCSV() {
             <thead class="bg-white text-slate-500">
               <tr>
                 <th class="px-3 py-2 text-left font-medium">順序號</th>
-                <th class="px-3 py-2 text-left font-medium">戶號</th>
                 <th class="px-3 py-2 text-left font-medium">車號</th>
                 <th class="px-3 py-2 text-left font-medium">車種</th>
                 <th class="px-3 py-2 text-left font-medium">車位</th>
@@ -304,7 +309,6 @@ function downloadResultCSV() {
             <tbody>
               <tr v-for="(a, i) in computerRows" :key="i" class="border-t border-sky-100">
                 <td class="px-3 py-1.5 font-semibold">{{ a.順序號 ?? '—' }}</td>
-                <td class="px-3 py-1.5">{{ a.戶號 }}</td>
                 <td class="px-3 py-1.5 font-mono text-xs">{{ a.車號 }}</td>
                 <td class="px-3 py-1.5">{{ a.車種 }}</td>
                 <td class="px-3 py-1.5 font-mono">{{ a.車位編號 }}</td>
@@ -324,7 +328,6 @@ function downloadResultCSV() {
           <table class="w-full text-sm">
             <thead class="bg-slate-50 text-slate-500">
               <tr>
-                <th class="px-3 py-2 text-left font-medium">戶號</th>
                 <th class="px-3 py-2 text-left font-medium">車號</th>
                 <th class="px-3 py-2 text-left font-medium">車位</th>
                 <th class="px-3 py-2 text-left font-medium">類型</th>
@@ -333,7 +336,6 @@ function downloadResultCSV() {
             </thead>
             <tbody>
               <tr v-for="(a, i) in presetRows" :key="i" class="border-t border-slate-100">
-                <td class="px-3 py-1.5">{{ a.戶號 }}</td>
                 <td class="px-3 py-1.5 font-mono text-xs">{{ a.車號 }}</td>
                 <td class="px-3 py-1.5 font-mono">{{ a.車位編號 }}</td>
                 <td class="px-3 py-1.5">{{ a.車位類型 }}</td>
@@ -353,7 +355,6 @@ function downloadResultCSV() {
               <tr>
                 <th class="px-3 py-2 text-left font-medium">順序號</th>
                 <th class="px-3 py-2 text-left font-medium">輪次</th>
-                <th class="px-3 py-2 text-left font-medium">戶號</th>
                 <th class="px-3 py-2 text-left font-medium">車號</th>
                 <th class="px-3 py-2 text-left font-medium">第幾輛</th>
                 <th class="px-3 py-2 text-left font-medium">原因</th>
@@ -363,7 +364,6 @@ function downloadResultCSV() {
               <tr v-for="(l, i) in result.落選" :key="i" class="border-t border-rose-100">
                 <td class="px-3 py-1.5 font-semibold">{{ l.順序號 ?? '免抽' }}</td>
                 <td class="px-3 py-1.5">{{ l.輪次 }}</td>
-                <td class="px-3 py-1.5">{{ l.戶號 }}</td>
                 <td class="px-3 py-1.5 font-mono text-xs">{{ l.車號 }}</td>
                 <td class="px-3 py-1.5">{{ l.第幾輛 }}</td>
                 <td class="px-3 py-1.5">{{ l.原因 }}</td>
@@ -385,7 +385,7 @@ function downloadResultCSV() {
                 :key="i"
                 class="rounded px-2 py-0.5 text-xs"
                 :class="d.中籤 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-700'"
-              >#{{ d.順序號 }} {{ d.戶號 }}{{ d.中籤 ? '✓' : '✗' }}</span>
+              >#{{ d.順序號 }} <span class="font-mono">{{ d.車號 }}</span>{{ d.中籤 ? '✓' : '✗' }}</span>
             </div>
             <div v-else class="mt-1 text-xs text-slate-400">（此輪免抽 / 無抽籤）</div>
           </div>

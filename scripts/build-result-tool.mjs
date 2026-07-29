@@ -119,7 +119,7 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
      g.setAttribute('class',cl);}}
  function select(id){selId=id;render();const s=byId[id];const a=assign.get(String(id));
    let h='<b>車位 '+id+'</b> <span style="color:#94a3b8">'+s.t+(s.p?'·公益':'')+(LOCKED.has(id)?'·鎖定':'')+'</span><br>';
-   if(a){h+='戶號 <b>'+(a.戶號||'—')+'</b><br>車號 <span style="font-family:monospace">'+(a.車號||'—')+'</span><br>'
+   if(a){h+='車號 <span style="font-family:monospace">'+(a.車號||'—')+'</span><br>'  // 戶號不顯示（公開投影防個資）
      +'方式 '+a.配位方式+(a.輪次!=null?'　輪次 '+a.輪次:'')+(a.順序號!=null?'　順序號 '+a.順序號:'');}
    else if(LOCKED.has(id))h+='<span style="color:#64748b">鎖定中（維修/凍結/預留），不出租。</span>';
    else h+='<span style="color:#64748b">未配出（仍在池中）。</span>';
