@@ -69,7 +69,7 @@
  const byId={};for(const s of SEATS)byId[s.id]=s;
  function nearest(s){let bn='AB',bd=Infinity;for(const c of CORES){const d=(s.x-c.x)**2+(s.y-c.y)**2;if(d<bd){bd=d;bn=c.name}}return bn}
  // 分區規則（與 build-tower-priority.mjs 一致）：右=GH、中=EF、左欄上(y<900)=AB、左欄下=CD
- function region(s){return s.x>=917.5?'GH':s.x>=560?'EF':s.y<971.5?'AB':'CD'}
+ function region(s){const n=+s.id;if(n>=419&&n<=442)return 'GH';return s.x>=1240?'GH':s.x>=560?'EF':s.y<971.5?'AB':'CD'}
  let order=(localStorage.getItem(LS)?JSON.parse(localStorage.getItem(LS)):{AB:[],CD:[],EF:[],GH:[]});
  for(const B of TS)if(!Array.isArray(order[B]))order[B]=[];
  for(const B of TS)order[B]=order[B].filter(id=>!LOCKED.has(id)); // 清掉先前誤點的凍結位

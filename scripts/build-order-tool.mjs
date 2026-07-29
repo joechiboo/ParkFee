@@ -33,15 +33,14 @@ const CORES = [
 const SEATS_JSON = JSON.stringify(motor)
 const LOCKED_JSON = JSON.stringify(lockedIds)
 
-// 分界自動抓「數量中位」（與 build-tower-priority.mjs 同邏輯，用未鎖定座位算）
+// 分界（與 build-tower-priority.mjs 同邏輯）：左欄 y 中位分 AB/CD；GH=右區(x≥1240)∪指定塊 419-442（EF 出口留 EF）
 const lockedSet = new Set(lockedIds)
 const usable = motor.filter((s) => !lockedSet.has(s.id))
 const X_MID = 560
+const X_RIGHT = 1240
 const leftCol = usable.filter((s) => s.x < X_MID).sort((a, b) => a.y - b.y)
 const Y_ABCD = leftCol[Math.floor(leftCol.length / 2)].y
-const midRight = usable.filter((s) => s.x >= X_MID).sort((a, b) => a.x - b.x)
-const X_RIGHT = midRight[Math.floor(midRight.length / 2)].x
-console.log(`分界：Y_ABCD=${Y_ABCD}（左欄上下對半）、X_RIGHT=${X_RIGHT}（中右對半）`)
+console.log(`分界：Y_ABCD=${Y_ABCD}（左欄上下對半）、X_RIGHT=${X_RIGHT}＋GH塊419-442`)
 const CORES_JSON = JSON.stringify(CORES)
 
 const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
@@ -115,7 +114,7 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
  const byId={};for(const s of SEATS)byId[s.id]=s;
  function nearest(s){let bn='AB',bd=Infinity;for(const c of CORES){const d=(s.x-c.x)**2+(s.y-c.y)**2;if(d<bd){bd=d;bn=c.name}}return bn}
  // 分區規則（與 build-tower-priority.mjs 一致）：右=GH、中=EF、左欄上(y<900)=AB、左欄下=CD
- function region(s){return s.x>=${X_RIGHT}?'GH':s.x>=${X_MID}?'EF':s.y<${Y_ABCD}?'AB':'CD'}
+ function region(s){const n=+s.id;if(n>=419&&n<=442)return 'GH';return s.x>=${X_RIGHT}?'GH':s.x>=${X_MID}?'EF':s.y<${Y_ABCD}?'AB':'CD'}
  let order=(localStorage.getItem(LS)?JSON.parse(localStorage.getItem(LS)):{AB:[],CD:[],EF:[],GH:[]});
  for(const B of TS)if(!Array.isArray(order[B]))order[B]=[];
  for(const B of TS)order[B]=order[B].filter(id=>!LOCKED.has(id)); // 清掉先前誤點的凍結位
