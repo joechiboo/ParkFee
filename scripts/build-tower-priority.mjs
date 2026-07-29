@@ -49,34 +49,59 @@ const leftCol = seats.filter((s) => s.x < X_MID).sort((a, b) => a.y - b.y)
 const Y_ABCD = leftCol[Math.floor(leftCol.length / 2)].y
 const region = (s) =>
   s.x >= X_RIGHT || GH_BLOCK.has(String(s.id)) ? 'GH' : s.x >= X_MID ? 'EF' : s.y < Y_ABCD ? 'AB' : 'CD'
+
+// ── 2) 各棟底稿：優先用手排檔（order.html ⬇ 匯出 → src/map/tower-order-manual.json），沒有才純規則 ──
+const sortDir = {
+  AB: (a, b) => a.y - b.y || a.x - b.x, // 上→下
+  CD: (a, b) => b.y - a.y || a.x - b.x, // 下→上
+  EF: (a, b) => d2(a, core('EF')) - d2(b, core('EF')), // 靠電梯近→遠
+  GH: (a, b) => d2(a, core('GH')) - d2(b, core('GH')),
+}
+const byId = new Map(seats.map((s) => [String(s.id), s]))
 const own = { AB: [], CD: [], EF: [], GH: [] }
-for (const s of seats) own[region(s)].push(s)
+let manualUsed = false
+try {
+  // 手排檔允許同格屬多棟（重疊）；棟內去重、鎖定/不存在的剔除。
+  const manual = JSON.parse(readFileSync('src/map/tower-order-manual.json', 'utf8'))
+  for (const t of TS) {
+    const seen = new Set()
+    own[t] = (manual.towers?.[t] ?? [])
+      .map((id) => byId.get(String(id)))
+      .filter((s) => s && !seen.has(s.id) && seen.add(s.id))
+  }
+  // 手排檔沒涵蓋的（例如之後解鎖的新格）→ 依分區＋方向補到該棟尾端
+  const covered = new Set(TS.flatMap((t) => own[t].map((s) => String(s.id))))
+  const leftover = { AB: [], CD: [], EF: [], GH: [] }
+  for (const s of seats) if (!covered.has(String(s.id))) leftover[region(s)].push(s)
+  for (const t of TS) {
+    leftover[t].sort(sortDir[t])
+    own[t].push(...leftover[t])
+  }
+  manualUsed = true
+} catch {
+  for (const s of seats) own[region(s)].push(s)
+  for (const t of TS) own[t].sort(sortDir[t])
+}
 
-// ── 2) 棟內排序（方向規則）──
-own.AB.sort((a, b) => a.y - b.y || a.x - b.x) // 上→下
-own.CD.sort((a, b) => b.y - a.y || a.x - b.x) // 下→上
-own.EF.sort((a, b) => d2(a, core('EF')) - d2(b, core('EF'))) // 靠電梯近→遠
-own.GH.sort((a, b) => d2(a, core('GH')) - d2(b, core('GH')))
-
-// ── 3) 均分補位（重疊）：不足目標的棟，從他區借「離本棟電梯最近」的位補到目標 ──
+// ── 3) 均分補位（重疊）：不足目標的棟，補「不在自己清單、離本棟電梯最近」的位到目標 ──
 const target = Math.ceil(seats.length / 4)
 const towers = {}
 const borrowed = {}
 for (const t of TS) {
-  const list = own[t].map((s) => s.id)
+  const inOwn = new Set(own[t].map((s) => String(s.id)))
   const foreign = seats
-    .filter((s) => region(s) !== t)
+    .filter((s) => !inOwn.has(String(s.id)))
     .sort((a, b) => d2(a, core(t)) - d2(b, core(t)))
-  borrowed[t] = foreign.slice(0, Math.max(0, target - list.length)).map((s) => s.id)
-  towers[t] = [...list, ...borrowed[t]] // 自有(方向序)在前、借位(近電梯序)在後
+  borrowed[t] = foreign.slice(0, Math.max(0, target - own[t].length)).map((s) => s.id)
+  towers[t] = [...own[t].map((s) => s.id), ...borrowed[t]] // 底稿在前、借位(近電梯序)在後
 }
 
-const seatTower = {}
-for (const t of TS) for (const s of own[t]) seatTower[s.id] = t
+const seatTower = {} // 主屬棟＝第一個包含它的棟（重疊格取先者；引擎不依賴此欄）
+for (const t of TS) for (const s of own[t]) if (!(s.id in seatTower)) seatTower[s.id] = t
 
 const out = {
   meta: {
-    generated: 'directional-balanced-overlap',
+    generated: manualUsed ? 'manual-order+auto-fill' : 'directional-balanced-overlap',
     note: 'AB上→下/CD下→上/EF·GH靠電梯；均分~N/4 借位重疊；已扣鎖定。鎖定變動後重跑本腳本。',
     thresholds: { X_MID, X_RIGHT, Y_ABCD },
     cores: Object.fromEntries(CORES.map((c) => [c.name, { x: c.x, y: c.y }])),

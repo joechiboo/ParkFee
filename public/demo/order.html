@@ -14,6 +14,7 @@
  .seat circle{r:7;stroke-width:.7}
  .seat text{font-size:6px;fill:#0f172a;text-anchor:middle;pointer-events:none;user-select:none}
  .seat.ord circle{stroke:#000;stroke-width:1.8}
+ .seat.ord.ov circle{stroke:#fff;stroke-width:2.2}
  .seat.ord text{font-size:8px;font-weight:800;fill:#fff;paint-order:stroke;stroke:#000;stroke-width:1.6}
  .t-AB circle{fill:rgba(220,38,38,.6);stroke:#991b1b}
  .t-CD circle{fill:rgba(37,99,235,.6);stroke:#1e40af}
@@ -39,7 +40,7 @@
    <h1>分棟順序工具（電腦選位）</h1>
    <p class="sub">選棟 → 依「想先配的順序」<b>逐格點選</b>座位（點擊序＝填補序）。<br>
      只需點靠電梯的前幾格，其餘自動用距離補在後面。<br>
-     <kbd>a/c/e/g</kbd>切棟　<kbd>點座位</kbd>加入/移除　<kbd>拖曳</kbd>平移　<kbd>Ctrl+滾輪</kbd>縮放</p>
+     <kbd>a/c/e/g</kbd>切棟　<kbd>點座位</kbd>加入/移除<b>目前棟</b>（跨棟可重疊，白圈=多棟共用）　<kbd>拖曳</kbd>平移　<kbd>Ctrl+滾輪</kbd>縮放</p>
    <div class="row">
      <button class="b-AB" data-t="AB">AB 棟</button>
      <button class="b-CD" data-t="CD">CD 棟</button>
@@ -73,7 +74,7 @@
  let order=(localStorage.getItem(LS)?JSON.parse(localStorage.getItem(LS)):{AB:[],CD:[],EF:[],GH:[]});
  for(const B of TS)if(!Array.isArray(order[B]))order[B]=[];
  for(const B of TS)order[B]=order[B].filter(id=>!LOCKED.has(id)); // 清掉先前誤點的凍結位
- const ordTower={};for(const B of TS)for(const id of order[B])ordTower[id]=B;
+ const inTower=id=>TS.filter(t=>order[t].indexOf(id)>=0); // 一格可屬多棟（重疊）
  let cur='AB';
  function save(){localStorage.setItem(LS,JSON.stringify(order))}
  const nodes=new Map();
@@ -87,20 +88,17 @@
    const t=document.createElementNS(NS,'text');t.setAttribute('x',c.x);t.setAttribute('y',c.y+7);t.textContent=c.name;
    g.appendChild(ci);g.appendChild(t);svg.appendChild(g);}
  const el=id=>document.getElementById(id);
- function towerOf(id){return ordTower[id]||region(byId[id])}
+ function towerOf(id){if(order[cur].indexOf(id)>=0)return cur;const t=inTower(id)[0];return t||region(byId[id])}
  function renderSeat(id){const g=nodes.get(id);
    if(LOCKED.has(id)){g.setAttribute('class','seat lk');g.querySelector('text').textContent=id;return}
    const B=towerOf(id);const idx=order[B].indexOf(id);
-   g.setAttribute('class','seat t-'+B+(idx>=0?' ord':''));
+   const ov=inTower(id).length>1;g.setAttribute('class','seat t-'+B+(idx>=0?' ord':'')+(ov?' ov':''));
    g.querySelector('text').textContent=idx>=0?(idx+1):id;}
  function renderAll(){for(const s of SEATS)renderSeat(s.id)}
  function recount(){for(const B of TS)el('n-'+B).textContent=order[B].length;el('cur').textContent=cur;
    el('list').textContent=order[cur].length?(cur+'：'+order[cur].join(' → ')):'（'+cur+' 尚未排，點座位開始）';}
- function clickSeat(id){const B=ordTower[id];
-   if(B===cur){order[cur].splice(order[cur].indexOf(id),1);delete ordTower[id];}
-   else{if(B)order[B].splice(order[B].indexOf(id),1);order[cur].push(id);ordTower[id]=cur;}
-   save();renderAll();recount();}
- function setCur(t){cur=t;document.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('active',b.dataset.t===t));recount();}
+ function clickSeat(id){const i=order[cur].indexOf(id);if(i>=0)order[cur].splice(i,1);else order[cur].push(id);save();renderAll();recount();}
+ function setCur(t){cur=t;document.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('active',b.dataset.t===t));recount();renderAll();}
  // 平移（左鍵直接拖曳；拖>6px 就不觸發點選）+ 縮放（Ctrl+滾輪）
  let zoom=0.62;function applyZoom(){plan.style.width=(DISPW*zoom)+'px'}
  let mode=null,sx,sy,sl,st,moved=0,downId=null;
