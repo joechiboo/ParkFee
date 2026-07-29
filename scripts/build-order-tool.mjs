@@ -126,7 +126,7 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
    const c=document.createElementNS(NS,'circle');c.setAttribute('cx',s.x);c.setAttribute('cy',s.y);
    const t=document.createElementNS(NS,'text');t.setAttribute('x',s.x);t.setAttribute('y',s.y+2.5);
    g.appendChild(c);g.appendChild(t);svg.appendChild(g);nodes.set(s.id,g);
-   if(!LOCKED.has(s.id))g.addEventListener('click',ev=>{ev.stopPropagation();clickSeat(s.id)});}
+   g.setAttribute('data-id',s.id);}
  for(const c of CORES){const g=document.createElementNS(NS,'g');g.setAttribute('class','core');
    const ci=document.createElementNS(NS,'circle');ci.setAttribute('cx',c.x);ci.setAttribute('cy',c.y);ci.setAttribute('r',24);ci.setAttribute('fill','rgba(15,23,42,.85)');
    const t=document.createElementNS(NS,'text');t.setAttribute('x',c.x);t.setAttribute('y',c.y+7);t.textContent=c.name;
@@ -141,20 +141,20 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
  function renderAll(){for(const s of SEATS)renderSeat(s.id)}
  function recount(){for(const B of TS)el('n-'+B).textContent=order[B].length;el('cur').textContent=cur;
    el('list').textContent=order[cur].length?(cur+'：'+order[cur].join(' → ')):'（'+cur+' 尚未排，點座位開始）';}
- function clickSeat(id){if(moved>6)return; // 拖曳平移後放開，不算點座位
-   const B=ordTower[id];
+ function clickSeat(id){const B=ordTower[id];
    if(B===cur){order[cur].splice(order[cur].indexOf(id),1);delete ordTower[id];}
    else{if(B)order[B].splice(order[B].indexOf(id),1);order[cur].push(id);ordTower[id]=cur;}
    save();renderAll();recount();}
  function setCur(t){cur=t;document.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('active',b.dataset.t===t));recount();}
  // 平移（左鍵直接拖曳；拖>6px 就不觸發點選）+ 縮放（Ctrl+滾輪）
  let zoom=0.62;function applyZoom(){plan.style.width=(DISPW*zoom)+'px'}
- let mode=null,sx,sy,sl,st,moved=0;
+ let mode=null,sx,sy,sl,st,moved=0,downId=null;
  stage.addEventListener('pointerdown',e=>{if(e.button!==0&&e.button!==2)return;
+   const sg=e.target.closest?e.target.closest('.seat'):null;downId=sg?sg.getAttribute('data-id'):null;
    mode='pan';moved=0;sx=e.clientX;sy=e.clientY;sl=stage.scrollLeft;st=stage.scrollTop;stage.setPointerCapture(e.pointerId);});
  stage.addEventListener('pointermove',e=>{const b=plan.getBoundingClientRect();el('coord').textContent='x:'+((e.clientX-b.left)/b.width*DISPW).toFixed(0)+' y:'+((e.clientY-b.top)/b.height*DISPH).toFixed(0);
    if(mode==='pan'){const dx=e.clientX-sx,dy=e.clientY-sy;moved=Math.max(moved,Math.abs(dx)+Math.abs(dy));stage.scrollLeft=sl-dx;stage.scrollTop=st-dy;}});
- stage.addEventListener('pointerup',()=>{mode=null});
+ stage.addEventListener('pointerup',()=>{if(moved<=6&&downId&&!LOCKED.has(downId))clickSeat(downId);mode=null;downId=null;});
  stage.addEventListener('contextmenu',e=>e.preventDefault());
  stage.addEventListener('wheel',e=>{if(!e.ctrlKey)return;e.preventDefault();zoom=Math.max(0.3,Math.min(3,zoom*(e.deltaY<0?1.1:0.9)));applyZoom();},{passive:false});
  document.querySelectorAll('[data-t]').forEach(b=>b.addEventListener('click',()=>setCur(b.dataset.t)));

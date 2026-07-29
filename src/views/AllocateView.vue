@@ -62,7 +62,17 @@ function run() {
     assigned: r.summary.assigned,
     lost: r.summary.落選,
   })
+  // 寫給 demo/result.html（配位結果地圖）讀：同網域 localStorage、資料不出瀏覽器。
+  try {
+    localStorage.setItem(
+      'parkfee_alloc_result_v1',
+      JSON.stringify({ seed: r.seed, runAt: r.runAt, summary: r.summary, assigned: r.assigned, 落選: r.落選 }),
+    )
+  } catch {
+    /* 空間不足等就略過，不影響抽籤 */
+  }
 }
+const resultMapUrl = import.meta.env.BASE_URL + 'demo/result.html'
 function redraw() {
   // 重抽＝換新種子重跑（結果不同、仍可重現）。監察用：歷次種子/時間都留存於下方紀錄。
   seed.value = '重抽-' + new Date().toISOString().slice(0, 19).replace('T', ' ')
@@ -224,6 +234,11 @@ function downloadResultCSV() {
         >
           ⬇ 下載配位結果 CSV
         </button>
+        <a
+          :href="resultMapUrl"
+          target="_blank"
+          class="rounded border border-sky-400 px-4 py-2 text-sm font-medium text-sky-700 hover:bg-sky-50"
+        >🗺 地圖看結果</a>
         <button
           v-if="admin"
           class="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
