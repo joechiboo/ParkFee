@@ -58,7 +58,7 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
    <h1>分棟順序工具（電腦選位）</h1>
    <p class="sub">選棟 → 依「想先配的順序」<b>逐格點選</b>座位（點擊序＝填補序）。<br>
      只需點靠電梯的前幾格，其餘自動用距離補在後面。<br>
-     <kbd>a/c/e/g</kbd>切棟　<kbd>點座位</kbd>加入/移除　<kbd>空白/右鍵拖曳</kbd>平移　<kbd>Ctrl+滾輪</kbd>縮放</p>
+     <kbd>a/c/e/g</kbd>切棟　<kbd>點座位</kbd>加入/移除　<kbd>拖曳</kbd>平移　<kbd>Ctrl+滾輪</kbd>縮放</p>
    <div class="row">
      <button class="b-AB" data-t="AB">AB 棟</button>
      <button class="b-CD" data-t="CD">CD 棟</button>
@@ -109,19 +109,19 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
  function renderAll(){for(const s of SEATS)renderSeat(s.id)}
  function recount(){for(const B of TS)el('n-'+B).textContent=order[B].length;el('cur').textContent=cur;
    el('list').textContent=order[cur].length?(cur+'：'+order[cur].join(' → ')):'（'+cur+' 尚未排，點座位開始）';}
- function clickSeat(id){const B=ordTower[id];
+ function clickSeat(id){if(moved>6)return; // 拖曳平移後放開，不算點座位
+   const B=ordTower[id];
    if(B===cur){order[cur].splice(order[cur].indexOf(id),1);delete ordTower[id];}
    else{if(B)order[B].splice(order[B].indexOf(id),1);order[cur].push(id);ordTower[id]=cur;}
    save();renderAll();recount();}
  function setCur(t){cur=t;document.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('active',b.dataset.t===t));recount();}
- // 平移（空白/右鍵拖曳）+ 縮放（Ctrl+滾輪）
+ // 平移（左鍵直接拖曳；拖>6px 就不觸發點選）+ 縮放（Ctrl+滾輪）
  let zoom=0.62;function applyZoom(){plan.style.width=(DISPW*zoom)+'px'}
- let space=false;addEventListener('keydown',e=>{if(e.code==='Space'){space=true;stage.style.cursor='grab'}});
- addEventListener('keyup',e=>{if(e.code==='Space'){space=false;stage.style.cursor=''}});
- let mode=null,sx,sy,sl,st;
- stage.addEventListener('pointerdown',e=>{if(space||e.button===2){mode='pan';sx=e.clientX;sy=e.clientY;sl=stage.scrollLeft;st=stage.scrollTop;stage.setPointerCapture(e.pointerId);e.preventDefault();}});
+ let mode=null,sx,sy,sl,st,moved=0;
+ stage.addEventListener('pointerdown',e=>{if(e.button!==0&&e.button!==2)return;
+   mode='pan';moved=0;sx=e.clientX;sy=e.clientY;sl=stage.scrollLeft;st=stage.scrollTop;stage.setPointerCapture(e.pointerId);});
  stage.addEventListener('pointermove',e=>{const b=plan.getBoundingClientRect();el('coord').textContent='x:'+((e.clientX-b.left)/b.width*DISPW).toFixed(0)+' y:'+((e.clientY-b.top)/b.height*DISPH).toFixed(0);
-   if(mode==='pan'){stage.scrollLeft=sl-(e.clientX-sx);stage.scrollTop=st-(e.clientY-sy);}});
+   if(mode==='pan'){const dx=e.clientX-sx,dy=e.clientY-sy;moved=Math.max(moved,Math.abs(dx)+Math.abs(dy));stage.scrollLeft=sl-dx;stage.scrollTop=st-dy;}});
  stage.addEventListener('pointerup',()=>{mode=null});
  stage.addEventListener('contextmenu',e=>e.preventDefault());
  stage.addEventListener('wheel',e=>{if(!e.ctrlKey)return;e.preventDefault();zoom=Math.max(0.3,Math.min(3,zoom*(e.deltaY<0?1.1:0.9)));applyZoom();},{passive:false});
