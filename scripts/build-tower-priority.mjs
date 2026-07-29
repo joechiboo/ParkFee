@@ -1,67 +1,93 @@
-// 產出「各棟電腦選號優先順序」：每個可承租大位 → 依最近梯廳核心分棟 → 棟內按離核心距離排序（近電梯優先）。
-// 電腦選號時：住戶本棟的這份清單，由前往後找第一個「仍剩、未鎖、未被抽走」的位配給他。
-// 來源：src/map/b1-classification.json（大位、排除公益位）。輸出：src/map/tower-priority.json。
+// 產出「各棟電腦選號優先序」tower-priority.json（2026-07-24 方向+均分+重疊版）。
+//
+// 規則（使用者定）：
+//   1. 分區方向：左欄上段(y<900)=AB 上→下、左欄下段=CD 下→上、中間=EF、右邊=GH（EF/GH 依離電梯距離近→遠）。
+//      分界：左/中 x=560、中/右 x=1240（EF·GH 核心中點）、AB/CD y=900。
+//   2. 均分：各棟盡量 ~N/4；不足的棟從其他區「借」最近的位補到目標 → 允許部份重疊
+//      （借來的格同時留在原棟清單；引擎逐格檢查剩餘，重疊格誰先到誰拿、不會重複配）。
+//   3. 扣掉鎖定位（live DB locked_seat）——凍結格不進任何清單。
+//
+// ⚠️ 鎖定清單變動後（新增凍結/解鎖）要重跑本腳本，讓解鎖格回到清單。
 // 用法：node scripts/build-tower-priority.mjs
 import { readFileSync, writeFileSync } from 'node:fs'
+import { createClient } from '@supabase/supabase-js'
 
+// ── live 鎖定清單 ──
+const env = {}
+for (const line of readFileSync('.env', 'utf8').split(/\r?\n/)) {
+  const m = line.match(/^([A-Z_]+)=(.*)$/)
+  if (m) env[m[1]] = m[2].trim()
+}
+const sb = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, { auth: { persistSession: false } })
+const { data: lockedRows, error } = await sb.from('locked_seat').select('車位編號')
+if (error) throw new Error('讀取 locked_seat 失敗（電腦選位清單必須扣鎖定）：' + error.message)
+const locked = new Set(lockedRows.map((r) => String(r.車位編號)))
+
+// ── 可入清單座位：非公益大位、且未鎖定 ──
 const cls = JSON.parse(readFileSync('src/map/b1-classification.json', 'utf8'))
+const all = cls.seats.filter((s) => s.cat === 'motor' && !s.public)
+const seats = all.filter((s) => !locked.has(String(s.id)))
 
-// 4 棟梯廳核心（顯示座標，與 towers.html / render-towers.mjs 一致）。
 const CORES = [
   { name: 'AB', x: 581, y: 424 },
   { name: 'CD', x: 563, y: 1168 },
   { name: 'EF', x: 1102, y: 1375 },
   { name: 'GH', x: 1378, y: 1375 },
 ]
-
-// 可承租大位（排除公益位；小位走志願快速道、無障礙走 Round 0，皆不進電腦選號池）。
-const seats = cls.seats.filter((s) => s.cat === 'motor' && !s.public)
-
+const TS = ['AB', 'CD', 'EF', 'GH']
+const core = (n) => CORES.find((c) => c.name === n)
 const d2 = (s, c) => (s.x - c.x) ** 2 + (s.y - c.y) ** 2
-function nearest(s) {
-  let best = CORES[0]
-  let bd = Infinity
-  for (const c of CORES) {
-    const dd = d2(s, c)
-    if (dd < bd) {
-      bd = dd
-      best = c
-    }
-  }
-  return { tower: best.name, dist: Math.sqrt(bd) }
+
+// ── 1) 分區（primary，涵蓋所有座位）──
+const X_MID = 560
+const X_RIGHT = 1240
+const Y_ABCD = 900
+const region = (s) => (s.x >= X_RIGHT ? 'GH' : s.x >= X_MID ? 'EF' : s.y < Y_ABCD ? 'AB' : 'CD')
+const own = { AB: [], CD: [], EF: [], GH: [] }
+for (const s of seats) own[region(s)].push(s)
+
+// ── 2) 棟內排序（方向規則）──
+own.AB.sort((a, b) => a.y - b.y || a.x - b.x) // 上→下
+own.CD.sort((a, b) => b.y - a.y || a.x - b.x) // 下→上
+own.EF.sort((a, b) => d2(a, core('EF')) - d2(b, core('EF'))) // 靠電梯近→遠
+own.GH.sort((a, b) => d2(a, core('GH')) - d2(b, core('GH')))
+
+// ── 3) 均分補位（重疊）：不足目標的棟，從他區借「離本棟電梯最近」的位補到目標 ──
+const target = Math.ceil(seats.length / 4)
+const towers = {}
+const borrowed = {}
+for (const t of TS) {
+  const list = own[t].map((s) => s.id)
+  const foreign = seats
+    .filter((s) => region(s) !== t)
+    .sort((a, b) => d2(a, core(t)) - d2(b, core(t)))
+  borrowed[t] = foreign.slice(0, Math.max(0, target - list.length)).map((s) => s.id)
+  towers[t] = [...list, ...borrowed[t]] // 自有(方向序)在前、借位(近電梯序)在後
 }
 
-const towers = { AB: [], CD: [], EF: [], GH: [] }
 const seatTower = {}
-for (const s of seats) {
-  const { tower, dist } = nearest(s)
-  towers[tower].push({ id: s.id, dist })
-  seatTower[s.id] = tower
-}
-
-// 棟內：近電梯優先（距離小 → 排前面）。輸出僅留 id 陣列（順序即優先序）。
-const orderedTowers = {}
-for (const t of Object.keys(towers)) {
-  orderedTowers[t] = towers[t].sort((a, b) => a.dist - b.dist).map((x) => x.id)
-}
+for (const t of TS) for (const s of own[t]) seatTower[s.id] = t
 
 const out = {
   meta: {
-    generated: 'auto-nearest-core',
-    note: '棟內順序＝離該棟梯廳核心距離（近→遠）。微調分棟請用 public/demo/towers.html 匯出後回灌。',
+    generated: 'directional-balanced-overlap',
+    note: 'AB上→下/CD下→上/EF·GH靠電梯；均分~N/4 借位重疊；已扣鎖定。鎖定變動後重跑本腳本。',
+    thresholds: { X_MID, X_RIGHT, Y_ABCD },
     cores: Object.fromEntries(CORES.map((c) => [c.name, { x: c.x, y: c.y }])),
-    counts: Object.fromEntries(Object.entries(orderedTowers).map(([t, ids]) => [t, ids.length])),
+    lockedExcluded: locked.size,
+    counts: Object.fromEntries(TS.map((t) => [t, towers[t].length])),
+    ownCounts: Object.fromEntries(TS.map((t) => [t, own[t].length])),
     total: seats.length,
   },
-  towers: orderedTowers,
+  towers,
   seatTower,
 }
 writeFileSync('src/map/tower-priority.json', JSON.stringify(out, null, 0))
 
-console.log('已寫入 src/map/tower-priority.json')
-console.log('各棟大位數：', out.meta.counts, '合計', out.meta.total)
-for (const [t, ids] of Object.entries(orderedTowers)) {
-  const head = ids.slice(0, 5).join(',')
-  const tail = ids.slice(-5).join(',')
-  console.log(`  ${t}：靠電梯前5 [${head}] … 最遠5 [${tail}]`)
+console.log(`已寫入 src/map/tower-priority.json（扣鎖定 ${locked.size} 格後共 ${seats.length} 格，均分目標 ${target}/棟）`)
+for (const t of TS) {
+  console.log(
+    `  ${t}：自有 ${own[t].length} + 借 ${borrowed[t].length} = ${towers[t].length}` +
+      `｜前10 [${towers[t].slice(0, 10).join(',')}]`,
+  )
 }
