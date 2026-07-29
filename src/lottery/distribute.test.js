@@ -79,18 +79,46 @@ describe('distribute — 填志願 + 統一分發（第一階段）', () => {
     expect(r.assigned[0].配位方式).toBe(VIA.ACCESSIBLE)
   })
 
-  it('重機：足額（剩餘大位≥2）配雙大位', () => {
-    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }])
+  it('重機：配重機區相鄰兩格（未填志願 → 區內最低號相鄰對）', () => {
+    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
+      seats: [...SEATS, { id: '321', type: '重機區', heavy: true }, { id: '322', type: '重機區', heavy: true }],
+    })
     expect(r.assigned[0].占用位數).toBe(2)
-    expect(r.assigned[0].車位類型).toBe('大、大')
+    expect(r.assigned[0].車位編號).toBe('321、322')
+    expect(r.assigned[0].車位類型).toBe('重機區、重機區')
   })
 
-  it('重機：大位不足 2 → 落選（重機需雙大位）', () => {
+  it('重機：志願優先 — 志願指到區內格則配該格＋鄰格', () => {
+    const zone = ['331', '332', '335', '336'].map((id) => ({ id, type: '重機區', heavy: true }))
+    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: ['335'] }], {
+      seats: [...SEATS, ...zone],
+    })
+    expect(r.assigned[0].車位編號).toBe('335、336')
+  })
+
+  it('重機：區內無相鄰對（只剩不相鄰格）→ 落選 HEAVY_SHORT，不吃一般大位', () => {
+    const zone = [{ id: '321', type: '重機區', heavy: true }, { id: '323', type: '重機區', heavy: true }]
     const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
-      seats: [{ id: '2', type: '大' }, { id: '1', type: '小' }],
+      seats: [...SEATS, ...zone],
     })
     expect(r.assigned).toHaveLength(0)
     expect(r.落選[0].原因).toBe(REASON.HEAVY_SHORT)
+  })
+
+  it('一般車志願指到重機區 → 不配（型別不符）', () => {
+    const zone = [{ id: '321', type: '重機區', heavy: true }, { id: '322', type: '重機區', heavy: true }]
+    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車位志願: ['321'] }], {
+      seats: zone, // 池內只有重機區
+    })
+    expect(r.assigned).toHaveLength(0)
+    expect(r.落選[0].原因).toBe(REASON.LOST)
+  })
+
+  it('志願小位 takeLowest 不會撿到重機區（zone 型別非「小」）', () => {
+    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 志願小位: 'Y', 車位志願: [] }], {
+      seats: [{ id: '321', type: '重機區', heavy: true }, { id: '322', type: '重機區', heavy: true }, { id: '4', type: '小' }],
+    })
+    expect(r.assigned[0].車位編號).toBe('4')
   })
 
   it('公益位排除：傳入 public 座位不進池、志願指到也落選', () => {

@@ -151,12 +151,14 @@ async function doUnlock(seatId) {
 
 function typeFill(s) {
   if (s.public) return 'rgba(234,179,8,.55)'
+  if (s.heavy) return 'rgba(249,115,22,.5)' // 重機區（321-349，限重機）
   if (s.type === '大') return 'rgba(245,158,11,.45)'
   if (s.type === '小') return 'rgba(139,92,246,.6)'
   return 'rgba(148,163,184,.4)'
 }
 function typeStroke(s) {
   if (s.public) return '#a16207'
+  if (s.heavy) return '#c2410c'
   if (s.type === '大') return '#d97706'
   if (s.type === '小') return '#6d28d9'
   return '#64748b'

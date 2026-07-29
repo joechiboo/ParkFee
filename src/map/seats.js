@@ -16,6 +16,12 @@ export const DISP_H = classification.meta.dispH // 1684
 // 機車位實體分類 cat → 辦法型別
 const MOTOR_CATS = { motor: '大', small: '小', access: '無障礙' }
 
+// 重機專區（2026-07-29 使用者定，待 Q6 例會追認）：321-349 只租重機、一台占「相鄰兩格」。
+// type 標成 '重機區' → 一般志願(可停型別 大/小)、志願小位 takeLowest('小') 天然選不到；
+// 引擎重機輪與選位頁(限重機戶)專用。⚠️ 此段現場編號仍待核對（主檔盤點為 26小+3大）。
+const HEAVY_ZONE = new Set(Array.from({ length: 349 - 321 + 1 }, (_, i) => String(321 + i)))
+export const isHeavySeat = (id) => HEAVY_ZONE.has(String(id))
+
 function seatsOfCat(cat) {
   return classification.seats
     .filter((s) => s.cat === cat)
@@ -27,14 +33,18 @@ function seatsOfCat(cat) {
 export function motorSeats() {
   return classification.seats
     .filter((s) => s.cat in MOTOR_CATS)
-    .map((s) => ({
-      id: s.id,
-      x: s.x,
-      y: s.y,
-      floor: FLOOR,
-      type: MOTOR_CATS[s.cat],
-      ...(s.public ? { public: true } : {}),
-    }))
+    .map((s) => {
+      const heavy = HEAVY_ZONE.has(String(s.id))
+      return {
+        id: s.id,
+        x: s.x,
+        y: s.y,
+        floor: FLOOR,
+        type: heavy ? '重機區' : MOTOR_CATS[s.cat],
+        ...(heavy ? { heavy: true } : {}),
+        ...(s.public ? { public: true } : {}),
+      }
+    })
     .sort((a, b) => +a.id - +b.id)
 }
 

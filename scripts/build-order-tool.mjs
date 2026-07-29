@@ -22,7 +22,8 @@ const lockedIds = lockedRows.map((r) => String(r.車位編號))
 const cls = JSON.parse(readFileSync('src/map/b1-classification.json', 'utf8'))
 const { dispW, dispH } = cls.meta
 // 可承租大位（排除公益；小位走志願、無障礙走 R0，皆不進電腦選位）。
-const motor = cls.seats.filter((s) => s.cat === 'motor' && !s.public).map((s) => ({ id: s.id, x: s.x, y: s.y }))
+const HEAVY_MIN = 321, HEAVY_MAX = 349 // 重機專區：不進分棟順序工具
+const motor = cls.seats.filter((s) => s.cat === 'motor' && !s.public && !(+s.id >= HEAVY_MIN && +s.id <= HEAVY_MAX)).map((s) => ({ id: s.id, x: s.x, y: s.y }))
 
 const CORES = [
   { name: 'AB', x: 581, y: 424 },

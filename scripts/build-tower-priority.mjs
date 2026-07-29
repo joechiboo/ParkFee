@@ -25,7 +25,8 @@ const locked = new Set(lockedRows.map((r) => String(r.車位編號)))
 
 // ── 可入清單座位：非公益大位、且未鎖定 ──
 const cls = JSON.parse(readFileSync('src/map/b1-classification.json', 'utf8'))
-const all = cls.seats.filter((s) => s.cat === 'motor' && !s.public)
+const HEAVY_MIN = 321, HEAVY_MAX = 349 // 重機專區：只租重機，不進電腦選位候選
+const all = cls.seats.filter((s) => s.cat === 'motor' && !s.public && !(+s.id >= HEAVY_MIN && +s.id <= HEAVY_MAX))
 const seats = all.filter((s) => !locked.has(String(s.id)))
 
 const CORES = [

@@ -26,9 +26,12 @@ const orderOf = (id) => orderMap.value.get(String(id))
 // 已鎖定/已承租的車位（物業維護、雲端讀）：不可選。
 onMounted(refreshLocked)
 const isOccupied = (id) => lockedSeats.value.has(String(id))
-const selectable = (s) => !s.public && !isOccupied(s.id) && (s.type === '大' || s.type === '小')
+// 重機區（321-349）：只有「該戶登記有重機」才可選；一台重機占相鄰兩格（志願點區內格即可，配位自動帶鄰格）。
+const hasHeavy = computed(() => (sessionHousehold.value?.vehicles || []).some((v) => v.車種 === '重機'))
+const selectable = (s) =>
+  !s.public && !isOccupied(s.id) && (s.heavy ? hasHeavy.value : s.type === '大' || s.type === '小')
 
-const TYPE_LABEL = { 大: '大位', 小: '小位', 無障礙: '無障礙' }
+const TYPE_LABEL = { 大: '大位', 小: '小位', 無障礙: '無障礙', 重機區: '重機區' }
 function seatLabel(id) {
   const s = seats.find((x) => String(x.id) === String(id))
   return s ? `${TYPE_LABEL[s.type] || ''} ${id}` : id
@@ -87,11 +90,12 @@ watch(householdId, (newId, oldId) => {
   // 匿名(oldId='')→登入且無存檔：保留目前試排
 })
 
-// 座位外觀：選中=紅、已售=深灰、公益=金、大=琥珀、小=紫、無障礙=灰。
+// 座位外觀：選中=紅、已售=深灰、公益=金、大=琥珀、小=紫、重機區=橘、無障礙=灰。
 function fill(s) {
   if (isSel(s.id)) return '#ef4444'
   if (isOccupied(s.id)) return '#475569'
   if (s.public) return 'rgba(234,179,8,.55)'
+  if (s.heavy) return 'rgba(249,115,22,.5)'
   if (s.type === '大') return 'rgba(245,158,11,.45)'
   if (s.type === '小') return 'rgba(139,92,246,.6)'
   return 'rgba(148,163,184,.4)'
@@ -100,6 +104,7 @@ function stroke(s) {
   if (isSel(s.id)) return '#b91c1c'
   if (isOccupied(s.id)) return '#1e293b'
   if (s.public) return '#a16207'
+  if (s.heavy) return '#c2410c'
   if (s.type === '大') return '#d97706'
   if (s.type === '小') return '#6d28d9'
   return '#64748b'
@@ -181,10 +186,12 @@ function decorate(s) {
           <div class="flex flex-wrap gap-x-3 gap-y-1">
             <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(245,158,11,.6)"></span> 大位</span>
             <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(139,92,246,.7)"></span> 小位</span>
+            <span v-if="hasHeavy"><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(249,115,22,.6)"></span> 重機區（占相鄰2格）</span>
             <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-rose-500"></span> 已選</span>
           </div>
           <div class="mb-1 mt-2 font-medium text-slate-600">不可選</div>
           <div class="flex flex-wrap gap-x-3 gap-y-1">
+            <span v-if="!hasHeavy"><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(249,115,22,.6)"></span> 重機區（限重機戶）</span>
             <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(234,179,8,.6);outline:1.5px solid #a16207"></span> 公益</span>
             <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(148,163,184,.45)"></span> 無障礙</span>
             <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:#475569"></span> 已承租</span>

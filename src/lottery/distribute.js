@@ -16,9 +16,10 @@
 //   Round 1 一戶一位：志願小位免抽依登記序選小位；其餘抽順序號、依序取志願中最高可得。
 //   Round 2+ 第二位起：抽順序號依序取志願（剩餘耗盡則自然全落選）。
 //
-// v1 限制（待後續/管委會）：
-//   - 重機（佔雙大位）暫不走志願，沿用 seq 取 2 大位（足額＝剩餘大位≥2 才配）；志願僅作用於單格車。
-//   - 未填志願者直接列落選（原因「未填志願」），交物業第二階段保底/候補。
+// 重機（2026-07-29 改版，待 Q6 例會追認）：只配「重機區」(type 重機區，321-349) 相鄰兩格；
+//   吃戶志願（志願中可湊相鄰對者優先）、否則區內最低號相鄰對；區無相鄰對 → 落選 HEAVY_SHORT。
+//   一般車天然選不到重機區（COMPAT 只認 大/小）。
+// v1 限制（待後續/管委會）：未填志願者直接列落選（原因「未填志願」），交物業第二階段保底/候補。
 
 import { mulberry32, hashSeed, seededShuffle } from './rng.js'
 import { rentableMotorSeats, motorSeats } from '../map/seats.js'
@@ -60,7 +61,7 @@ export const REASON = {
   LOST: '志願全落選', // 有填志願、但都被先順位取走
   NO_WISH: '未填志願',
   NO_SMALL: '小位不足',
-  HEAVY_SHORT: '重機需雙大位、機車位未足額',
+  HEAVY_SHORT: '重機區無相鄰兩格可配',
 }
 
 // 車種 → 可停型別（志願篩選用）。重機另以 seq 取雙大位、不走此表。
@@ -160,10 +161,25 @@ export function distribute({
   const lose = (e, round, reason, seqNo = null) =>
     lost.push({ 戶號: e.戶號, 車號: e.車號, 第幾輛: e.第幾輛, 輪次: round, 順序號: seqNo, 原因: reason })
 
-  // 重機：足額（剩餘大位 ≥ 2）才配雙大位；v1 走 seq、不走志願。成功回傳 [s1,s2]，否則 null。
-  const takeHeavy = () => {
-    if (pool.countOf('大') < 2) return null
-    return [pool.takeLowest('大'), pool.takeLowest('大')]
+  // 重機：只配「重機區」相鄰兩格（辦法雙位；2026-07-29 改版，取代舊 seq 取雙大位）。
+  // 先取志願中「在區內、可湊相鄰對」的格；志願落空/沒填 → 區內最低號相鄰對；無相鄰對 → null（HEAVY_SHORT）。
+  const takeHeavy = (wishList = []) => {
+    const availNums = seats
+      .filter((s) => s.type === '重機區' && pool.isAvail(s.id))
+      .map((s) => +s.id)
+      .sort((a, b) => a - b)
+    const avail = new Set(availNums)
+    const pairAt = (n) => (avail.has(n) && avail.has(n + 1) ? [n, n + 1] : null)
+    const pairOf = (n) => pairAt(n) || (avail.has(n - 1) && avail.has(n) ? [n - 1, n] : null)
+    for (const w of wishList) {
+      const p = pairOf(+w)
+      if (p) return p.map((x) => pool.take(String(x)))
+    }
+    for (const n of availNums) {
+      const p = pairAt(n)
+      if (p) return p.map((x) => pool.take(String(x)))
+    }
+    return null
   }
 
   // 車位編號 → 型別查詢：優先用傳入 pool，否則查完整主檔（已指派位多半已 locked、不在 pool）。
@@ -247,7 +263,7 @@ export function distribute({
     order.forEach((e, i) => {
       const seq = ++seqCounter
       if (e.車種 === '重機') {
-        const taken = takeHeavy()
+        const taken = takeHeavy(e.車位志願)
         draws.push({ 戶號: e.戶號, 車號: e.車號, 車種: '重機', 順序號: seq, 中籤: !!taken })
         if (!taken) return lose(e, 1, REASON.HEAVY_SHORT, seq)
         record(e, taken, VIA.WISH, 1, seq)
@@ -278,7 +294,7 @@ export function distribute({
     order.forEach((e, i) => {
       const seq = ++seqCounter
       if (e.車種 === '重機') {
-        const taken = takeHeavy()
+        const taken = takeHeavy(e.車位志願)
         draws.push({ 戶號: e.戶號, 車號: e.車號, 車種: '重機', 順序號: seq, 中籤: !!taken })
         if (!taken) return lose(e, nth, REASON.HEAVY_SHORT, seq)
         record(e, taken, VIA.WISH, nth, seq)
