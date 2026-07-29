@@ -112,8 +112,8 @@
  stage.addEventListener('wheel',e=>{if(!e.ctrlKey)return;e.preventDefault();zoom=Math.max(0.3,Math.min(3,zoom*(e.deltaY<0?1.1:0.9)));applyZoom();},{passive:false});
  document.querySelectorAll('[data-t]').forEach(b=>b.addEventListener('click',()=>setCur(b.dataset.t)));
  addEventListener('keydown',e=>{const m={a:'AB',c:'CD',e:'EF',g:'GH'};if(m[e.key.toLowerCase()])setCur(m[e.key.toLowerCase()]);});
- el('clearCur').onclick=()=>{for(const id of order[cur])delete ordTower[id];order[cur]=[];save();renderAll();recount();};
- el('clearAll').onclick=()=>{if(!confirm('清除所有棟的順序？'))return;for(const B of TS){for(const id of order[B])delete ordTower[id];order[B]=[]}save();renderAll();recount();};
+ el('clearCur').onclick=()=>{order[cur]=[];save();renderAll();recount();};
+ el('clearAll').onclick=()=>{if(!confirm('清除所有棟的順序？'))return;for(const B of TS)order[B]=[];save();renderAll();recount();};
  el('export').onclick=()=>{const seatTower={},towers={AB:[],CD:[],EF:[],GH:[]};
    for(const B of TS)for(const id of order[B]){towers[B].push(id);seatTower[id]=B;}
    const placed=new Set(Object.keys(seatTower));const rest=SEATS.filter(s=>!placed.has(s.id)&&!LOCKED.has(s.id));
