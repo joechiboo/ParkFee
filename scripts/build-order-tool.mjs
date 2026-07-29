@@ -3,9 +3,22 @@
 // 匯出直接就是 src/map/tower-priority.json 的格式（towers 每棟有序 id + seatTower）。
 // 用法：node scripts/build-order-tool.mjs → 開 public/demo/order.html
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { createClient } from '@supabase/supabase-js'
 
 const OUT = 'public/demo'
 mkdirSync(OUT, { recursive: true })
+
+// live 鎖定清單（凍結位在工具中灰掉、不可點；鎖定變動後重跑本腳本重生工具）
+const env = {}
+for (const line of readFileSync('.env', 'utf8').split('\n')) {
+  const m = line.trim().match(/^([A-Z_]+)=(.*)$/)
+  if (m) env[m[1]] = m[2].trim()
+}
+const sb = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, { auth: { persistSession: false } })
+const { data: lockedRows, error: lockErr } = await sb.from('locked_seat').select('車位編號')
+if (lockErr) throw new Error('讀取 locked_seat 失敗：' + lockErr.message)
+const lockedIds = lockedRows.map((r) => String(r.車位編號))
+
 const cls = JSON.parse(readFileSync('src/map/b1-classification.json', 'utf8'))
 const { dispW, dispH } = cls.meta
 // 可承租大位（排除公益；小位走志願、無障礙走 R0，皆不進電腦選位）。
@@ -18,6 +31,7 @@ const CORES = [
   { name: 'GH', x: 1378, y: 1375 },
 ]
 const SEATS_JSON = JSON.stringify(motor)
+const LOCKED_JSON = JSON.stringify(lockedIds)
 const CORES_JSON = JSON.stringify(CORES)
 
 const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
@@ -30,6 +44,9 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
  #plan{display:block;-webkit-user-drag:none}
  svg{position:absolute;inset:0;width:100%;height:100%}
  .seat{cursor:pointer}
+ .seat.lk{cursor:not-allowed}
+ .seat.lk circle{fill:rgba(100,116,139,.35)!important;stroke:#475569!important;stroke-dasharray:2 2}
+ .seat.lk text{fill:#64748b}
  .seat circle{r:7;stroke-width:.7}
  .seat text{font-size:6px;fill:#0f172a;text-anchor:middle;pointer-events:none;user-select:none}
  .seat.ord circle{stroke:#000;stroke-width:1.8}
@@ -80,14 +97,18 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
  </div>
 <script>
  const SEATS=${SEATS_JSON}, CORES=${CORES_JSON}, DISPW=${dispW}, DISPH=${dispH};
+ const LOCKED=new Set(${LOCKED_JSON}); // 凍結位：灰、不可點、不進順序
  const LS='parkfee_b1_order_v1';
  const NS='http://www.w3.org/2000/svg';
  const TS=['AB','CD','EF','GH'];
  const svg=document.getElementById('svg'),stage=document.getElementById('stage'),plan=document.getElementById('plan');
  const byId={};for(const s of SEATS)byId[s.id]=s;
  function nearest(s){let bn='AB',bd=Infinity;for(const c of CORES){const d=(s.x-c.x)**2+(s.y-c.y)**2;if(d<bd){bd=d;bn=c.name}}return bn}
+ // 分區規則（與 build-tower-priority.mjs 一致）：右=GH、中=EF、左欄上(y<900)=AB、左欄下=CD
+ function region(s){return s.x>=1240?'GH':s.x>=560?'EF':s.y<900?'AB':'CD'}
  let order=(localStorage.getItem(LS)?JSON.parse(localStorage.getItem(LS)):{AB:[],CD:[],EF:[],GH:[]});
  for(const B of TS)if(!Array.isArray(order[B]))order[B]=[];
+ for(const B of TS)order[B]=order[B].filter(id=>!LOCKED.has(id)); // 清掉先前誤點的凍結位
  const ordTower={};for(const B of TS)for(const id of order[B])ordTower[id]=B;
  let cur='AB';
  function save(){localStorage.setItem(LS,JSON.stringify(order))}
@@ -96,14 +117,16 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
    const c=document.createElementNS(NS,'circle');c.setAttribute('cx',s.x);c.setAttribute('cy',s.y);
    const t=document.createElementNS(NS,'text');t.setAttribute('x',s.x);t.setAttribute('y',s.y+2.5);
    g.appendChild(c);g.appendChild(t);svg.appendChild(g);nodes.set(s.id,g);
-   g.addEventListener('click',ev=>{ev.stopPropagation();clickSeat(s.id)});}
+   if(!LOCKED.has(s.id))g.addEventListener('click',ev=>{ev.stopPropagation();clickSeat(s.id)});}
  for(const c of CORES){const g=document.createElementNS(NS,'g');g.setAttribute('class','core');
    const ci=document.createElementNS(NS,'circle');ci.setAttribute('cx',c.x);ci.setAttribute('cy',c.y);ci.setAttribute('r',24);ci.setAttribute('fill','rgba(15,23,42,.85)');
    const t=document.createElementNS(NS,'text');t.setAttribute('x',c.x);t.setAttribute('y',c.y+7);t.textContent=c.name;
    g.appendChild(ci);g.appendChild(t);svg.appendChild(g);}
  const el=id=>document.getElementById(id);
- function towerOf(id){return ordTower[id]||nearest(byId[id])}
- function renderSeat(id){const g=nodes.get(id);const B=towerOf(id);const idx=order[B].indexOf(id);
+ function towerOf(id){return ordTower[id]||region(byId[id])}
+ function renderSeat(id){const g=nodes.get(id);
+   if(LOCKED.has(id)){g.setAttribute('class','seat lk');g.querySelector('text').textContent=id;return}
+   const B=towerOf(id);const idx=order[B].indexOf(id);
    g.setAttribute('class','seat t-'+B+(idx>=0?' ord':''));
    g.querySelector('text').textContent=idx>=0?(idx+1):id;}
  function renderAll(){for(const s of SEATS)renderSeat(s.id)}
@@ -131,9 +154,13 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
  el('clearAll').onclick=()=>{if(!confirm('清除所有棟的順序？'))return;for(const B of TS){for(const id of order[B])delete ordTower[id];order[B]=[]}save();renderAll();recount();};
  el('export').onclick=()=>{const seatTower={},towers={AB:[],CD:[],EF:[],GH:[]};
    for(const B of TS)for(const id of order[B]){towers[B].push(id);seatTower[id]=B;}
-   const placed=new Set(Object.keys(seatTower));const rest=SEATS.filter(s=>!placed.has(s.id));
-   for(const s of rest)seatTower[s.id]=nearest(s);
-   for(const c of CORES){const rb=rest.filter(s=>seatTower[s.id]===c.name).sort((a,b)=>((a.x-c.x)**2+(a.y-c.y)**2)-((b.x-c.x)**2+(b.y-c.y)**2));for(const s of rb)towers[c.name].push(s.id);}
+   const placed=new Set(Object.keys(seatTower));const rest=SEATS.filter(s=>!placed.has(s.id)&&!LOCKED.has(s.id));
+   for(const s of rest)seatTower[s.id]=region(s);
+   for(const c of CORES){const rb=rest.filter(s=>seatTower[s.id]===c.name);
+     if(c.name==='AB')rb.sort((a,b)=>a.y-b.y||a.x-b.x);           // 上→下
+     else if(c.name==='CD')rb.sort((a,b)=>b.y-a.y||a.x-b.x);      // 下→上
+     else rb.sort((a,b)=>((a.x-c.x)**2+(a.y-c.y)**2)-((b.x-c.x)**2+(b.y-c.y)**2)); // 靠電梯
+     for(const s of rb)towers[c.name].push(s.id);}
    const cores={},counts={};for(const c of CORES)cores[c.name]={x:c.x,y:c.y};for(const B of TS)counts[B]=towers[B].length;
    const out={meta:{generated:'manual-order',note:'手排前段(點擊序)＋距離補後段。棟內順序＝電腦選位填補序。',cores:cores,counts:counts,total:SEATS.length},towers:towers,seatTower:seatTower};
    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(out)],{type:'application/json'}));a.download='tower-priority.json';a.click();};
