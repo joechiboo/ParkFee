@@ -6,5 +6,6 @@ create table if not exists keepalive (
   at timestamptz not null default now()
 );
 alter table keepalive enable row level security; -- 不建 policy = anon deny-all
+grant all on table keepalive to service_role; -- ⚠️ 必要：此專案新表不會自動 GRANT，漏掉會 permission denied
 insert into keepalive (id, at) values (1, now())
   on conflict (id) do update set at = now();
