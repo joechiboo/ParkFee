@@ -24,14 +24,13 @@ describe('B1 車位空間資料（ground-truth，來源：seat-select-demo.html�
     expect(missing).toEqual([]) // 498 已恢復，無缺號
   })
 
-  it('每個機車位都有型別（大/小/無障礙/重機區），合計 655；重機區＝321-349 共 29 格', () => {
-    // 大/小/無障礙的確切分佈仍在現場盤點中（會變動），故只鎖「都有型別且合計正確」。
+  it('每個機車位都有型別（大/小/無障礙），合計 655；無「重機區」型別（2026-08-16 決議不設專區）', () => {
+    // 大/小/無障礙的確切分佈仍在核對中（Q11，會變動），故只鎖「都有型別且合計正確」。
     const types = motorSeats().map((s) => s.type)
-    expect(types.every((t) => ['大', '小', '無障礙', '重機區'].includes(t))).toBe(true)
+    expect(types.every((t) => ['大', '小', '無障礙'].includes(t))).toBe(true)
     expect(types).toHaveLength(655)
-    const heavy = motorSeats().filter((s) => s.heavy)
-    expect(heavy).toHaveLength(29) // 321-349
-    expect(heavy.every((s) => +s.id >= 321 && +s.id <= 349 && s.type === '重機區')).toBe(true)
+    expect(motorSeats().some((s) => s.heavy)).toBe(false) // 重機專區已拆
+    expect(motorSeats().filter((s) => s.type === '無障礙')).toHaveLength(8)
   })
 
   it('汽車 55、腳踏車 164，各自號碼無重複', () => {

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { distribute, VIA } from '../lottery/distribute.js'
-import { rentableMotorSeats } from '../map/seats.js'
+import { motorSeats } from '../map/seats.js'
 import { buildRoster } from '../data/registry.js'
 import { importedRoster, importInfo } from '../store/roster.js'
 import { resultCSV, resultRows } from '../export/result.js'
@@ -12,12 +12,12 @@ import { sessionHousehold, adminAuth } from '../store/session.js'
 import { isAdmin } from '../store/roles.js'
 
 // ── 資料：示範用 20 戶樣本（正式版改接 Supabase 全名冊 → buildRoster → distribute）──
-const seats = rentableMotorSeats() // 全可承租；抽籤時再扣掉鎖定（lockedSeats，物業維護頁設定）
+const seats = motorSeats() // 含公益位（社宅戶用，引擎內分流）；抽籤時再扣掉鎖定（lockedSeats，物業維護頁設定）
 onMounted(refreshLocked) // 載入雲端最新鎖定
 const SAMPLE_N = 20
-// 志願競爭池：限縮到一小區，讓 20 戶志願重疊 → 抽籤/重抽結果有差異、能看到落選。
+// 志願競爭池：限縮到一小區，讓 20 戶志願重疊 → 抽籤/重抽結果有差異、能看到落選。（排除公益位）
 const wishPool = seats
-  .filter((s) => s.type === '大' || s.type === '小')
+  .filter((s) => !s.public && (s.type === '大' || s.type === '小'))
   .map((s) => String(s.id))
   .slice(0, 28)
 
@@ -165,7 +165,7 @@ function downloadResultCSV(pub = true) {
           <li><b>Round 1 一戶一位</b>：志願小位者免抽、依登記序選小位；其餘第 1 輛抽順序號、依志願分發 → <b>保障每戶第 1 輛一位</b>。</li>
           <li><b>Round 2＋ 第二輛起</b>：用前輪剩餘車位依序取志願；耗盡則落選。</li>
         </ul>
-        <p><b>重機</b>限<b>重機區</b>（321-349）、一台占<b>相鄰兩格</b>：志願指到區內格優先、否則區內最低號相鄰對；區內無相鄰對則落選交物業。<b>志願全落空者</b>：勾「<b>電腦選號</b>」→ 系統自動配<b>本棟靠電梯剩位</b>（引擎內、可重現）；沒勾 → 列「落選名單」交物業第二階段（候補）。</p>
+        <p><b>重機</b>穿插一般車位、一台占<b>相鄰兩格</b>（編號連號，大小不限、可含無障礙）：志願中可湊相鄰對者優先、否則全場最低號相鄰對；無相鄰對則落選交物業。<b>社宅戶</b>只配<b>公益位</b>（一般戶反之不配公益位）。<b>志願全落空者</b>：勾「<b>電腦選號</b>」→ 系統自動配<b>本棟靠電梯剩位</b>（引擎內、可重現）；沒勾 → 列「落選名單」交物業第二階段（候補）。</p>
         <p class="text-slate-500">固定種子 → 結果可重現；種子／時間／各輪過程全留存供監察。重抽＝換新種子重跑，歷次紀錄保留。</p>
       </div>
     </details>

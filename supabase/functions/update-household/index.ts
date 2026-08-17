@@ -1,4 +1,4 @@
-// POST /update-household  { 戶號, 電話, vehicles, 認證車號 }  → { household } | { error }
+// POST /update-household  { 戶號, 電話, 社宅?, vehicles, 認證車號 }  → { household } | { error }
 // 編輯既有戶：整批取代車輛 + 改電話。戶號不可變。
 // 🔒 擁有權驗證：認證車號（登入時用的車號）必須「目前」屬於該戶，才允許編輯——
 //    否則任何人拿公開 anon key 就能竄改他戶登記。
@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405)
 
   try {
-    const { 戶號, 電話, vehicles, 認證車號 } = await req.json()
+    const { 戶號, 電話, 社宅, vehicles, 認證車號 } = await req.json()
 
     const hid = normalizeHousehold(戶號)
     if (!hid) return json({ error: '請填寫戶號' }, 400)
@@ -54,6 +54,9 @@ Deno.serve(async (req) => {
       p_vehicles: cleaned,
     })
     if (error) return json({ error: error.message || '更新失敗，請稍後再試' }, 400)
+
+    // 社宅旗標（RPC 未涵蓋的戶欄位，另行更新；省一次 RPC 改版）
+    if (社宅 !== undefined) await db.from('household').update({ 社宅: !!社宅 }).eq('戶號', hid)
 
     return json({ household: await fetchHousehold(db, hid) })
   } catch (e) {

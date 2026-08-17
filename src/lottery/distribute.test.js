@@ -79,55 +79,65 @@ describe('distribute — 填志願 + 統一分發（第一階段）', () => {
     expect(r.assigned[0].配位方式).toBe(VIA.ACCESSIBLE)
   })
 
-  it('重機：配重機區相鄰兩格（未填志願 → 區內最低號相鄰對）', () => {
-    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
-      seats: [...SEATS, { id: '321', type: '重機區', heavy: true }, { id: '322', type: '重機區', heavy: true }],
-    })
+  // ── 重機（2026-08-16 決議）：穿插一般車位，相鄰兩格（編號連號），不限大小、可含無障礙 ──
+  it('重機：未填志願 → 全場最低號相鄰對（大小混搭可）', () => {
+    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }])
     expect(r.assigned[0].占用位數).toBe(2)
-    expect(r.assigned[0].車位編號).toBe('321、322')
-    expect(r.assigned[0].車位類型).toBe('重機區、重機區')
+    expect(r.assigned[0].車位編號).toBe('1、2') // SEATS：1小 2大 → 混搭相鄰對
+    expect(r.assigned[0].車位類型).toBe('小、大')
   })
 
-  it('重機：志願優先 — 志願指到區內格則配該格＋鄰格', () => {
-    const zone = ['331', '332', '335', '336'].map((id) => ({ id, type: '重機區', heavy: true }))
-    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: ['335'] }], {
-      seats: [...SEATS, ...zone],
-    })
-    expect(r.assigned[0].車位編號).toBe('335、336')
+  it('重機：志願優先 — 志願指到格則配該格＋鄰格', () => {
+    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: ['3'] }])
+    expect(r.assigned[0].車位編號).toBe('3、4')
   })
 
-  it('重機：區內無相鄰對（只剩不相鄰格）→ 落選 HEAVY_SHORT，不吃一般大位', () => {
-    const zone = [{ id: '321', type: '重機區', heavy: true }, { id: '323', type: '重機區', heavy: true }]
+  it('重機：可含無障礙位（無障礙與大位連號成對）', () => {
     const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
-      seats: [...SEATS, ...zone],
+      seats: [{ id: '9', type: '大' }, { id: '10', type: '無障礙' }],
+    })
+    expect(r.assigned[0].車位編號).toBe('9、10')
+    expect(r.assigned[0].車位類型).toBe('大、無障礙')
+  })
+
+  it('重機：全場無相鄰對 → 落選 HEAVY_SHORT，不配單格', () => {
+    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
+      seats: [{ id: '1', type: '大' }, { id: '3', type: '大' }, { id: '10', type: '無障礙' }],
     })
     expect(r.assigned).toHaveLength(0)
     expect(r.落選[0].原因).toBe(REASON.HEAVY_SHORT)
   })
 
-  it('一般車志願指到重機區 → 不配（型別不符）', () => {
-    const zone = [{ id: '321', type: '重機區', heavy: true }, { id: '322', type: '重機區', heavy: true }]
-    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車位志願: ['321'] }], {
-      seats: zone, // 池內只有重機區
-    })
+  // ── 社宅（2026-08-16 Q7）：公益位＝社宅戶專用，雙向分流 ──
+  const MIX = [
+    { id: '1', type: '小' },
+    { id: '2', type: '大' },
+    { id: '9', type: '大', public: true },
+    { id: '12', type: '小', public: true },
+  ]
+
+  it('社宅戶：志願指到公益位 → 配到', () => {
+    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 社宅: 'Y', 車位志願: ['9'] }], { seats: MIX })
+    expect(r.assigned[0].車位編號).toBe('9')
+  })
+
+  it('社宅戶：志願指到一般位 → 不配（資格不符）', () => {
+    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 社宅: 'Y', 車位志願: ['2'] }], { seats: MIX })
     expect(r.assigned).toHaveLength(0)
     expect(r.落選[0].原因).toBe(REASON.LOST)
   })
 
-  it('志願小位 takeLowest 不會撿到重機區（zone 型別非「小」）', () => {
-    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 志願小位: 'Y', 車位志願: [] }], {
-      seats: [{ id: '321', type: '重機區', heavy: true }, { id: '322', type: '重機區', heavy: true }, { id: '4', type: '小' }],
-    })
-    expect(r.assigned[0].車位編號).toBe('4')
+  it('一般戶：志願指到公益位 → 不配（公益位社宅專用）', () => {
+    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車位志願: ['9'] }], { seats: MIX })
+    expect(r.assigned).toHaveLength(0)
+    expect(r.落選[0].原因).toBe(REASON.LOST)
   })
 
-  it('公益位排除：傳入 public 座位不進池、志願指到也落選', () => {
-    const r = distribute({
-      registrations: [{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車位志願: ['9'] }],
-      seats: [{ id: '9', type: '大', public: true }, { id: '1', type: '小' }].filter((s) => !s.public),
-      seed: 'test',
+  it('社宅戶志願小位：takeLowest 只撿公益小位（不吃一般小位）', () => {
+    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 社宅: 'Y', 志願小位: 'Y', 車位志願: [] }], {
+      seats: MIX,
     })
-    expect(r.assigned).toHaveLength(0)
+    expect(r.assigned[0].車位編號).toBe('12')
   })
 
   it('可重現：同 seed → 結果完全一致', () => {

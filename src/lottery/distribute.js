@@ -16,13 +16,15 @@
 //   Round 1 一戶一位：志願小位免抽依登記序選小位；其餘抽順序號、依序取志願中最高可得。
 //   Round 2+ 第二位起：抽順序號依序取志願（剩餘耗盡則自然全落選）。
 //
-// 重機（2026-07-29 改版，待 Q6 例會追認）：只配「重機區」(type 重機區，321-349) 相鄰兩格；
-//   吃戶志願（志願中可湊相鄰對者優先）、否則區內最低號相鄰對；區無相鄰對 → 落選 HEAVY_SHORT。
-//   一般車天然選不到重機區（COMPAT 只認 大/小）。
+// 重機（2026-08-16 小組決議，docs/17）：不設專區，穿插一般車位取「相鄰兩格」（編號連號；
+//   不限大小、可含無障礙——無障礙保留 2 格已走 locked_seat 鎖定、天然排除）。
+//   吃戶志願（志願中可湊相鄰對者優先）、否則全場最低號相鄰對；無相鄰對 → 落選 HEAVY_SHORT。
+// 社宅（2026-08-16 決議 Q7）：公益位＝社會住宅住戶專用。登記戶帶 社宅 旗標 → 只配公益位；
+//   一般戶反之只配非公益位。池預設含公益位（motorSeats），由資格判斷分流。
 // v1 限制（待後續/管委會）：未填志願者直接列落選（原因「未填志願」），交物業第二階段保底/候補。
 
 import { mulberry32, hashSeed, seededShuffle } from './rng.js'
-import { rentableMotorSeats, motorSeats } from '../map/seats.js'
+import { motorSeats } from '../map/seats.js'
 import towerPriority from '../map/tower-priority.json'
 
 export const VIA = {
@@ -61,11 +63,12 @@ export const REASON = {
   LOST: '志願全落選', // 有填志願、但都被先順位取走
   NO_WISH: '未填志願',
   NO_SMALL: '小位不足',
-  HEAVY_SHORT: '重機區無相鄰兩格可配',
+  HEAVY_SHORT: '無相鄰兩格可配重機',
 }
 
-// 車種 → 可停型別（志願篩選用）。重機另以 seq 取雙大位、不走此表。
+// 車種 → 可停型別（志願篩選用）。重機取相鄰兩格（HEAVY_TYPES）、不走此表。
 const COMPAT = { general: ['大', '小'], small: ['小'] }
+const HEAVY_TYPES = new Set(['大', '小', '無障礙'])
 
 function toEntry(r, index) {
   return {
@@ -78,6 +81,8 @@ function toEntry(r, index) {
     車位志願: Array.isArray(r.車位志願) ? r.車位志願.map((x) => String(x)) : [], // 戶層級
     車位編號: String(r.車位編號 ?? '').trim(), // 物業抽籤前已指派（空＝待抽）；重機兩位頓號分隔
     已繳費: r.已繳費 === true || r.已繳費 === 'Y' || r.已繳費 === 'y',
+    社宅: r.社宅 === true || r.社宅 === 'Y' || r.社宅 === 'y', // 社會住宅住戶 → 只配公益位
+
     // 電腦選號：志願落空時是否要系統自動配本棟剩位。相容舊欄位「志願落選保底」。
     電腦選號:
       r.電腦選號 === true || r.電腦選號 === 'Y' || r.電腦選號 === 'y' ||
@@ -87,12 +92,16 @@ function toEntry(r, index) {
 }
 
 // 可變座位池：以 id 追蹤已取，提供「取指定 id」「取某型別最低號」「型別餘量」。
+// ok＝資格判斷（社宅 ↔ 公益位分流），預設不限。
 function makePool(seats) {
   const byId = new Map(seats.map((s) => [String(s.id), s]))
   const taken = new Set()
-  const remainingOf = (type) =>
-    seats.filter((s) => s.type === type && !taken.has(String(s.id))).sort((a, b) => +a.id - +b.id)
+  const remainingOf = (type, ok = () => true) =>
+    seats
+      .filter((s) => s.type === type && !taken.has(String(s.id)) && ok(s))
+      .sort((a, b) => +a.id - +b.id)
   return {
+    seatOf: (id) => byId.get(String(id)) ?? null,
     typeOf: (id) => (byId.get(String(id)) || {}).type ?? null,
     isAvail: (id) => byId.has(String(id)) && !taken.has(String(id)),
     take(id) {
@@ -101,26 +110,30 @@ function makePool(seats) {
       taken.add(k)
       return byId.get(k)
     },
-    takeLowest(type) {
-      const s = remainingOf(type)[0]
+    takeLowest(type, ok) {
+      const s = remainingOf(type, ok)[0]
       return s ? this.take(s.id) : null
     },
-    countOf: (type) => remainingOf(type).length,
+    countOf: (type, ok) => remainingOf(type, ok).length,
     remaining: () => byId.size - taken.size,
   }
 }
 
-// 從戶志願取「仍剩、且車種可停」的最高志願；取得即占用。無則 null。
-function pickWish(pool, wishes, compatTypes) {
+// 從戶志願取「仍剩、且車種可停、且資格相符」的最高志願；取得即占用。無則 null。
+function pickWish(pool, wishes, compatTypes, ok = () => true) {
   for (const id of wishes) {
-    if (pool.isAvail(id) && compatTypes.includes(pool.typeOf(id))) return pool.take(id)
+    const s = pool.seatOf(id)
+    if (s && pool.isAvail(id) && compatTypes.includes(s.type) && ok(s)) return pool.take(id)
   }
   return null
 }
 
+// 戶別 → 車位資格：社宅戶只配公益位、一般戶只配非公益位（2026-08-16 Q7 決議）。
+const eligibleFor = (e) => (s) => (e.社宅 ? !!s.public : !s.public)
+
 export function distribute({
   registrations,
-  seats = rentableMotorSeats(),
+  seats = motorSeats(), // 含公益位；社宅/一般由 eligibleFor 分流（呼叫端仍應先扣鎖定位）
   seed = 'parkfee',
   runAt = null,
   // 電腦選位候選序：戶號 → 依優先度排好的車位 id 陣列。預設＝本棟靠電梯（tower-priority.json）。可注入供測試。
@@ -161,11 +174,11 @@ export function distribute({
   const lose = (e, round, reason, seqNo = null) =>
     lost.push({ 戶號: e.戶號, 車號: e.車號, 第幾輛: e.第幾輛, 輪次: round, 順序號: seqNo, 原因: reason })
 
-  // 重機：只配「重機區」相鄰兩格（辦法雙位；2026-07-29 改版，取代舊 seq 取雙大位）。
-  // 先取志願中「在區內、可湊相鄰對」的格；志願落空/沒填 → 區內最低號相鄰對；無相鄰對 → null（HEAVY_SHORT）。
-  const takeHeavy = (wishList = []) => {
+  // 重機：穿插一般車位取「相鄰兩格」（編號連號；不限大小、可含無障礙——2026-08-16 決議）。
+  // 先取志願中「可湊相鄰對」的格；志願落空/沒填 → 全場最低號相鄰對；無相鄰對 → null（HEAVY_SHORT）。
+  const takeHeavy = (wishList = [], ok = () => true) => {
     const availNums = seats
-      .filter((s) => s.type === '重機區' && pool.isAvail(s.id))
+      .filter((s) => HEAVY_TYPES.has(s.type) && pool.isAvail(s.id) && ok(s))
       .map((s) => +s.id)
       .sort((a, b) => a - b)
     const avail = new Set(availNums)
@@ -212,10 +225,11 @@ export function distribute({
     rounds.push({ round: '指派', name: '物業指派（免抽）', draws: [], assignments: a })
   }
 
-  // ── Round 0：無障礙（身障第 1 輛優先）──────────────────────────────
+  // ── Round 0：無障礙（身障第 1 輛優先；公益區無無障礙格 → 社宅戶不進此輪、直接走 R1）──
   {
-    const cands = pending.filter((e) => e.身障 && e.第幾輛 === 1)
-    const cap = pool.countOf('無障礙')
+    const nonPublic = (s) => !s.public
+    const cands = pending.filter((e) => e.身障 && e.第幾輛 === 1 && !e.社宅)
+    const cap = pool.countOf('無障礙', nonPublic)
     const draws = []
     let winners
     if (cands.length <= cap) {
@@ -229,7 +243,7 @@ export function distribute({
     }
     const a = []
     for (const e of winners) {
-      const s = pool.takeLowest('無障礙')
+      const s = pool.takeLowest('無障礙', nonPublic)
       if (!s) break
       record(e, [s], VIA.ACCESSIBLE, 0)
       assignedHouse.add(e.戶號)
@@ -246,9 +260,10 @@ export function distribute({
     const a = []
     const draws = []
 
-    // 志願小位：免抽、依登記序。先取志願中的小位，否則最低號小位。
+    // 志願小位：免抽、依登記序。先取志願中的小位，否則最低號小位（社宅戶＝公益小位）。
     for (const e of volunteers) {
-      const s = pickWish(pool, e.車位志願, COMPAT.small) || pool.takeLowest('小')
+      const ok = eligibleFor(e)
+      const s = pickWish(pool, e.車位志願, COMPAT.small, ok) || pool.takeLowest('小', ok)
       if (!s) {
         lose(e, 1, REASON.NO_SMALL)
         continue
@@ -263,14 +278,14 @@ export function distribute({
     order.forEach((e, i) => {
       const seq = ++seqCounter
       if (e.車種 === '重機') {
-        const taken = takeHeavy(e.車位志願)
+        const taken = takeHeavy(e.車位志願, eligibleFor(e))
         draws.push({ 戶號: e.戶號, 車號: e.車號, 車種: '重機', 順序號: seq, 中籤: !!taken })
         if (!taken) return lose(e, 1, REASON.HEAVY_SHORT, seq)
         record(e, taken, VIA.WISH, 1, seq)
         assignedHouse.add(e.戶號)
         return a.push({ 戶號: e.戶號, 車位編號: taken.map((s) => s.id).join('、'), 順序號: seq, 配位方式: VIA.WISH })
       }
-      const s = pickWish(pool, e.車位志願, COMPAT.general)
+      const s = pickWish(pool, e.車位志願, COMPAT.general, eligibleFor(e))
       draws.push({ 戶號: e.戶號, 車號: e.車號, 順序號: seq, 中籤: !!s })
       if (!s) return lose(e, 1, e.車位志願.length ? REASON.LOST : REASON.NO_WISH, seq)
       record(e, [s], VIA.WISH, 1, seq)
@@ -294,13 +309,13 @@ export function distribute({
     order.forEach((e, i) => {
       const seq = ++seqCounter
       if (e.車種 === '重機') {
-        const taken = takeHeavy(e.車位志願)
+        const taken = takeHeavy(e.車位志願, eligibleFor(e))
         draws.push({ 戶號: e.戶號, 車號: e.車號, 車種: '重機', 順序號: seq, 中籤: !!taken })
         if (!taken) return lose(e, nth, REASON.HEAVY_SHORT, seq)
         record(e, taken, VIA.WISH, nth, seq)
         return a.push({ 戶號: e.戶號, 車位編號: taken.map((s) => s.id).join('、'), 順序號: seq, 配位方式: VIA.WISH })
       }
-      const s = pickWish(pool, e.車位志願, COMPAT.general)
+      const s = pickWish(pool, e.車位志願, COMPAT.general, eligibleFor(e))
       draws.push({ 戶號: e.戶號, 車號: e.車號, 順序號: seq, 中籤: !!s })
       if (!s) return lose(e, nth, e.車位志願.length ? REASON.LOST : REASON.NO_WISH, seq)
       record(e, [s], VIA.WISH, nth, seq)
@@ -326,9 +341,11 @@ export function distribute({
     const a = []
     const rescued = new Set()
     for (const { l, e } of targets) {
+      const ok = eligibleFor(e)
       let picked = null
       for (const id of pickOrder(e.戶號)) {
-        if (pool.isAvail(id) && COMPAT.general.includes(pool.typeOf(id))) {
+        const s0 = pool.seatOf(id)
+        if (s0 && pool.isAvail(id) && COMPAT.general.includes(s0.type) && ok(s0)) {
           picked = pool.take(id)
           break
         }

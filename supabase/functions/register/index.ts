@@ -1,4 +1,4 @@
-// POST /register  { 戶號, 電話, vehicles:[{車號,車種,身障,志願小位}] }
+// POST /register  { 戶號, 電話, 社宅?, vehicles:[{車號,車種,身障,志願小位}] }
 // → { household } | { error }
 // 登記即註冊：建戶 + 建車。戶號/車號皆 PK，重複由 DB 唯一鍵擋下。
 import { corsHeaders, json, adminClient, fetchHousehold } from '../_shared/http.ts'
@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405)
 
   try {
-    const { 戶號, 電話, vehicles } = await req.json()
+    const { 戶號, 電話, 社宅, vehicles } = await req.json()
 
     const hid = normalizeHousehold(戶號)
     if (!hid) return json({ error: '請填寫戶號' }, 400)
@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     // 1) 建戶（戶號 PK；重複 → 已登記過）
     const { error: hErr } = await db
       .from('household')
-      .insert({ 戶號: hid, 電話: String(電話 ?? '').trim() })
+      .insert({ 戶號: hid, 電話: String(電話 ?? '').trim(), 社宅: !!社宅 })
     if (hErr) {
       if (hErr.code === '23505')
         return json({ error: `戶號 ${hid} 已登記過，請改用登入查看或修改` }, 409)

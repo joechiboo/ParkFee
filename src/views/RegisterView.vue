@@ -13,6 +13,7 @@ const router = useRouter()
 const form = reactive({
   戶號: '',
   電話: '',
+  社宅: false, // 社會住宅住戶：選位/配位限公益位（2026-08-16 決議）
   vehicles: [{ 車號: '', 車種: '一般', 身障: false, 志願小位: false }],
 })
 const error = ref('')
@@ -28,6 +29,7 @@ onMounted(() => {
   authPlate.value = h.認證車號 || sessionPlate.value || ''
   form.戶號 = h.戶號
   form.電話 = h.電話 || ''
+  form.社宅 = !!h.社宅
   const vs = (h.vehicles || []).map((v) => ({
     車號: v.車號,
     車種: v.車種 === '重機' ? '重機' : '一般',
@@ -65,7 +67,7 @@ async function submit() {
   }
   submitting.value = true
   try {
-    const payload = { 戶號: form.戶號, 電話: form.電話, vehicles: form.vehicles }
+    const payload = { 戶號: form.戶號, 電話: form.電話, 社宅: form.社宅, vehicles: form.vehicles }
     done.value = isEdit.value
       ? await updateHousehold({ ...payload, 認證車號: authPlate.value })
       : await register(payload)
@@ -88,7 +90,7 @@ async function submit() {
     <div v-if="done" class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-5">
       <div class="font-semibold text-emerald-900">✓ {{ isEdit ? '更新完成' : '登記完成' }}</div>
       <p class="mt-1 text-sm text-emerald-800">
-        戶號 <b>{{ done.戶號 }}</b> 已登記 {{ done.vehicles.length }} 台機車。
+        戶號 <b>{{ done.戶號 }}</b> 已登記 {{ done.vehicles.length }} 台機車。<span v-if="done.社宅">（社會住宅住戶：限選公益位）</span>
       </p>
       <p class="mt-2 text-sm text-emerald-800">
         之後可用 <b>戶號 ＋ 任一車號</b> 登入查看登記內容與抽籤結果。
@@ -121,7 +123,7 @@ async function submit() {
     <!-- 表單 -->
     <form v-else class="mt-4 space-y-5" @submit.prevent="submit">
       <p class="text-sm text-slate-500">
-        一戶限登記一次，請一次填齊所有機車。登記時請出示行車執照供查驗。本系統不蒐集身分證號。
+        一戶限登記一次，請一次填齊所有機車。證件查驗於<b>繳費簽約時</b>辦理，出示<b>行照或身分證</b>擇一即可。本系統不蒐集身分證號。
       </p>
 
       <div class="grid gap-4 sm:grid-cols-2">
@@ -140,6 +142,11 @@ async function submit() {
           <span v-if="form.電話 && !isValidTWPhone(form.電話)" class="mt-1 block text-xs text-red-600">手機請填 09 開頭 10 碼（例 0986-642-519）</span>
         </label>
       </div>
+
+      <label class="flex items-start gap-2 text-sm text-slate-700">
+        <input v-model="form.社宅" type="checkbox" class="mt-0.5 h-4 w-4" />
+        <span><b>社會住宅住戶</b> — 車位為公益位專區（選位時僅能選公益位；由物業核對身分）</span>
+      </label>
 
       <div class="space-y-3">
         <div class="flex items-center justify-between">

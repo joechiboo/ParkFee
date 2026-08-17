@@ -1,4 +1,5 @@
-// 產生「單頁 A3 橫式 PDF」：B1 全車位分類圖（大/小/無障礙/重機區/汽車/腳踏車 + 鎖定/公益標記）。
+// 產生「單頁 A3 PDF」：B1 機車位分類圖（大/小/無障礙/腳踏車 + 鎖定/公益標記；汽車位不印）。
+// 重機不設專區（2026-08-16 決議）：穿插一般車位，圖上無獨立顏色。
 // 資料：src/map/b1-classification.json（現場盤點定稿）＋ Supabase locked_seat（目前鎖定保留清單，anon 可讀）。
 // 中文用標楷體（C:\Windows\Fonts\kaiu.ttf）內嵌；離線或抓不到鎖定清單時仍出圖，只是不畫鎖定圈。
 // 用法：node scripts/print-map-a3.mjs → public/print/b1-map-a3.pdf
@@ -8,9 +9,6 @@ import fontkit from '@pdf-lib/fontkit'
 
 const cls = JSON.parse(readFileSync('src/map/b1-classification.json', 'utf8'))
 const { dispW, dispH } = cls.meta
-
-// 重機專區：321-349（與 src/map/seats.js 同步）
-const isHeavy = (id) => { const n = +id; return n >= 321 && n <= 349 }
 
 // 目前鎖定保留清單（Supabase locked_seat，anon 可讀）
 async function fetchLocked() {
@@ -40,10 +38,9 @@ const CAT = {
   motor: { name: '大車位', color: rgb(0.23, 0.51, 0.96) },
   small: { name: '小車位', color: rgb(0.55, 0.36, 0.96) },
   access: { name: '無障礙', color: rgb(0.92, 0.70, 0.03) },
-  heavy: { name: '重機專區', color: rgb(0.96, 0.25, 0.37) },
   bike: { name: '腳踏車', color: rgb(0.98, 0.45, 0.09) },
 } // 汽車位不印 — 本圖主打機車位（cat 不在 CAT 即跳過）
-const catOf = (s) => (s.cat in { motor: 1, small: 1, access: 1 } && isHeavy(s.id) ? 'heavy' : s.cat)
+const catOf = (s) => s.cat
 
 const locked = await fetchLocked()
 
@@ -111,7 +108,7 @@ for (const s of cls.seats) {
   page.drawCircle({ x: cx, y: cy, size: r, color: CAT[cat].color, opacity: 0.9 })
   if (s.public) // 公益位：金色粗框
     page.drawCircle({ x: cx, y: cy, size: r + 0.6, borderColor: rgb(0.83, 0.66, 0.12), borderWidth: 1.4, opacity: 0 })
-  if (locked && locked.has(String(s.id)) && (cat === 'motor' || cat === 'small' || cat === 'access' || cat === 'heavy')) {
+  if (locked && locked.has(String(s.id)) && (cat === 'motor' || cat === 'small' || cat === 'access')) {
     page.drawCircle({ x: cx, y: cy, size: r + 0.7, borderColor: rgb(0.1, 0.1, 0.12), borderWidth: 1.6, opacity: 0 })
     lockedDrawn++
   }
@@ -123,7 +120,7 @@ for (const s of cls.seats) {
 // 圖例（標題列右側一排）
 let lx = MARGIN + 320
 const ly = PH - MARGIN - 14
-for (const key of ['motor', 'small', 'access', 'heavy', 'bike']) {
+for (const key of ['motor', 'small', 'access', 'bike']) {
   const c = CAT[key]
   page.drawCircle({ x: lx + 5, y: ly + 4, size: 5, color: c.color, opacity: 0.9 })
   const label = `${c.name} ${counts[key] || 0}`
@@ -136,7 +133,7 @@ if (locked) {
   lx += 13 + zh.widthOfTextAtSize(`鎖定保留 ${lockedDrawn}`, 10.5) + 18
 }
 page.drawCircle({ x: lx + 5, y: ly + 4, size: 5, borderColor: rgb(0.83, 0.66, 0.12), borderWidth: 1.6, opacity: 0 })
-page.drawText('公益位', { x: lx + 13, y: ly, size: 10.5, font: zh, color: rgb(0.1, 0.1, 0.12) })
+page.drawText('公益位（社宅）', { x: lx + 13, y: ly, size: 10.5, font: zh, color: rgb(0.1, 0.1, 0.12) })
 
 mkdirSync('public/print', { recursive: true })
 const bytes = await pdf.save()

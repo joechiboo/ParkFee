@@ -47,7 +47,7 @@ export async function verifyAdmin(
 export async function fetchHousehold(db: SupabaseClient, hid: string) {
   const { data: h } = await db
     .from('household')
-    .select('戶號, 電話, created_at, 車位志願, 志願落選保底')
+    .select('戶號, 電話, created_at, 車位志願, 志願落選保底, 社宅')
     .eq('戶號', hid)
     .maybeSingle()
   if (!h) return null
@@ -62,6 +62,7 @@ export async function fetchHousehold(db: SupabaseClient, hid: string) {
     createdAt: h.created_at,
     車位志願: h.車位志願 ?? [],
     志願落選保底: !!h.志願落選保底,
+    社宅: !!h.社宅, // 社會住宅住戶：限公益位（2026-08-16 Q7）
     vehicles: vehicles ?? [],
   }
 }
