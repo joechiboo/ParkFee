@@ -14,12 +14,13 @@ import { isAdmin } from '../store/roles.js'
 // ── 資料：示範用 20 戶樣本（正式版改接 Supabase 全名冊 → buildRoster → distribute）──
 const seats = motorSeats() // 含公益位（社宅戶用，引擎內分流）；抽籤時再扣掉鎖定（lockedSeats，物業維護頁設定）
 onMounted(refreshLocked) // 載入雲端最新鎖定
-const SAMPLE_N = 20
-// 志願競爭池：限縮到一小區，讓 20 戶志願重疊 → 抽籤/重抽結果有差異、能看到落選。（排除公益位）
+// 模擬規模（2026-08-17 決議）：277 戶 ≈ 401 台，貼近實際使用 ~400、供每月抽籤演練。
+const SAMPLE_N = 277
+// 志願池：全場大/小位（排除公益）；社宅戶志願另指公益位。志願用確定性散佈，仍有重疊 → 看得到落選/電腦選號。
 const wishPool = seats
   .filter((s) => !s.public && (s.type === '大' || s.type === '小'))
   .map((s) => String(s.id))
-  .slice(0, 28)
+const publicPool = seats.filter((s) => s.public).map((s) => String(s.id))
 
 function buildSampleRegs() {
   const { entries } = buildRoster(sampleRoster(SAMPLE_N))
@@ -27,8 +28,9 @@ function buildSampleRegs() {
   let k = 0
   for (const e of entries) {
     if (!byHouse.has(e.戶號)) {
+      const pool = e.社宅 === 'Y' ? publicPool : wishPool
       const w = []
-      for (let j = 0; j < 6; j++) w.push(wishPool[(k * 7 + j * 11) % wishPool.length])
+      for (let j = 0; j < 8; j++) w.push(pool[(k * 37 + j * 53) % pool.length])
       byHouse.set(e.戶號, [...new Set(w)])
       k++
     }

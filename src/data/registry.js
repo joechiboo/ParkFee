@@ -24,6 +24,7 @@ export const REGISTRATION_COLUMNS = [
   '聯絡電話',
   '車位志願',
   '志願落選保底',
+  '社宅',
   '來源',
 ]
 
@@ -75,6 +76,7 @@ export function normalizeRow(raw, fallbackSource = SOURCE.ONLINE) {
     聯絡電話: String(raw.聯絡電話 ?? '').trim(),
     車位志願: parseWishes(raw.車位志願), // 戶層級；buildRoster 會傳播到全戶
     志願落選保底: toYN(raw.志願落選保底),
+    社宅: toYN(raw.社宅), // 戶層級（社會住宅住戶＝限公益位）；buildRoster 會傳播到全戶
     來源: raw.來源 || fallbackSource,
     // 物業抽籤前指派（維護頁寫入、export 帶出）：有車位編號＝該車已定位 → distribute 跳過並記入結果。
     車位編號: String(raw.車位編號 ?? '').trim(), // 重機＝兩位頓號分隔
@@ -138,9 +140,11 @@ export function buildRoster(rows) {
   for (const g of groups.values()) {
     const wishes = g.rows.find((r) => r.車位志願.length)?.車位志願 ?? []
     const fallback = g.rows.some((r) => r.志願落選保底 === 'Y') ? 'Y' : 'N'
+    const social = g.rows.some((r) => r.社宅 === 'Y') ? 'Y' : 'N'
     for (const r of g.rows) {
       r.車位志願 = wishes
       r.志願落選保底 = fallback
+      r.社宅 = social
     }
     entries.push(...g.rows)
   }

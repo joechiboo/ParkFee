@@ -44,13 +44,13 @@ const esc = (v) => {
 }
 // 登記欄 + 指派欄（車位編號、已繳費）：物業抽籤前指派的小位/無障礙帶著車位 → 抽籤才能跳過、不重複分。
 // 車位類型/配位狀態不帶（distribute 由車位編號反查主檔得知型別）；重機＝同車號掛兩個車位編號（頓號分隔）。
-const COLUMNS = ['戶號', '車號', '車種', '第幾輛', '身障', '志願小位', '登記時間', '聯絡電話', '車位志願', '志願落選保底', '來源', '車位編號', '已繳費']
+const COLUMNS = ['戶號', '車號', '車種', '第幾輛', '身障', '志願小位', '登記時間', '聯絡電話', '車位志願', '志願落選保底', '社宅', '來源', '車位編號', '已繳費']
 
 const db = createClient(URL, KEY, { auth: { persistSession: false } })
 
 const { data: households, error: he } = await db
   .from('household')
-  .select('戶號, 電話, 車位志願, 志願落選保底, created_at')
+  .select('戶號, 電話, 車位志願, 志願落選保底, 社宅, created_at')
 if (he) throw he
 const { data: vehicles, error: ve } = await db
   .from('vehicle')
@@ -73,6 +73,7 @@ const rows = vehicles.map((v) => {
     聯絡電話: h.電話 || '',
     車位志願: Array.isArray(h.車位志願) ? h.車位志願.join('、') : '',
     志願落選保底: yn(h.志願落選保底),
+    社宅: yn(h.社宅), // 社會住宅住戶（限公益位）
     來源: '線上',
     車位編號: v.車位編號 || '', // 物業抽籤前已指派（小位/無障礙/保留）；重機＝兩位頓號分隔
     已繳費: yn(v.已繳費),

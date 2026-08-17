@@ -4,15 +4,16 @@ import { SOURCE } from './registry.js'
 
 const BUILDINGS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 
-// 產生 n 戶登記。約 1/12 身障、1/4 志願小位、1/15 重機、約 1/3 有第 2 輛、少數第 3 輛。
-// 線上／紙本交錯，示範雙管道。
+// 產生 n 戶登記。約 1/12 身障、1/4 志願小位、1/15 重機、1/40 社宅（限公益位）、
+// 約 1/3 有第 2 輛、少數第 3 輛、1/2 勾電腦選號。線上／紙本交錯，示範雙管道。
+// 車輛數 ≈ n × 1.45（n=277 → ≈401 台，貼近實際使用 ~400）。
 export function sampleRoster(households = 120) {
   const rows = []
   let serial = 0
   for (let i = 0; i < households; i++) {
     const b = BUILDINGS[i % BUILDINGS.length]
     const floor = (i % 14) + 2 // 2..15
-    const unit = (i % 6) + 1
+    const unit = (Math.floor(i / 56) % 6) + 1 // 棟×樓 每 56 戶循環一輪 → 戶別進位，戶號唯一撐到 336 戶
     const 戶號 = `${b}${floor}-${unit}`
     const 電話 = `09${String(10000000 + i * 137).slice(0, 8)}`
     const 來源 = i % 5 === 0 ? SOURCE.PAPER : SOURCE.ONLINE
@@ -21,6 +22,8 @@ export function sampleRoster(households = 120) {
     const heavy = i % 15 === 0
     const disabled = i % 12 === 0
     const small = !heavy && i % 4 === 0
+    const social = i % 40 === 0 ? '是' : '否' // 社會住宅住戶（限公益位）
+    const fallback = i % 2 === 0 ? '是' : '否' // 電腦選號（志願落空自動配本棟剩位）
 
     // 第 1 輛（必填）
     rows.push({
@@ -32,6 +35,8 @@ export function sampleRoster(households = 120) {
       志願小位: small ? '是' : '否',
       登記時間: stamp(1),
       聯絡電話: 電話,
+      志願落選保底: fallback,
+      社宅: social,
       來源,
     })
     // 第 2 輛（約 1/3）
@@ -45,6 +50,8 @@ export function sampleRoster(households = 120) {
         志願小位: i % 8 === 0 ? '是' : '否',
         登記時間: stamp(2),
         聯絡電話: 電話,
+        志願落選保底: fallback,
+        社宅: social,
         來源,
       })
     }
@@ -59,6 +66,8 @@ export function sampleRoster(households = 120) {
         志願小位: '否',
         登記時間: stamp(3),
         聯絡電話: 電話,
+        志願落選保底: fallback,
+        社宅: social,
         來源,
       })
     }

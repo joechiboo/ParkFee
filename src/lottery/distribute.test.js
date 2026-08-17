@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { distribute, REASON, VIA } from './distribute.js'
+import { motorSeats } from '../map/seats.js'
+import { buildRoster } from '../data/registry.js'
+import { sampleRoster } from '../data/sample.js'
 
 // fixture：可承租座位（已排除公益），數字編號 + 型別。
 const SEATS = [
@@ -150,6 +153,49 @@ describe('distribute — 填志願 + 統一分發（第一階段）', () => {
     const b = distribute({ registrations: regs, seats: SEATS, seed: 's1' })
     expect(a.assigned).toEqual(b.assigned)
     expect(a.落選).toEqual(b.落選)
+  })
+})
+
+describe('大規模模擬（277 戶 ≈ 401 台、真實 655 座位）— 每月演練用不變量', () => {
+  const { entries } = buildRoster(sampleRoster(277))
+  const seats = motorSeats()
+  const publicIds = new Set(seats.filter((s) => s.public).map((s) => String(s.id)))
+  const r = distribute({ registrations: entries, seats, seed: '模擬' })
+
+  it('車輛總數 ≈ 400、每台都有下落（配到或落選）', () => {
+    expect(entries.length).toBeGreaterThanOrEqual(390)
+    expect(entries.length).toBeLessThanOrEqual(410)
+    expect(r.assigned.length + r.落選.length).toBe(entries.length)
+  })
+
+  it('無重複配位：所有配出的車位 id 全域唯一', () => {
+    const ids = r.assigned.flatMap((a) => a.車位編號.split('、'))
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it('社宅戶只落公益位、一般戶不落公益位（雙向）', () => {
+    const socialHouses = new Set(entries.filter((e) => e.社宅 === 'Y').map((e) => e.戶號))
+    for (const a of r.assigned) {
+      const inPublic = a.車位編號.split('、').map((id) => publicIds.has(id))
+      if (socialHouses.has(a.戶號)) expect(inPublic.every(Boolean)).toBe(true)
+      else expect(inPublic.some(Boolean)).toBe(false)
+    }
+  })
+
+  it('重機都占相鄰兩格（編號連號）', () => {
+    const heavies = r.assigned.filter((a) => a.車種 === '重機' && a.配位方式 !== VIA.PRESET)
+    expect(heavies.length).toBeGreaterThan(0)
+    for (const h of heavies) {
+      const [x, y] = h.車位編號.split('、').map(Number)
+      expect(h.占用位數).toBe(2)
+      expect(y - x).toBe(1)
+    }
+  })
+
+  it('同 seed 全結果可重現', () => {
+    const r2 = distribute({ registrations: entries, seats, seed: '模擬' })
+    expect(r2.assigned).toEqual(r.assigned)
+    expect(r2.落選).toEqual(r.落選)
   })
 })
 
