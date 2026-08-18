@@ -353,6 +353,45 @@ describe('電腦選位 — 志願落空 + 勾電腦選號 → 自動配本棟靠
     expect(r.assigned.find((x) => x.配位方式 === VIA.COMPUTER).車位編號).toBe('3')
   })
 
+  it('社宅戶：志願落空 + 勾電腦選號 → 配公益位（編號小→大），不吃一般位', () => {
+    const r = distribute({
+      registrations: [{ 戶號: 'A1-1', 車號: 'S1', 第幾輛: 1, 社宅: 'Y', 車位志願: ['99'], 電腦選號: 'Y' }],
+      seats: [
+        { id: '274', type: '大' }, // 一般位（AB 棟靠電梯首位）→ 社宅戶不得取
+        { id: '12', type: '小', public: true },
+        { id: '5', type: '大', public: true },
+      ],
+      seed: 'test',
+    })
+    const c = r.assigned.find((x) => x.配位方式 === VIA.COMPUTER)
+    expect(c).toBeTruthy()
+    expect(c.車位編號).toBe('5') // 公益位最小號
+    expect(r.落選).toHaveLength(0)
+  })
+
+  it('社宅戶：公益位已滿 → 維持落選，不溢出到一般位', () => {
+    const r = distribute({
+      registrations: [
+        { 戶號: 'A1-1', 車號: 'S1', 第幾輛: 1, 社宅: 'Y', 車位志願: ['99'], 電腦選號: 'Y' },
+        { 戶號: 'B2-2', 車號: 'S2', 第幾輛: 1, 社宅: 'Y', 車位志願: ['99'], 電腦選號: 'Y' },
+      ],
+      seats: [{ id: '5', type: '大', public: true }, { id: '274', type: '大' }],
+      seed: 'test',
+    })
+    expect(r.assigned.filter((x) => x.配位方式 === VIA.COMPUTER)).toHaveLength(1)
+    expect(r.落選).toHaveLength(1) // 第二戶配不到、不會拿到一般位 274
+  })
+
+  it('一般戶電腦選號不會撿到公益位', () => {
+    const r = distribute({
+      registrations: [{ 戶號: 'A1-1', 車號: 'X1', 第幾輛: 1, 車位志願: ['99'], 電腦選號: 'Y' }],
+      seats: [{ id: '5', type: '大', public: true }],
+      seed: 'test',
+    })
+    expect(r.assigned).toHaveLength(0)
+    expect(r.落選).toHaveLength(1)
+  })
+
   it('預設本棟序（戶號首字母→棟）：A 戶落空 → 配 AB 棟靠電梯位 274', () => {
     const r = distribute({
       registrations: [{ 戶號: 'A1-1', 車號: 'A1', 第幾輛: 1, 車位志願: ['99'], 電腦選號: 'Y' }],

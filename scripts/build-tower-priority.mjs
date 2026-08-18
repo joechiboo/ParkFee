@@ -23,11 +23,21 @@ const { data: lockedRows, error } = await sb.from('locked_seat').select('車位�
 if (error) throw new Error('讀取 locked_seat 失敗（電腦選位清單必須扣鎖定）：' + error.message)
 const locked = new Set(lockedRows.map((r) => String(r.車位編號)))
 
-// ── 可入清單座位：非公益大位、且未鎖定 ──
+// ── 可入各棟清單座位：非公益大位、且未鎖定 ──
+// （2026-08-18：原本排除的「重機專區 321-349」已隨專區否決取消，該段回歸一般大位。）
 const cls = JSON.parse(readFileSync('src/map/b1-classification.json', 'utf8'))
-const HEAVY_MIN = 321, HEAVY_MAX = 349 // 重機專區：只租重機，不進電腦選位候選
-const all = cls.seats.filter((s) => s.cat === 'motor' && !s.public && !(+s.id >= HEAVY_MIN && +s.id <= HEAVY_MAX))
+const all = cls.seats.filter((s) => s.cat === 'motor' && !s.public)
 const seats = all.filter((s) => !locked.has(String(s.id)))
+
+// ── 區順序（與各棟並列）：公益位＝社宅戶電腦選號候選序；自行車＝預留（尚無自行車選位）──
+// 公益位僅 20 格、集中同區，不需分棟排序 → 依編號由小到大；鎖定格不入清單。
+const MOTOR_CATS = new Set(['motor', 'small', 'access'])
+const asc = (a, b) => +a.id - +b.id
+const publicIds = cls.seats
+  .filter((s) => MOTOR_CATS.has(s.cat) && s.public && !locked.has(String(s.id)))
+  .sort(asc)
+  .map((s) => s.id)
+const bikeIds = cls.seats.filter((s) => s.cat === 'bike').sort(asc).map((s) => s.id)
 
 const CORES = [
   { name: 'AB', x: 581, y: 424 },
@@ -110,13 +120,17 @@ const out = {
     counts: Object.fromEntries(TS.map((t) => [t, towers[t].length])),
     ownCounts: Object.fromEntries(TS.map((t) => [t, own[t].length])),
     total: seats.length,
+    zoneCounts: { 公益: publicIds.length, 自行車: bikeIds.length },
+    zoneNote: '公益＝社宅戶電腦選號候選序（編號小→大，已扣鎖定）；自行車＝預留，目前無自行車選位',
   },
   towers,
+  zones: { 公益: publicIds, 自行車: bikeIds },
   seatTower,
 }
 writeFileSync('src/map/tower-priority.json', JSON.stringify(out, null, 0))
 
 console.log(`已寫入 src/map/tower-priority.json（扣鎖定 ${locked.size} 格後共 ${seats.length} 格，均分目標 ${target}/棟）`)
+console.log(`  區順序：公益 ${publicIds.length} 格 [${publicIds.slice(0, 10).join(',')}…]｜自行車 ${bikeIds.length} 格（預留）`)
 for (const t of TS) {
   console.log(
     `  ${t}：自有 ${own[t].length} + 借 ${borrowed[t].length} = ${towers[t].length}` +

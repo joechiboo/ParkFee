@@ -43,6 +43,8 @@ function householdTower(hid) {
 }
 
 // 電腦選位候選序：本棟優先序（靠電梯）→ 其餘棟（依核心距離「鄰棟先」）串接。tower-priority.json 由 build-tower-priority.mjs 產。
+// 該檔另有 zones（與 towers 並列的區順序）：公益＝社宅戶候選序；自行車＝預留。
+const ZONE_PUBLIC = '公益'
 const TP_CORES = towerPriority.meta?.cores ?? {}
 function towerCandidateIds(tower) {
   const towers = towerPriority.towers ?? {}
@@ -325,12 +327,28 @@ export function distribute({
     rounds.push({ round: nth, name: `第 ${nth} 位`, draws, assignments: a })
   }
 
-  // ── 電腦選位：志願落空 + 勾「電腦選號」的一般車，自動配「本棟·靠電梯·剩餘」大位（本棟無剩往鄰棟）──
-  //    保底一位優先：先第 1 輛、再第 2 輛+，同組依順序號。凍結/公益位不在池中 → 自動略過。
+  // ── 電腦選位：志願落空 + 勾「電腦選號」的一般車，自動配剩餘位 ──
+  //    一般戶＝「本棟·靠電梯」（tower-priority.json，本棟無剩往鄰棟）；
+  //    社宅戶＝「公益位由小到大」（僅 20 格、同一區，不需分棟排序；tower-priority 不含公益位）。
+  //    保底一位優先：先第 1 輛、再第 2 輛+，同組依順序號。凍結位不在池中 → 自動略過。
   //    重機、志願小位不足（NO_SMALL）不走電腦選位（v1）；配不到者維持落選、交物業。
   {
     const key = (x) => `${x.戶號}|${x.車號}|${x.第幾輛}`
-    const pickOrder = computerPickOrder || ((hid) => towerCandidateIds(householdTower(hid)))
+    // 公益位候選序：優先用 tower-priority.json 的區順序（zones.公益，可手排），
+    // 其後補上池中未列於該序的公益位（依編號）→ 測試 fixture／新解鎖格都吃得到。
+    const zonePublic = (towerPriority.zones?.[ZONE_PUBLIC] ?? []).map(String)
+    const inZone = new Set(zonePublic)
+    const publicSeatIds = [
+      ...zonePublic,
+      ...seats
+        .filter((s) => s.public && !inZone.has(String(s.id)))
+        .map((s) => String(s.id))
+        .sort((x, y) => +x - +y),
+    ]
+    // 第 2 參數 entry 供社宅分流；注入版（測試用）只吃戶號、行為不變。
+    const pickOrder =
+      computerPickOrder ||
+      ((hid, e) => (e?.社宅 ? publicSeatIds : towerCandidateIds(householdTower(hid))))
     const entryOf = new Map(pending.map((e) => [key(e), e]))
     const targets = lost
       .filter((l) => l.原因 === REASON.LOST || l.原因 === REASON.NO_WISH)
@@ -343,7 +361,7 @@ export function distribute({
     for (const { l, e } of targets) {
       const ok = eligibleFor(e)
       let picked = null
-      for (const id of pickOrder(e.戶號)) {
+      for (const id of pickOrder(e.戶號, e)) {
         const s0 = pool.seatOf(id)
         if (s0 && pool.isAvail(id) && COMPAT.general.includes(s0.type) && ok(s0)) {
           picked = pool.take(id)
