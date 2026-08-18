@@ -24,6 +24,13 @@ const routes = [
   },
   { path: '/result', name: 'result', component: () => import('../views/ResultView.vue'), meta: { title: '結果' } },
   {
+    path: '/bylaw',
+    name: 'bylaw',
+    component: () => import('../views/BylawView.vue'),
+    meta: { title: '管理辦法' },
+    // 公開：條文本來就該人人看得到（內容由 build-bylaw.mjs 從 docs/05、docs/19 產生）。
+  },
+  {
     path: '/patrol',
     name: 'patrol',
     component: () => import('../views/PatrolView.vue'),

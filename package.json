@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/build-bylaw.mjs && vite build",
+    "build:bylaw": "node scripts/build-bylaw.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"
