@@ -31,12 +31,26 @@ const seats = all.filter((s) => !locked.has(String(s.id)))
 
 // ── 區順序（與各棟並列）：公益位＝社宅戶電腦選號候選序；自行車＝預留（尚無自行車選位）──
 // 公益位僅 20 格、集中同區，不需分棟排序 → 依編號由小到大；鎖定格不入清單。
+// 手排（order.html 公益頁 ⬇ 匯出 → tower-order-manual.json 的 zones.公益）優先，其餘依編號補後面。
 const MOTOR_CATS = new Set(['motor', 'small', 'access'])
 const asc = (a, b) => +a.id - +b.id
-const publicIds = cls.seats
+const publicAll = cls.seats
   .filter((s) => MOTOR_CATS.has(s.cat) && s.public && !locked.has(String(s.id)))
   .sort(asc)
   .map((s) => s.id)
+let manualPublic = []
+try {
+  const m = JSON.parse(readFileSync('src/map/tower-order-manual.json', 'utf8'))
+  const avail = new Set(publicAll.map(String))
+  const seen = new Set()
+  manualPublic = (m.zones?.['公益'] ?? [])
+    .map(String)
+    .filter((id) => avail.has(id) && !seen.has(id) && seen.add(id))
+} catch {
+  /* 無手排檔 → 純編號序 */
+}
+const inManual = new Set(manualPublic)
+const publicIds = [...manualPublic, ...publicAll.filter((id) => !inManual.has(String(id)))]
 const bikeIds = cls.seats.filter((s) => s.cat === 'bike').sort(asc).map((s) => s.id)
 
 const CORES = [

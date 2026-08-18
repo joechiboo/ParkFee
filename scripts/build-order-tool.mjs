@@ -21,9 +21,15 @@ const lockedIds = lockedRows.map((r) => String(r.車位編號))
 
 const cls = JSON.parse(readFileSync('src/map/b1-classification.json', 'utf8'))
 const { dispW, dispH } = cls.meta
-// 可承租大位（排除公益；小位走志願、無障礙走 R0，皆不進電腦選位）。
-const HEAVY_MIN = 321, HEAVY_MAX = 349 // 重機專區：不進分棟順序工具
-const motor = cls.seats.filter((s) => s.cat === 'motor' && !s.public && !(+s.id >= HEAVY_MIN && +s.id <= HEAVY_MAX)).map((s) => ({ id: s.id, x: s.x, y: s.y }))
+// 各棟＝可承租大位（排除公益；小位走志願、無障礙走 R0，皆不進電腦選位）。
+// 2026-08-18：原排除的「重機專區 321-349」隨專區否決取消，該段回歸一般大位。
+const motor = cls.seats.filter((s) => s.cat === 'motor' && !s.public).map((s) => ({ id: s.id, x: s.x, y: s.y }))
+// 公益位（社宅戶專用）＝獨立一區，p:1 標記；大/小皆可（社宅戶 COMPAT 大+小）。
+const MOTOR_CATS = new Set(['motor', 'small', 'access'])
+const pub = cls.seats
+  .filter((s) => MOTOR_CATS.has(s.cat) && s.public)
+  .sort((a, b) => +a.id - +b.id)
+  .map((s) => ({ id: s.id, x: s.x, y: s.y, p: 1 }))
 
 const CORES = [
   { name: 'AB', x: 581, y: 424 },
@@ -31,7 +37,7 @@ const CORES = [
   { name: 'EF', x: 1102, y: 1375 },
   { name: 'GH', x: 1378, y: 1375 },
 ]
-const SEATS_JSON = JSON.stringify(motor)
+const SEATS_JSON = JSON.stringify([...motor, ...pub])
 const LOCKED_JSON = JSON.stringify(lockedIds)
 
 // 分界（與 build-tower-priority.mjs 同邏輯）：左欄 y 中位分 AB/CD；GH=右區(x≥1240)∪指定塊 419-442（EF 出口留 EF）
@@ -66,6 +72,7 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
  .t-CD circle{fill:rgba(37,99,235,.6);stroke:#1e40af}
  .t-EF circle{fill:rgba(22,163,74,.6);stroke:#15803d}
  .t-GH circle{fill:rgba(234,88,12,.65);stroke:#9a3412}
+ .t-PUB circle{fill:rgba(234,179,8,.7);stroke:#a16207;stroke-width:2}
  .core{pointer-events:none}.core circle{stroke:#000;stroke-width:3}.core text{font-size:22px;font-weight:800;fill:#fff;text-anchor:middle;paint-order:stroke;stroke:#000;stroke-width:3}
  #panel{width:270px;flex:none;border-left:1px solid #e2e8f0;padding:14px;overflow:auto;background:#fff}
  h1{font-size:15px;margin:0 0 4px}.sub{font-size:12px;color:#64748b;line-height:1.5;margin:0 0 10px}
@@ -74,6 +81,7 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
  button:hover{background:#eef2f7}button.active{outline:2px solid #0f172a;outline-offset:1px}
  .b-AB{border-color:#991b1b;color:#991b1b}.b-CD{border-color:#1e40af;color:#1e40af}
  .b-EF{border-color:#15803d;color:#15803d}.b-GH{border-color:#9a3412;color:#9a3412}
+ .b-PUB{border-color:#a16207;color:#a16207}
  .stat{font-size:13px;margin:3px 0;display:flex;justify-content:space-between}
  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
  kbd{background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:0 4px;font-size:11px}
@@ -92,12 +100,14 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
      <button class="b-CD" data-t="CD">CD 棟</button>
      <button class="b-EF" data-t="EF">EF 棟</button>
      <button class="b-GH" data-t="GH">GH 棟</button>
+     <button class="b-PUB" data-t="PUB">公益位（社宅）</button>
    </div>
    <div class="stat"><span><span class="dot" style="background:#dc2626"></span>AB 已排</span><b id="n-AB">0</b></div>
    <div class="stat"><span><span class="dot" style="background:#2563eb"></span>CD 已排</span><b id="n-CD">0</b></div>
    <div class="stat"><span><span class="dot" style="background:#16a34a"></span>EF 已排</span><b id="n-EF">0</b></div>
    <div class="stat"><span><span class="dot" style="background:#ea580c"></span>GH 已排</span><b id="n-GH">0</b></div>
-   <div class="stat" style="margin-top:6px"><span>目前棟</span><b id="cur">AB</b></div>
+   <div class="stat"><span><span class="dot" style="background:#eab308"></span>公益位 已排</span><b id="n-PUB">0</b></div>
+   <div class="stat" style="margin-top:6px"><span>目前群組</span><b id="cur">AB</b></div>
    <hr>
    <div class="row"><button id="clearCur">清除本棟順序</button><button id="clearAll">全部清除</button></div>
    <div id="list">—</div>
@@ -111,16 +121,20 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
  const LOCKED=new Set(${LOCKED_JSON}); // 凍結位：灰、不可點、不進順序
  const LS='parkfee_b1_order_v1';
  const NS='http://www.w3.org/2000/svg';
- const TS=['AB','CD','EF','GH'];
+ const TS=['AB','CD','EF','GH'];        // 四棟（一般大位）
+ const GS=['AB','CD','EF','GH','PUB'];  // 全群組＝四棟＋公益區（PUB＝公益位，社宅戶專用）
  const svg=document.getElementById('svg'),stage=document.getElementById('stage'),plan=document.getElementById('plan');
  const byId={};for(const s of SEATS)byId[s.id]=s;
  function nearest(s){let bn='AB',bd=Infinity;for(const c of CORES){const d=(s.x-c.x)**2+(s.y-c.y)**2;if(d<bd){bd=d;bn=c.name}}return bn}
  // 分區規則（與 build-tower-priority.mjs 一致）：右=GH、中=EF、左欄上(y<900)=AB、左欄下=CD
- function region(s){const n=+s.id;if(n>=419&&n<=442)return 'GH';return s.x>=${X_RIGHT}?'GH':s.x>=${X_MID}?'EF':s.y<${Y_ABCD}?'AB':'CD'}
- let order=(localStorage.getItem(LS)?JSON.parse(localStorage.getItem(LS)):{AB:[],CD:[],EF:[],GH:[]});
- for(const B of TS)if(!Array.isArray(order[B]))order[B]=[];
- for(const B of TS)order[B]=order[B].filter(id=>!LOCKED.has(id)); // 清掉先前誤點的凍結位
- const inTower=id=>TS.filter(t=>order[t].indexOf(id)>=0); // 一格可屬多棟（重疊）
+ const isPub=id=>!!(byId[id]&&byId[id].p);
+ function region(s){if(s.p)return 'PUB';const n=+s.id;if(n>=419&&n<=442)return 'GH';return s.x>=${X_RIGHT}?'GH':s.x>=${X_MID}?'EF':s.y<${Y_ABCD}?'AB':'CD'}
+ let order=(localStorage.getItem(LS)?JSON.parse(localStorage.getItem(LS)):{AB:[],CD:[],EF:[],GH:[],PUB:[]});
+ for(const B of GS)if(!Array.isArray(order[B]))order[B]=[];
+ for(const B of GS)order[B]=order[B].filter(id=>!LOCKED.has(id)); // 清掉先前誤點的凍結位
+ // 公益位只進 PUB、一般位只進四棟（避免跨類誤點）
+ order.PUB=order.PUB.filter(isPub);for(const B of TS)order[B]=order[B].filter(id=>!isPub(id));
+ const inTower=id=>GS.filter(t=>order[t].indexOf(id)>=0); // 一格可屬多棟（重疊）
  let cur='AB';
  function save(){localStorage.setItem(LS,JSON.stringify(order))}
  const nodes=new Map();
@@ -141,9 +155,10 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
    const ov=inTower(id).length>1;g.setAttribute('class','seat t-'+B+(idx>=0?' ord':'')+(ov?' ov':''));
    g.querySelector('text').textContent=idx>=0?(idx+1):id;}
  function renderAll(){for(const s of SEATS)renderSeat(s.id)}
- function recount(){for(const B of TS)el('n-'+B).textContent=order[B].length;el('cur').textContent=cur;
+ function recount(){for(const B of GS)el('n-'+B).textContent=order[B].length;el('cur').textContent=cur==='PUB'?'公益位':cur;
    el('list').textContent=order[cur].length?(cur+'：'+order[cur].join(' → ')):'（'+cur+' 尚未排，點座位開始）';}
- function clickSeat(id){const i=order[cur].indexOf(id);if(i>=0)order[cur].splice(i,1);else order[cur].push(id);save();renderAll();recount();}
+ function clickSeat(id){if(isPub(id)!==(cur==='PUB'))return; // 公益位只能排進公益區、一般位只能排進四棟
+   const i=order[cur].indexOf(id);if(i>=0)order[cur].splice(i,1);else order[cur].push(id);save();renderAll();recount();}
  function setCur(t){cur=t;document.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('active',b.dataset.t===t));recount();renderAll();}
  // 平移（左鍵直接拖曳；拖>6px 就不觸發點選）+ 縮放（Ctrl+滾輪）
  let zoom=0.62;function applyZoom(){plan.style.width=(DISPW*zoom)+'px'}
@@ -157,22 +172,26 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
  stage.addEventListener('contextmenu',e=>e.preventDefault());
  stage.addEventListener('wheel',e=>{if(!e.ctrlKey)return;e.preventDefault();zoom=Math.max(0.3,Math.min(3,zoom*(e.deltaY<0?1.1:0.9)));applyZoom();},{passive:false});
  document.querySelectorAll('[data-t]').forEach(b=>b.addEventListener('click',()=>setCur(b.dataset.t)));
- addEventListener('keydown',e=>{const m={a:'AB',c:'CD',e:'EF',g:'GH'};if(m[e.key.toLowerCase()])setCur(m[e.key.toLowerCase()]);});
+ addEventListener('keydown',e=>{const m={a:'AB',c:'CD',e:'EF',g:'GH',p:'PUB'};if(m[e.key.toLowerCase()])setCur(m[e.key.toLowerCase()]);});
  el('clearCur').onclick=()=>{order[cur]=[];save();renderAll();recount();};
- el('clearAll').onclick=()=>{if(!confirm('清除所有棟的順序？'))return;for(const B of TS)order[B]=[];save();renderAll();recount();};
+ el('clearAll').onclick=()=>{if(!confirm('清除所有群組的順序？'))return;for(const B of GS)order[B]=[];save();renderAll();recount();};
  el('export').onclick=()=>{const seatTower={},towers={AB:[],CD:[],EF:[],GH:[]};
    for(const B of TS)for(const id of order[B]){towers[B].push(id);seatTower[id]=B;}
-   const placed=new Set(Object.keys(seatTower));const rest=SEATS.filter(s=>!placed.has(s.id)&&!LOCKED.has(s.id));
+   const placed=new Set(Object.keys(seatTower));const rest=SEATS.filter(s=>!s.p&&!placed.has(s.id)&&!LOCKED.has(s.id));
    for(const s of rest)seatTower[s.id]=region(s);
    for(const c of CORES){const rb=rest.filter(s=>seatTower[s.id]===c.name);
      if(c.name==='AB')rb.sort((a,b)=>a.y-b.y||a.x-b.x);           // 上→下
      else if(c.name==='CD')rb.sort((a,b)=>b.y-a.y||a.x-b.x);      // 下→上
      else rb.sort((a,b)=>((a.x-c.x)**2+(a.y-c.y)**2)-((b.x-c.x)**2+(b.y-c.y)**2)); // 靠電梯
      for(const s of rb)towers[c.name].push(s.id);}
+   // 公益區（社宅戶候選序）：手排在前，其餘公益位依編號補後面
+   const pubPlaced=new Set(order.PUB);
+   const pubRest=SEATS.filter(s=>s.p&&!pubPlaced.has(s.id)&&!LOCKED.has(s.id)).sort((a,b)=>+a.id-+b.id).map(s=>s.id);
+   const zones={'公益':[...order.PUB,...pubRest]};
    const cores={},counts={};for(const c of CORES)cores[c.name]={x:c.x,y:c.y};for(const B of TS)counts[B]=towers[B].length;
-   const out={meta:{generated:'manual-order',note:'手排前段(點擊序)＋距離補後段。棟內順序＝電腦選位填補序。',cores:cores,counts:counts,total:SEATS.length},towers:towers,seatTower:seatTower};
+   const out={meta:{generated:'manual-order',note:'手排前段(點擊序)＋距離補後段。棟內順序＝電腦選位填補序；zones.公益＝社宅戶候選序。',cores:cores,counts:counts,zoneCounts:{'公益':zones['公益'].length},total:SEATS.length},towers:towers,zones:zones,seatTower:seatTower};
    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(out)],{type:'application/json'}));a.download='tower-priority.json';a.click();};
  applyZoom();setCur('AB');renderAll();recount();
 </script></body></html>`
 writeFileSync(`${OUT}/order.html`, html)
-console.log(`wrote ${OUT}/order.html — motor(非公益) ${motor.length}, cores AB/CD/EF/GH`)
+console.log(`wrote ${OUT}/order.html — 一般大位 ${motor.length}（四棟）+ 公益位 ${pub.length}（社宅區），cores AB/CD/EF/GH`)
