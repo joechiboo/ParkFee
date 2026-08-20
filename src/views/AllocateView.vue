@@ -1,11 +1,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { distribute, VIA } from '../lottery/distribute.js'
-import { motorSeats } from '../map/seats.js'
-import { displaySeatIds } from '../map/seat-id.js'
+import { distributeBikes, BIKE_VIA } from '../lottery/distribute-bikes.js'
+import { motorSeats, bikeSeats } from '../map/seats.js'
+import { displaySeatId, displaySeatIds } from '../map/seat-id.js'
 import { buildRoster } from '../data/registry.js'
 import { importedRoster, importInfo } from '../store/roster.js'
-import { resultCSV, resultRows } from '../export/result.js'
+import { mergedResultCSV, mergedResultRows } from '../export/result.js'
 import { sampleRoster } from '../data/sample.js'
 import { lockedSeats, refreshLocked } from '../store/locked.js'
 import { publishResult } from '../store/db.js'
@@ -48,16 +49,27 @@ const houseCount = computed(() => new Set(registrations.value.map((r) => r.戶�
 // ── 抽籤狀態 ──
 const seed = ref('2027樂菲莊園機車車位抽籤')
 const result = ref(null)
+// 自行車另跑一支引擎（辦法伍三：直接抽車位、不填志願）。刻意不與機車合併，
+// 讓 12/1 機車抽籤的程式路徑完全不受自行車影響 —— 見 distribute-bikes.js 檔頭。
+const bikeResult = ref(null)
 const history = ref([])
 
 function run() {
+  const runAt = new Date().toISOString()
   const r = distribute({
     registrations: registrations.value,
     seats: seats.filter((s) => !lockedSeats.value.has(String(s.id))), // 扣掉鎖定車位
     seed: seed.value || 'parkfee',
-    runAt: new Date().toISOString(),
+    runAt,
   })
   result.value = r
+  // 種子由同一個輸入衍生 → 一組種子可重現兩邊，但兩邊的亂數流互不干擾。
+  bikeResult.value = distributeBikes({
+    registrations: registrations.value,
+    seats: bikeSeats().filter((s) => !lockedSeats.value.has(String(s.id))),
+    seed: (seed.value || 'parkfee') + '｜自行車',
+    runAt,
+  })
   history.value.unshift({
     seed: r.seed,
     seedHash: r.seedHash,
@@ -101,6 +113,18 @@ const computerRows = computed(() =>
     .filter((a) => a.配位方式 === VIA.COMPUTER)
     .sort((x, y) => (x.順序號 ?? 0) - (y.順序號 ?? 0)),
 )
+// 自行車：抽籤配出的依順序號排；物業指派的另列。落選者順序號即候補序。
+const bikeRows = computed(() =>
+  (bikeResult.value?.assigned ?? [])
+    .filter((a) => a.配位方式 === BIKE_VIA.DRAW)
+    .sort((x, y) => x.輪次 - y.輪次 || (x.順序號 ?? 0) - (y.順序號 ?? 0)),
+)
+const bikePresetRows = computed(() =>
+  (bikeResult.value?.assigned ?? []).filter((a) => a.配位方式 === BIKE_VIA.PRESET),
+)
+const bikeLostRows = computed(() =>
+  (bikeResult.value?.落選 ?? []).slice().sort((x, y) => (x.順序號 ?? 0) - (y.順序號 ?? 0)),
+)
 
 // 下載配位結果 CSV（公告日 → 簽約期限=公告+5；加 BOM 供 Excel 中文正確）。
 const announceDate = ref('')
@@ -114,7 +138,7 @@ async function publishToBackend() {
   publishMsg.value = ''
   publishing.value = true
   try {
-    const rows = resultRows(result.value, { 公告日: announceDate.value })
+    const rows = mergedResultRows([result.value, bikeResult.value], { 公告日: announceDate.value })
     const { updated, notFound = [] } = await publishResult({ rows, ...adminAuth() })
     const total = rows.filter((r) => r.車號).length
     if (notFound.length) {
@@ -132,7 +156,7 @@ async function publishToBackend() {
 function downloadResultCSV(pub = true) {
   // 公告版（預設）＝無戶號，對外公告用；完整版＝含戶號，僅物業內部（管理員鈕）。
   if (!result.value) return
-  const csv = '﻿' + resultCSV(result.value, { 公告日: announceDate.value, 公開版: pub })
+  const csv = '﻿' + mergedResultCSV([result.value, bikeResult.value], { 公告日: announceDate.value, 公開版: pub })
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -347,6 +371,88 @@ function downloadResultCSV(pub = true) {
             </tbody>
           </table>
         </div>
+      </details>
+
+      <!-- 自行車：另一支引擎（辦法伍三：直接抽車位號碼、不填志願），與機車完全分開 -->
+      <details v-if="bikeResult" open class="rounded-lg border border-orange-200 bg-orange-50/40 p-3">
+        <summary class="cursor-pointer text-sm font-medium text-orange-800">
+          自行車（配出 {{ bikeResult.summary.assigned }} / 登記 {{ bikeResult.summary.registrations }}
+          / 候補 {{ bikeResult.summary.落選 }}）— 依辦法伍三直接抽車位號碼，不排志願
+        </summary>
+
+        <p class="mt-2 text-xs text-orange-900">
+          自行車免費（辦法柒二）、社宅戶限公益位 114–118；車位編號已剝掉系統前綴，與地面漆的數字一致。
+        </p>
+
+        <div v-if="bikeRows.length" class="mt-2 overflow-x-auto">
+          <div class="mb-1 text-xs font-medium text-orange-800">抽籤配出（{{ bikeRows.length }}）— 依輪次／順序號</div>
+          <table class="w-full text-sm">
+            <thead class="bg-orange-100/60 text-orange-700">
+              <tr>
+                <th class="px-3 py-2 text-left font-medium">輪次</th>
+                <th class="px-3 py-2 text-left font-medium">順序號</th>
+                <th class="px-3 py-2 text-left font-medium">戶號</th>
+                <th class="px-3 py-2 text-left font-medium">車位</th>
+                <th class="px-3 py-2 text-left font-medium">特徵</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(a, i) in bikeRows" :key="i" class="border-t border-orange-100">
+                <td class="px-3 py-1.5">第 {{ a.輪次 }} 輛</td>
+                <td class="px-3 py-1.5 font-mono">{{ a.順序號 }}</td>
+                <td class="px-3 py-1.5 font-mono text-xs">{{ a.戶號 }}</td>
+                <td class="px-3 py-1.5 font-mono">{{ displaySeatId(a.車位編號) }}</td>
+                <td class="px-3 py-1.5 text-xs text-slate-600">{{ a.特徵 }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-if="bikePresetRows.length" class="mt-3 overflow-x-auto">
+          <div class="mb-1 text-xs font-medium text-orange-800">物業指派（{{ bikePresetRows.length }}）— 抽籤前已確定、免抽</div>
+          <table class="w-full text-sm">
+            <thead class="bg-orange-100/60 text-orange-700">
+              <tr>
+                <th class="px-3 py-2 text-left font-medium">戶號</th>
+                <th class="px-3 py-2 text-left font-medium">車位</th>
+                <th class="px-3 py-2 text-left font-medium">特徵</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(a, i) in bikePresetRows" :key="i" class="border-t border-orange-100">
+                <td class="px-3 py-1.5 font-mono text-xs">{{ a.戶號 }}</td>
+                <td class="px-3 py-1.5 font-mono">{{ displaySeatId(a.車位編號) }}</td>
+                <td class="px-3 py-1.5 text-xs text-slate-600">{{ a.特徵 }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-if="bikeLostRows.length" class="mt-3 overflow-x-auto">
+          <div class="mb-1 text-xs font-medium text-rose-700">候補（{{ bikeLostRows.length }}）— 順序號即候補序，不另抽候補籤</div>
+          <table class="w-full text-sm">
+            <thead class="bg-rose-50 text-rose-600">
+              <tr>
+                <th class="px-3 py-2 text-left font-medium">候補序</th>
+                <th class="px-3 py-2 text-left font-medium">輪次</th>
+                <th class="px-3 py-2 text-left font-medium">戶號</th>
+                <th class="px-3 py-2 text-left font-medium">原因</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(l, i) in bikeLostRows" :key="i" class="border-t border-rose-100">
+                <td class="px-3 py-1.5 font-mono">{{ l.順序號 }}</td>
+                <td class="px-3 py-1.5">第 {{ l.輪次 }} 輛</td>
+                <td class="px-3 py-1.5 font-mono text-xs">{{ l.戶號 }}</td>
+                <td class="px-3 py-1.5 text-xs">{{ l.原因 }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p v-if="!bikeRows.length && !bikePresetRows.length && !bikeLostRows.length" class="mt-2 text-sm text-slate-500">
+          這份名冊沒有自行車登記。
+        </p>
       </details>
 
       <!-- 落選名單 -->

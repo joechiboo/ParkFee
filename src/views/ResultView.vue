@@ -8,6 +8,7 @@ import { sessionHousehold, refreshHousehold } from '../store/session.js'
 import { feeFor } from '../data/fee.js'
 import { vehicleResultStatus } from '../data/vehicleStatus.js'
 import { displaySeatIds } from '../map/seat-id.js'
+import { displayVehicleLabel } from '../data/vehicle.js'
 
 const household = sessionHousehold // 跨頁共用登入狀態
 onMounted(refreshHousehold) // 進頁時重抓最新戶資料（後台指派/繳費後免重新登入）
@@ -66,7 +67,7 @@ const hasPending = computed(() => rows.value.some((r) => r.s.key === 'pending'))
           </thead>
           <tbody>
             <tr v-for="{ v, s } in rows" :key="v.車號" class="border-t border-slate-100">
-              <td class="px-3 py-2 font-mono">{{ v.車號 }}</td>
+              <td class="px-3 py-2 font-mono">{{ displayVehicleLabel(v) }}</td>
               <td class="px-3 py-2">{{ v.車種 }}</td>
               <td class="px-3 py-2 font-mono">
                 {{ displaySeatIds(v.車位編號) || '—' }}<span v-if="v.車位類型" class="text-xs text-slate-400">（{{ v.車位類型 }}）</span>

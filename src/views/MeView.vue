@@ -7,6 +7,7 @@ import { sessionHousehold, sessionPlate, clearSession, refreshHousehold } from '
 import { tryAdminLogin, isAdminAccount } from '../store/roles.js'
 import { feeFor } from '../data/fee.js'
 import { displaySeatIds } from '../map/seat-id.js'
+import { displayVehicleLabel } from '../data/vehicle.js'
 
 // 抽籤結果是否已公布（任一車有配位狀態）。
 const hasResult = computed(() => (household.value?.vehicles || []).some((v) => v.配位狀態))
@@ -89,7 +90,7 @@ function logout() {
             <tbody>
               <tr v-for="v in household.vehicles" :key="v.車號" class="border-t border-slate-100">
                 <td class="px-3 py-2">{{ v.第幾輛 }}</td>
-                <td class="px-3 py-2 font-mono">{{ v.車號 }}</td>
+                <td class="px-3 py-2 font-mono">{{ displayVehicleLabel(v) }}</td>
                 <td class="px-3 py-2">
                   {{ v.車種 }}
                   <span v-if="v.身障" class="text-xs text-slate-400">·身障</span>

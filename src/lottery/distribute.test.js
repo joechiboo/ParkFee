@@ -157,15 +157,25 @@ describe('distribute — 填志願 + 統一分發（第一階段）', () => {
 })
 
 describe('大規模模擬（277 戶 ≈ 401 台、真實 655 座位）— 每月演練用不變量', () => {
-  const { entries } = buildRoster(sampleRoster(277))
+  // 名冊自 Q18 起含自行車列；機車引擎只吃機車，自行車另走 distribute-bikes。
+  const { entries: all } = buildRoster(sampleRoster(277))
+  const entries = all.filter((e) => e.車種 !== '自行車')
   const seats = motorSeats()
   const publicIds = new Set(seats.filter((s) => s.public).map((s) => String(s.id)))
   const r = distribute({ registrations: entries, seats, seed: '模擬' })
 
-  it('車輛總數 ≈ 400、每台都有下落（配到或落選）', () => {
+  it('機車總數 ≈ 400、每台都有下落（配到或落選）', () => {
     expect(entries.length).toBeGreaterThanOrEqual(390)
     expect(entries.length).toBeLessThanOrEqual(410)
     expect(r.assigned.length + r.落選.length).toBe(entries.length)
+  })
+
+  it('名冊含自行車，且機車引擎完全不碰它們（不會配到機車位）', () => {
+    expect(all.some((e) => e.車種 === '自行車')).toBe(true)
+    // 直接餵混合名冊：結果應與只餵機車列完全相同
+    const mixed = distribute({ registrations: all, seats, seed: '模擬' })
+    expect(mixed.assigned).toEqual(r.assigned)
+    expect(mixed.落選).toEqual(r.落選)
   })
 
   it('無重複配位：所有配出的車位 id 全域唯一', () => {

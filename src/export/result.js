@@ -60,3 +60,12 @@ export function resultRows(result, { 公告日 = '' } = {}) {
 export function resultCSV(result, opts = {}) {
   return toCSV(resultRows(result, opts), opts.公開版 ? RESULT_COLUMNS_PUBLIC : RESULT_COLUMNS)
 }
+
+// 多份結果（機車 + 自行車兩支引擎）合併成一份清單／CSV。
+// 兩者欄位相同、車種由「車位類型」欄區分；null 會被略過，方便呼叫端直接丟。
+export function mergedResultRows(results, opts = {}) {
+  return results.filter(Boolean).flatMap((r) => resultRows(r, opts))
+}
+export function mergedResultCSV(results, opts = {}) {
+  return toCSV(mergedResultRows(results, opts), opts.公開版 ? RESULT_COLUMNS_PUBLIC : RESULT_COLUMNS)
+}

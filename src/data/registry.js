@@ -1,6 +1,6 @@
 // 登記名冊：正規化、驗證、去重（每戶限登記一次）、雙管道（線上＋紙本）合併。
 // schema（HANDOFF §8 / docs 04）：
-//   戶號, 車號, 車種(一般|重機), 第幾輛, 身障(Y|N), 志願小位(Y|N), 登記時間, 聯絡電話,
+//   戶號, 車號, 車種(一般|重機|自行車), 第幾輛, 身障(Y|N), 志願小位(Y|N), 登記時間, 聯絡電話,
 //   車位志願(戶層級，分隔的車位編號), 志願落選保底(Y|N), 來源(線上|紙本)
 // 車位志願／志願落選保底為「戶層級」：CSV 可只填在第 1 輛列，buildRoster 會傳播到全戶各列。
 //
@@ -12,6 +12,7 @@
 
 import { normalizeTWPlate } from './plate.js'
 import { normalizeHousehold, isValidHousehold } from './household.js'
+import { KIND } from '../map/seat-id.js'
 
 export const REGISTRATION_COLUMNS = [
   '戶號',
@@ -40,10 +41,14 @@ export function toYN(v) {
   return /^(y|yes|是|v|✓|true|1|有|需要)$/i.test(s) ? 'Y' : 'N'
 }
 
-// 車種文字 → 一般 | 重機
+// 車種文字 → 一般 | 重機 | 自行車
 export function normalizeVehicleType(v) {
+  const s = String(v ?? '')
+  // 自行車要先判：它與機車是不同引擎（distribute-bikes.js 靠此欄篩列），
+  // 落到「一般」就會被當機車丟進機車池。
+  if (/自行|腳踏|單車|bike/i.test(s)) return KIND.BIKE
   // 注意：一般選項文字也含「250CC」，故不可用 250 判別；以「重 / ↑ / 紅 / 黃」為重機標記。
-  return /重|↑|紅|黃/.test(String(v ?? '')) ? '重機' : '一般'
+  return /重|↑|紅|黃/.test(s) ? '重機' : '一般'
 }
 
 // 車位志願：陣列或分隔字串（、，,；; 或空白）→ 去空白、去重、保序的車位編號陣列。
@@ -64,14 +69,17 @@ export function parseWishes(v) {
 // 正規化單列原始登記資料 → 標準 entry。
 export function normalizeRow(raw, fallbackSource = SOURCE.ONLINE) {
   const 第幾輛 = Number(raw.第幾輛) || 1
+  const 車種 = normalizeVehicleType(raw.車種)
+  const isBike = 車種 === KIND.BIKE
   return {
     戶號: normalizeHousehold(raw.戶號),
-    車號: normalizeTWPlate(raw.車號),
-    車種: normalizeVehicleType(raw.車種),
+    // 自行車無車牌，車號是綁戶號的合成鍵（自行車-<戶號>-<序>）→ 不可跑車牌正規化，會被改壞。
+    車號: isBike ? String(raw.車號 ?? '').trim() : normalizeTWPlate(raw.車號),
+    車種,
     第幾輛,
-    // 無障礙以「人」為單位，僅第 1 輛具該屬性
-    身障: 第幾輛 === 1 ? toYN(raw.身障) : 'N',
-    志願小位: toYN(raw.志願小位),
+    // 無障礙以「人」為單位，僅第 1 輛具該屬性；自行車無此概念。
+    身障: !isBike && 第幾輛 === 1 ? toYN(raw.身障) : 'N',
+    志願小位: isBike ? 'N' : toYN(raw.志願小位),
     登記時間: String(raw.登記時間 ?? '').trim(),
     聯絡電話: String(raw.聯絡電話 ?? '').trim(),
     車位志願: parseWishes(raw.車位志願), // 戶層級；buildRoster 會傳播到全戶
@@ -90,7 +98,7 @@ export function validateRow(e) {
   const warnings = []
   if (!isValidHousehold(e.戶號)) errors.push(`戶號格式錯誤：「${e.戶號}」（應如 H3-6、S1-2）`)
   if (!e.車號) errors.push('車號為空')
-  if (!['一般', '重機'].includes(e.車種)) errors.push(`車種非法：「${e.車種}」`)
+  if (!['一般', '重機', KIND.BIKE].includes(e.車種)) errors.push(`車種非法：「${e.車種}」`)
   if (!Number.isInteger(e.第幾輛) || e.第幾輛 < 1) errors.push(`第幾輛非法：「${e.第幾輛}」`)
   if (e.車種 === '重機' && e.志願小位 === 'Y')
     warnings.push(`${e.戶號} 重機勾選志願小位：重機佔雙大位、不適用志願小位，請受理人員確認`)
@@ -116,6 +124,10 @@ export function buildRoster(rows) {
   }
 
   // 依檔案順序去重：同戶再次出現「已看過的第幾輛」→ 視為新一次送出，取代舊的、列衝突。
+  // ⚠️ 判重的鍵要含車種類別：機車類與自行車的「第幾輛」是**各自從 1 起算**的獨立序列
+  //    （辦法伍三(四)、migration 0009 的唯一索引亦然）。若只看第幾輛，同戶登記
+  //    「機車第 1 輛 + 自行車第 1 輛」會被誤判成重複送出，把機車那列整個清掉。
+  const seq = (e) => (e.車種 === KIND.BIKE ? 'B' : 'M') + e.第幾輛
   const groups = new Map() // 戶號 -> { rows:[], seen:Set }
   const conflicts = []
   for (const e of valid) {
@@ -124,14 +136,14 @@ export function buildRoster(rows) {
       g = { rows: [], seen: new Set() }
       groups.set(e.戶號, g)
     }
-    if (g.seen.has(e.第幾輛)) {
+    if (g.seen.has(seq(e))) {
       // 新一次送出 → 記錄衝突，並以新送出取代舊的
       conflicts.push({ 戶號: e.戶號, 說明: '同戶多次登記（線上/紙本重複或重送），已採用最新一次' })
       g.rows = []
       g.seen = new Set()
     }
     g.rows.push(e)
-    g.seen.add(e.第幾輛)
+    g.seen.add(seq(e))
   }
 
   // 車位志願／志願落選保底為戶層級：CSV 可能只填在第 1 輛列 → 傳播到全戶各列，

@@ -131,9 +131,13 @@ describe('範例名冊', () => {
     expect(invalid).toHaveLength(0)
     expect(conflicts).toHaveLength(0)
     expect(entries.length).toBeGreaterThan(120) // 含第 2、3 輛
-    // 每戶都有第 1 輛
-    const firsts = entries.filter((e) => e.第幾輛 === 1)
-    expect(new Set(firsts.map((e) => e.戶號)).size).toBe(firsts.length)
+    // 每戶（每車種類別）都只有一列第 1 輛 —— 機車與自行車的第幾輛是各自從 1 起算的獨立序列
+    for (const kind of ['機車', '自行車']) {
+      const firsts = entries.filter(
+        (e) => e.第幾輛 === 1 && (kind === '自行車' ? e.車種 === '自行車' : e.車種 !== '自行車'),
+      )
+      expect(new Set(firsts.map((e) => e.戶號)).size).toBe(firsts.length)
+    }
   })
 
   it('範例含重機、身障、志願小位、雙管道', () => {
@@ -142,5 +146,45 @@ describe('範例名冊', () => {
     expect(entries.some((e) => e.身障 === 'Y')).toBe(true)
     expect(entries.some((e) => e.志願小位 === 'Y')).toBe(true)
     expect(entries.some((e) => e.來源 === SOURCE.PAPER)).toBe(true)
+  })
+})
+
+// ── 自行車（Q18：與機車同梯登記，走 distribute-bikes 另一支引擎）──────────────
+describe('自行車', () => {
+  it('車種文字認得出自行車，不會落回「一般」', () => {
+    for (const v of ['自行車', '腳踏車', '單車', 'bike', 'Bike']) {
+      expect(normalizeVehicleType(v)).toBe('自行車')
+    }
+  })
+
+  it('自行車不會被誤判為重機、機車也不會被誤判為自行車', () => {
+    expect(normalizeVehicleType('重機（250CC↑）')).toBe('重機')
+    expect(normalizeVehicleType('一般（≤250CC）')).toBe('一般')
+  })
+
+  it('自行車的合成車號原樣保留 — 跑車牌正規化會被改壞', () => {
+    const e = normalizeRow({ 戶號: 'h3-6', 車號: '自行車-H3-6-1', 車種: '自行車', 第幾輛: 1 })
+    expect(e.車號).toBe('自行車-H3-6-1')
+    expect(e.車種).toBe('自行車')
+  })
+
+  it('自行車的身障／志願小位一律 N（對自行車無意義）', () => {
+    const e = normalizeRow({ 戶號: 'H3-6', 車號: '自行車-H3-6-1', 車種: '自行車', 第幾輛: 1, 身障: '是', 志願小位: '是' })
+    expect(e.身障).toBe('N')
+    expect(e.志願小位).toBe('N')
+  })
+
+  it('自行車列通過驗證（不再被判「車種非法」）', () => {
+    const e = normalizeRow({ 戶號: 'H3-6', 車號: '自行車-H3-6-1', 車種: '自行車', 第幾輛: 1 })
+    expect(validateRow(e).errors).toEqual([])
+  })
+
+  it('同戶的機車與自行車可並存於名冊', () => {
+    const { entries, invalid } = buildRoster([
+      { 戶號: 'H3-6', 車號: 'ABC-123', 車種: '一般（≤250CC）', 第幾輛: 1 },
+      { 戶號: 'H3-6', 車號: '自行車-H3-6-1', 車種: '自行車', 第幾輛: 1 },
+    ])
+    expect(invalid).toEqual([])
+    expect(entries.map((e) => e.車種).sort()).toEqual(['一般', '自行車'])
   })
 })

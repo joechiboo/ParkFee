@@ -40,6 +40,22 @@ const CORES = [
 const SEATS_JSON = JSON.stringify([...motor, ...pub])
 const LOCKED_JSON = JSON.stringify(lockedIds)
 
+// 定版手排（tower-order-manual.json）＝空棟的初始序：頁面第一次載入時看得到目前定版，
+// 增刪只動差異、匯出不會把沒動的棟洗成純自動序。已改小/改自行車的舊 id 在此過濾。
+let manualBase = { towers: {}, zones: {} }
+try {
+  manualBase = JSON.parse(readFileSync('src/map/tower-order-manual.json', 'utf8'))
+} catch {
+  console.warn('⚠ 無 src/map/tower-order-manual.json — 工具無定版初始序')
+}
+const motorIds = new Set(motor.map((s) => s.id))
+const pubIds = new Set(pub.map((s) => s.id))
+const DEFAULT_ORDER = { AB: [], CD: [], EF: [], GH: [], PUB: [] }
+for (const t of ['AB', 'CD', 'EF', 'GH'])
+  DEFAULT_ORDER[t] = (manualBase.towers?.[t] ?? []).map(String).filter((id) => motorIds.has(id))
+DEFAULT_ORDER.PUB = (manualBase.zones?.['公益'] ?? []).map(String).filter((id) => pubIds.has(id))
+const DEFAULT_ORDER_JSON = JSON.stringify(DEFAULT_ORDER)
+
 // 分界（與 build-tower-priority.mjs 同邏輯）：左欄 y 中位分 AB/CD；GH=右區(x≥1240)∪指定塊 419-442（EF 出口留 EF）
 const lockedSet = new Set(lockedIds)
 const usable = motor.filter((s) => !lockedSet.has(s.id))
@@ -94,6 +110,7 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
    <h1>分棟順序工具（電腦選位）</h1>
    <p class="sub">選棟 → 依「想先配的順序」<b>逐格點選</b>座位（點擊序＝填補序）。<br>
      只需點靠電梯的前幾格，其餘自動用距離補在後面。<br>
+     沒排過的群組會自動帶入<b>定版手排</b>；「清除」後不回填，可按「↺ 本棟載回定版」。<br>
      <kbd>a/c/e/g</kbd>切棟　<kbd>點座位</kbd>加入/移除<b>目前棟</b>（跨棟可重疊，白圈=多棟共用）　<kbd>拖曳</kbd>平移　<kbd>Ctrl+滾輪</kbd>縮放</p>
    <div class="row">
      <button class="b-AB" data-t="AB">AB 棟</button>
@@ -109,7 +126,7 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
    <div class="stat"><span><span class="dot" style="background:#eab308"></span>公益位 已排</span><b id="n-PUB">0</b></div>
    <div class="stat" style="margin-top:6px"><span>目前群組</span><b id="cur">AB</b></div>
    <hr>
-   <div class="row"><button id="clearCur">清除本棟順序</button><button id="clearAll">全部清除</button></div>
+   <div class="row"><button id="clearCur">清除本棟順序</button><button id="clearAll">全部清除</button><button id="seedCur">↺ 本棟載回定版</button></div>
    <div id="list">—</div>
    <hr>
    <div class="row"><button id="export">⬇ 匯出 tower-priority.json</button></div>
@@ -119,6 +136,7 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
 <script>
  const SEATS=${SEATS_JSON}, CORES=${CORES_JSON}, DISPW=${dispW}, DISPH=${dispH};
  const LOCKED=new Set(${LOCKED_JSON}); // 凍結位：灰、不可點、不進順序
+ const DEFAULT_ORDER=${DEFAULT_ORDER_JSON}; // 定版手排（tower-order-manual.json）＝空棟初始序
  const LS='parkfee_b1_order_v1';
  const NS='http://www.w3.org/2000/svg';
  const TS=['AB','CD','EF','GH'];        // 四棟（一般大位）
@@ -134,6 +152,8 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
  for(const B of GS)order[B]=order[B].filter(id=>!LOCKED.has(id)); // 清掉先前誤點的凍結位
  // 公益位只進 PUB、一般位只進四棟（避免跨類誤點）
  order.PUB=order.PUB.filter(isPub);for(const B of TS)order[B]=order[B].filter(id=>!isPub(id));
+ // 首次載入（或加入本功能後第一次）：空的群組用定版手排當初始序；之後清除/增刪都不會自動回填
+ if(!order._seeded){for(const B of GS)if(!order[B].length)order[B]=DEFAULT_ORDER[B].filter(id=>!LOCKED.has(id));order._seeded=1;localStorage.setItem(LS,JSON.stringify(order));}
  const inTower=id=>GS.filter(t=>order[t].indexOf(id)>=0); // 一格可屬多棟（重疊）
  let cur='AB';
  function save(){localStorage.setItem(LS,JSON.stringify(order))}
@@ -174,6 +194,8 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
  document.querySelectorAll('[data-t]').forEach(b=>b.addEventListener('click',()=>setCur(b.dataset.t)));
  addEventListener('keydown',e=>{const m={a:'AB',c:'CD',e:'EF',g:'GH',p:'PUB'};if(m[e.key.toLowerCase()])setCur(m[e.key.toLowerCase()]);});
  el('clearCur').onclick=()=>{order[cur]=[];save();renderAll();recount();};
+ el('seedCur').onclick=()=>{if(order[cur].length&&!confirm(cur+' 目前的順序會被定版覆蓋，確定？'))return;
+   order[cur]=DEFAULT_ORDER[cur].filter(id=>!LOCKED.has(id));save();renderAll();recount();};
  el('clearAll').onclick=()=>{if(!confirm('清除所有群組的順序？'))return;for(const B of GS)order[B]=[];save();renderAll();recount();};
  el('export').onclick=()=>{const seatTower={},towers={AB:[],CD:[],EF:[],GH:[]};
    for(const B of TS)for(const id of order[B]){towers[B].push(id);seatTower[id]=B;}

@@ -24,6 +24,7 @@
 // v1 限制（待後續/管委會）：未填志願者直接列落選（原因「未填志願」），交物業第二階段保底/候補。
 
 import { mulberry32, hashSeed, seededShuffle } from './rng.js'
+import { KIND } from '../map/seat-id.js'
 import { motorSeats } from '../map/seats.js'
 import towerPriority from '../map/tower-priority.json'
 
@@ -143,7 +144,9 @@ export function distribute({
 }) {
   const rng = mulberry32(hashSeed(seed))
   const pool = makePool(seats)
-  const entries = registrations.map(toEntry)
+  // 只處理機車列。自行車走另一支引擎（distribute-bikes.js）—— 若不篩掉，toEntry 會把
+  // 車種「自行車」歸成「一般」，然後配給它一個機車位。名冊自 11/15 起會混入自行車。
+  const entries = registrations.filter((r) => r.車種 !== KIND.BIKE).map(toEntry)
   // 物業抽籤前已指派者（vehicle 已有車位編號）：直接列入結果、佔住該戶名額，不進任何抽籤輪。
   const preset = entries.filter((e) => e.車位編號)
   const pending = entries.filter((e) => !e.車位編號)

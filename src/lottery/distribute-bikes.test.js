@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { distributeBikes, BIKE_VIA, BIKE_REASON } from './distribute-bikes.js'
 import { KIND, toBikeId } from '../map/seat-id.js'
-import { bikeSeats, PUBLIC_BIKE_IDS } from '../map/seats.js'
+import { bikeSeats, PUBLIC_BIKE_IDS, motorSeats } from '../map/seats.js'
+import { isBikeId } from '../map/seat-id.js'
+import { distribute } from './distribute.js'
+import { buildRoster } from '../data/registry.js'
+import { sampleRoster } from '../data/sample.js'
+import { mergedResultRows } from '../export/result.js'
 
 // 小型測試池：B001–B005，其中 B004/B005 假裝是公益位時另外指定。
 const SEATS = (n) => Array.from({ length: n }, (_, i) => ({ id: toBikeId(i + 1), type: KIND.BIKE }))
@@ -152,5 +157,47 @@ describe('全量真實池', () => {
     expect(r.assigned).toHaveLength(164)
     expect(r.落選).toHaveLength(655 - 164)
     expect(new Set(r.assigned.map((x) => x.車位編號)).size).toBe(164) // 無重複配位
+  })
+})
+
+// ── 端到端：混合名冊（機車＋自行車）走完整條線 ───────────────────────────────
+// 從 11/15 起真實名冊就是混合的，這條線任一環把車種弄丟都會出事，故整條一起驗。
+describe('混合名冊端到端（名冊 → 兩支引擎 → 合併匯出）', () => {
+  const { entries, invalid, conflicts } = buildRoster(sampleRoster(277))
+  const motor = distribute({ registrations: entries, seats: motorSeats(), seed: '模擬' })
+  const bikes = distributeBikes({ registrations: entries, seed: '模擬｜自行車' })
+
+  it('名冊同時含機車與自行車，且無驗證錯誤／誤判重複送出', () => {
+    expect(invalid).toEqual([])
+    expect(conflicts).toEqual([])
+    expect(entries.some((e) => e.車種 === KIND.BIKE)).toBe(true)
+    expect(entries.some((e) => e.車種 === '一般')).toBe(true)
+    expect(entries.some((e) => e.車種 === '重機')).toBe(true)
+  })
+
+  it('兩支引擎各自吃到自己的車種，沒有漏也沒有重疊', () => {
+    const motorCount = entries.filter((e) => e.車種 !== KIND.BIKE).length
+    const bikeCount = entries.filter((e) => e.車種 === KIND.BIKE).length
+    expect(motor.assigned.length + motor.落選.length).toBe(motorCount)
+    expect(bikes.summary.registrations).toBe(bikeCount)
+    expect(bikes.assigned.length + bikes.落選.length).toBe(bikeCount)
+  })
+
+  it('機車位與自行車位完全不互串', () => {
+    for (const a of motor.assigned) {
+      for (const id of String(a.車位編號).split('、')) expect(isBikeId(id)).toBe(false)
+    }
+    for (const a of bikes.assigned) expect(isBikeId(a.車位編號)).toBe(true)
+  })
+
+  it('合併匯出：兩種車位都在同一份清單，自行車編號已剝前綴、金額為 0', () => {
+    const rows = mergedResultRows([motor, bikes], { 公告日: '2026-12-01' })
+    expect(rows.length).toBe(entries.length)
+    const bikeRows = rows.filter((r) => r.車位類型 === KIND.BIKE)
+    expect(bikeRows.length).toBe(bikes.assigned.length)
+    for (const r of bikeRows) {
+      expect(r.車位編號).toMatch(/^\d+$/) // 已剝 B 前綴與前導零 → 與地面漆一致
+      expect(r.應繳金額).toBe(0) // 自行車免費（辦法柒二）
+    }
   })
 })
