@@ -4,5 +4,5 @@
 import { renderBaseMap, BASE_PDF } from './lib/basemap.mjs'
 
 const OUT = 'public/demo/b1.png'
-const { width, height, wiped } = renderBaseMap(OUT)
-console.log(`已寫入 ${OUT}  ${width}x${height}  來源 ${BASE_PDF}  去除浮水印像素 ${wiped.toLocaleString()}`)
+const { width, height } = renderBaseMap(OUT)
+console.log(`已寫入 ${OUT}  ${width}x${height}  來源 ${BASE_PDF}（已濾掉浮水印與建照色塊）`)
