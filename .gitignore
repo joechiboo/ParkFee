@@ -37,3 +37,6 @@ yarn-error.log*
 pnpm-debug.log*
 logs
 *.log
+
+# Word 開啟時產生的鎖定暫存檔
+~$*
