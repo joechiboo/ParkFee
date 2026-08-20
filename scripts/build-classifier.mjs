@@ -1,20 +1,19 @@
 // 產生「車位分類工具」：B1 底圖 + 928 個自動抽出的點，
 // 讓使用者框選→標記車種（機車/汽車/腳踏車/排除），匯出 ground-truth JSON。
 // 點位抽法與座標轉換與 seat-demo.mjs 完全一致，確保兩邊對得起來。
-import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import * as mupdf from 'mupdf'
+import { BASE_PDF, renderBaseMap } from './lib/basemap.mjs'
 
 const dispW = 2384
 const dispH = 1684
 const OUT = 'public/demo'
 
-const dir = 'docs'
-const name = readdirSync(dir).find((f) => f.includes('A2-5') || f.includes('平面'))
-const data = readFileSync(`${dir}/${name}`)
+const data = readFileSync(BASE_PDF)
 
 mkdirSync(OUT, { recursive: true })
 const page = mupdf.Document.openDocument(data, 'application/pdf').loadPage(0)
-writeFileSync(`${OUT}/b1.png`, page.toPixmap(mupdf.Matrix.scale(2, 2), mupdf.ColorSpace.DeviceRGB, false).asPNG())
+renderBaseMap(`${OUT}/b1.png`)
 
 const raw = data.toString('latin1')
 const blockRe = /\/Subtype\s*\/Square\s*\/Rect\s*\[\s*(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s*\][^>]*?\/Contents\s*(<[0-9a-fA-F]*>|\([^)]*\))/g

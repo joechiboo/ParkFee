@@ -1,18 +1,15 @@
 // 選位 demo（B1）：底圖 b1.png + 依車種上色的車位點。
 // 點資料來源已改為人工分類後的 ground-truth：src/map/b1-classification.json
 //   （機車 655 可點選 / 汽車 55 / 腳踏車 164 / 排除 54 預設隱藏）。
-// 底圖 b1.png 仍由 PDF 重算，確保與座標系一致。
-import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs'
-import * as mupdf from 'mupdf'
+// 底圖 b1.png 由竣工圖重算（scripts/lib/basemap.mjs），確保與座標系一致。
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { renderBaseMap } from './lib/basemap.mjs'
 
 const OUT = 'public/demo' // 放進 public → 隨 GitHub Pages 部署
 mkdirSync(OUT, { recursive: true })
 
-// 1) 底圖：mupdf render B1 平面圖
-const dir = 'docs'
-const name = readdirSync(dir).find((f) => f.includes('A2-5') || f.includes('平面'))
-const page = mupdf.Document.openDocument(readFileSync(`${dir}/${name}`), 'application/pdf').loadPage(0)
-writeFileSync(`${OUT}/b1.png`, page.toPixmap(mupdf.Matrix.scale(2, 2), mupdf.ColorSpace.DeviceRGB, false).asPNG())
+// 1) 底圖：由竣工圖渲染（見 scripts/lib/basemap.mjs）
+renderBaseMap(`${OUT}/b1.png`)
 
 // 2) 點：讀分類後的 ground-truth
 const cls = JSON.parse(readFileSync('src/map/b1-classification.json', 'utf8'))
