@@ -15,6 +15,16 @@ const rulesUrl = `${import.meta.env.BASE_URL}rules.html`
 const formBase = `${import.meta.env.BASE_URL}forms/`
 const forms = [
   {
+    file: '管理辦法-現行版.docx',
+    name: '管理辦法（現行版）Word',
+    note: '目前適用之條文全文，可直接編輯維護',
+  },
+  {
+    file: '管理辦法-修訂版.docx',
+    name: '管理辦法（修訂版）Word',
+    note: '13 處修正後之全文；尚未經例會表決、不具效力',
+  },
+  {
     file: '紙本登記表.doc',
     name: '紙本登記表',
     note: '不便線上登記者用；填妥交管理中心代為登錄',
@@ -109,7 +119,8 @@ function go(key) {
         </li>
       </ul>
       <p class="mt-3 text-xs text-slate-400">
-        辦法【附件一】～【附件四】之可填寫檔案尚未建立，目前請以上方條文全文為準。
+        Word 版由條文自動產生（<code>scripts/build-bylaw-docx.mjs</code>），條文一改重新編譯即同步，不會與本頁內容漂移。
+        附件一～四之條文已含在內；正式公告版 PDF 上附件另有裝飾外框，Word 版未重現。
       </p>
     </div>
 
