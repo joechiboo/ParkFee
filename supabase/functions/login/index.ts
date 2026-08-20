@@ -6,7 +6,7 @@
 // → **純自行車戶不開放線上登入**，查詢/修改一律臨櫃，由物業在管理頁處理。
 //   有機車的戶不受影響（用車牌登入後，同頁可一併看到自行車）。
 import { corsHeaders, json, adminClient, fetchHousehold } from '../_shared/http.ts'
-import { normalizeHousehold, normalizeTWPlate } from '../_shared/normalize.ts'
+import { isBikeVehicleKey, normalizeHousehold, normalizeTWPlate } from '../_shared/normalize.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -16,7 +16,8 @@ Deno.serve(async (req) => {
     const { 戶號, 車號 } = await req.json()
     const hid = normalizeHousehold(戶號)
     const plate = normalizeTWPlate(車號)
-    if (!hid || !plate) return json({ household: null })
+    // 合成車號從戶號即可推得（自行車-<戶號>-1），當憑證等於免密碼 → 一律擋（原始值與正規化後都檢查）
+    if (!hid || !plate || isBikeVehicleKey(車號) || isBikeVehicleKey(plate)) return json({ household: null })
 
     const db = adminClient()
     const { data: v } = await db.from('vehicle').select('戶號').eq('車號', plate).maybeSingle()
