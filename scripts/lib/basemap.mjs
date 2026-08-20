@@ -5,10 +5,14 @@
 // 且完全沒有畫自行車位，已不再使用。兩個檔名都含「平面」，所以這裡寫死檔名，
 // 不要再用 readdirSync 去猜，否則會抓回舊版。
 //
-// 底圖會拿掉兩種東西：
-//   1. 粉紅浮水印（新北市政府工務局）—— 蓋住圖面
-//   2. 建照的停車位色塊（黃＝法定車位、橘＝自設車位）—— 那是建照審查標示，住戶不需要，
-//      滿版色塊也會蓋過我們自己的機車/自行車配色
+// 底圖會處理兩種東西：
+//   1. 粉紅浮水印（新北市政府工務局）—— 直接不畫
+//   2. 建照的停車位色塊（黃＝法定車位、橘＝自設車位）—— 改畫成淺灰
+//
+// ⚠️ 為什麼是「改成淺灰」而不是「整個不畫」：
+//   車位格子的黑框是髮絲線，底圖 4768px 在畫面上縮到 ~500px 顯示時會被平均掉、幾乎看不見。
+//   原本之所以看得出格子，靠的是那條 ~8px 厚的黃色帶。整個拿掉 → 圖面等於空白，
+//   點位漂在上面。改成中性淺灰即可保留塊體感，又不會跟我們自己的機車/自行車配色搶。
 //
 // ⚠️ 為什麼是「向量層過濾」而不是「渲染後濾顏色」：
 //   機車格的畫法是「黑框 ＋ 外圈粗黃帶」，黑框壓在黃帶上。渲染成點陣後，黑線抗鋸齒會與
@@ -21,16 +25,19 @@ import * as mupdf from 'mupdf'
 export const BASE_PDF = 'docs/A205_B1平面圖.pdf'
 export const SCALE = 2 // 2384x1684 pt -> 4768x3368 px
 
-// 要濾掉的顏色（DeviceRGB，0–1）。數值取自實際圖檔；容差 0.06 足以區分且不誤傷其他顏色。
-const DROP_RGB = [
-  [0.97, 0.96, 0.25], // 黃：法定停車位色塊
-  [0.98, 0.43, 0.02], // 橘：自設停車位色塊
-  [1.0, 0.69, 0.69], // 粉紅：工務局浮水印文字
+// 圖面顏色（DeviceRGB，0–1）→ 處理方式。數值取自實際圖檔；容差 0.06 足以區分、不誤傷。
+//   null = 不畫；數字 = 改用該灰階值畫（DeviceGray）
+const RECOLOR = [
+  [[0.97, 0.96, 0.25], 0.9], // 黃：法定停車位 → 淺灰
+  [[0.98, 0.43, 0.02], 0.82], // 橘：自設停車位 → 稍深的灰（仍可區分）
+  [[1.0, 0.69, 0.69], null], // 粉紅：工務局浮水印 → 不畫
 ]
-function shouldDrop(colorspace, color) {
-  if (!color || color.length !== 3) return false
-  if (colorspace?.getName?.() !== 'DeviceRGB') return false
-  return DROP_RGB.some((c) => c.every((v, i) => Math.abs(v - color[i]) < 0.06))
+// 回傳 undefined＝原樣畫、null＝不畫、數字＝改成該灰階
+function recolorOf(colorspace, color) {
+  if (!color || color.length !== 3) return undefined
+  if (colorspace?.getName?.() !== 'DeviceRGB') return undefined
+  const hit = RECOLOR.find(([c]) => c.every((v, i) => Math.abs(v - color[i]) < 0.06))
+  return hit ? hit[1] : undefined
 }
 
 /** 渲染底圖（過濾掉浮水印與建照色塊），回傳 {width, height} */
@@ -42,20 +49,33 @@ export function renderBaseMap(outPath) {
   const pix = new mupdf.Pixmap(mupdf.ColorSpace.DeviceRGB, bbox, false)
   pix.clear(255)
   const draw = new mupdf.DrawDevice(mupdf.Matrix.scale(SCALE, SCALE), pix)
+  const GRAY = mupdf.ColorSpace.DeviceGray
 
   // 代理 device：其餘一律原樣轉發，只有指定顏色的 fill/text 不畫。
   const proxy = new mupdf.Device({
     fillPath: (path, evenOdd, ctm, cs, color, alpha) => {
-      if (!shouldDrop(cs, color)) draw.fillPath(path, evenOdd, ctm, cs, color, alpha)
+      const g = recolorOf(cs, color)
+      if (g === null) return
+      if (g === undefined) draw.fillPath(path, evenOdd, ctm, cs, color, alpha)
+      else draw.fillPath(path, evenOdd, ctm, GRAY, [g], alpha)
     },
     strokePath: (path, stroke, ctm, cs, color, alpha) => {
-      if (!shouldDrop(cs, color)) draw.strokePath(path, stroke, ctm, cs, color, alpha)
+      const g = recolorOf(cs, color)
+      if (g === null) return
+      if (g === undefined) draw.strokePath(path, stroke, ctm, cs, color, alpha)
+      else draw.strokePath(path, stroke, ctm, GRAY, [g], alpha)
     },
     fillText: (text, ctm, cs, color, alpha) => {
-      if (!shouldDrop(cs, color)) draw.fillText(text, ctm, cs, color, alpha)
+      const g = recolorOf(cs, color)
+      if (g === null) return
+      if (g === undefined) draw.fillText(text, ctm, cs, color, alpha)
+      else draw.fillText(text, ctm, GRAY, [g], alpha)
     },
     strokeText: (text, stroke, ctm, cs, color, alpha) => {
-      if (!shouldDrop(cs, color)) draw.strokeText(text, stroke, ctm, cs, color, alpha)
+      const g = recolorOf(cs, color)
+      if (g === null) return
+      if (g === undefined) draw.strokeText(text, stroke, ctm, cs, color, alpha)
+      else draw.strokeText(text, stroke, GRAY, [g], alpha)
     },
     clipPath: (path, evenOdd, ctm) => draw.clipPath(path, evenOdd, ctm),
     clipStrokePath: (path, stroke, ctm) => draw.clipStrokePath(path, stroke, ctm),
