@@ -10,6 +10,17 @@ const router = useRouter()
 const redlineUrl = `${import.meta.env.BASE_URL}bylaw-redline.html`
 const rulesUrl = `${import.meta.env.BASE_URL}rules.html`
 
+// 可下載表單：檔案放 public/forms/，Vite 原樣部署 → 網址即 BASE_URL + forms/檔名。
+// 新增表單＝把檔案丟進 public/forms/ 再往下面陣列加一列即可。
+const formBase = `${import.meta.env.BASE_URL}forms/`
+const forms = [
+  {
+    file: '紙本登記表.doc',
+    name: '紙本登記表',
+    note: '不便線上登記者用；填妥交管理中心代為登錄',
+  },
+]
+
 const tabs = [
   { key: 'current', label: '現行辦法', doc: bylawCurrent },
   { key: 'draft', label: '修訂草案', doc: bylawDraft },
@@ -81,6 +92,26 @@ function go(key) {
 
     <!-- 條文本文 -->
     <article class="prose mt-6 rounded-lg border border-slate-200 bg-white p-5 sm:p-7" v-html="doc.html" />
+
+    <!-- 表單下載：辦法附件的可填寫檔案 -->
+    <div class="mt-6 rounded-lg border border-slate-200 bg-white p-5">
+      <h2 class="text-base font-semibold text-slate-800">表單下載</h2>
+      <ul class="mt-3 space-y-2">
+        <li v-for="f in forms" :key="f.file" class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <a
+            :href="formBase + f.file"
+            :download="f.file"
+            class="rounded border border-slate-300 px-2.5 py-1 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            ⬇ {{ f.name }}
+          </a>
+          <span class="text-xs text-slate-500">{{ f.note }}</span>
+        </li>
+      </ul>
+      <p class="mt-3 text-xs text-slate-400">
+        辦法【附件一】～【附件四】之可填寫檔案尚未建立，目前請以上方條文全文為準。
+      </p>
+    </div>
 
     <p class="mt-6 text-sm text-slate-500">
       看不慣條文？
