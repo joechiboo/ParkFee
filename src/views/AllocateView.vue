@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { distribute, VIA } from '../lottery/distribute.js'
 import { motorSeats } from '../map/seats.js'
+import { displaySeatIds } from '../map/seat-id.js'
 import { buildRoster } from '../data/registry.js'
 import { importedRoster, importInfo } from '../store/roster.js'
 import { resultCSV, resultRows } from '../export/result.js'
@@ -284,7 +285,7 @@ function downloadResultCSV(pub = true) {
                 <td class="px-3 py-1.5 font-mono text-xs">{{ a.車號 }}</td>
                 <td class="px-3 py-1.5">{{ a.車種 }}</td>
                 <td class="px-3 py-1.5">{{ a.第幾輛 }}</td>
-                <td class="px-3 py-1.5 font-mono">{{ a.車位編號 }}</td>
+                <td class="px-3 py-1.5 font-mono">{{ displaySeatIds(a.車位編號) }}</td>
                 <td class="px-3 py-1.5">{{ a.車位類型 }}</td>
               </tr>
             </tbody>
@@ -313,7 +314,7 @@ function downloadResultCSV(pub = true) {
                 <td class="px-3 py-1.5 font-semibold">{{ a.順序號 ?? '—' }}</td>
                 <td class="px-3 py-1.5 font-mono text-xs">{{ a.車號 }}</td>
                 <td class="px-3 py-1.5">{{ a.車種 }}</td>
-                <td class="px-3 py-1.5 font-mono">{{ a.車位編號 }}</td>
+                <td class="px-3 py-1.5 font-mono">{{ displaySeatIds(a.車位編號) }}</td>
                 <td class="px-3 py-1.5">{{ a.車位類型 }}</td>
               </tr>
             </tbody>
@@ -339,7 +340,7 @@ function downloadResultCSV(pub = true) {
             <tbody>
               <tr v-for="(a, i) in presetRows" :key="i" class="border-t border-slate-100">
                 <td class="px-3 py-1.5 font-mono text-xs">{{ a.車號 }}</td>
-                <td class="px-3 py-1.5 font-mono">{{ a.車位編號 }}</td>
+                <td class="px-3 py-1.5 font-mono">{{ displaySeatIds(a.車位編號) }}</td>
                 <td class="px-3 py-1.5">{{ a.車位類型 }}</td>
                 <td class="px-3 py-1.5">{{ a.配位方式 }}</td>
               </tr>

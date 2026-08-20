@@ -36,6 +36,30 @@ describe('配位結果匯出（result.js）', () => {
     })
   })
 
+  it('自行車：編號剝掉 B 前綴、免費 0 元、車種靠車位類型欄區分', () => {
+    const rows = resultRows(
+      {
+        assigned: [
+          { 戶號: 'E5-1', 車號: '自行車-E5-1-1', 車種: '自行車', 車位編號: 'B012', 車位類型: '自行車', 配位方式: '抽籤' },
+        ],
+        落選: [],
+      },
+      { 公告日: '2026-12-01' },
+    )
+    // 住戶看到的要跟地面漆的數字一致
+    expect(rows[0].車位編號).toBe('12')
+    // 辦法柒二：自行車位不收取費用
+    expect(rows[0].應繳金額).toBe(0)
+    // RESULT_COLUMNS 沒有車種欄 → 「12」是機車還是自行車全靠這欄
+    expect(rows[0].車位類型).toBe('自行車')
+  })
+
+  it('機車編號不受前綴處理影響（含重機雙位）', () => {
+    const rows = resultRows(sample)
+    expect(rows[0].車位編號).toBe('100')
+    expect(rows[1].車位編號).toBe('150、151')
+  })
+
   it('未給公告日時簽約期限留白', () => {
     const rows = resultRows(sample)
     expect(rows[0].簽約期限).toBe('')

@@ -19,6 +19,18 @@ export function isValidHousehold(raw: unknown): boolean {
   return false
 }
 
+// 自行車（docs/10 Q18）：無車牌 → 車號欄存「綁戶號」的合成鍵 '自行車-<戶號>-<序>'。
+// 含中文字元，與台灣車牌值域（大寫英數＋連字號）天然不相交 → 不可能與真實車牌互撞，故沿用車號 PK。
+export const BIKE = '自行車'
+
+export function bikeVehicleKey(hid: string, seq: number): string {
+  return `${BIKE}-${hid}-${seq}`
+}
+
+export function isBikeVehicleKey(v: unknown): boolean {
+  return String(v ?? '').startsWith(`${BIKE}-`)
+}
+
 // 台灣車牌：大寫、去空白、字母段與數字段間補單一連字號。
 export function normalizeTWPlate(raw: unknown): string {
   if (raw == null) return ''

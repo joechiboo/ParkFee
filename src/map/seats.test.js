@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { motorSeats, carSeats, bikeSeats, seatSummary, DISP_W, DISP_H } from './seats.js'
+import {
+  motorSeats,
+  carSeats,
+  bikeSeats,
+  rentableBikeSeats,
+  PUBLIC_BIKE_IDS,
+  seatSummary,
+  DISP_W,
+  DISP_H,
+} from './seats.js'
 import { TOTAL } from '../data/spaces.js'
 
 describe('B1 車位空間資料（ground-truth，來源：seat-select-demo.html）', () => {
@@ -38,6 +47,33 @@ describe('B1 車位空間資料（ground-truth，來源：seat-select-demo.html�
     expect(bikeSeats()).toHaveLength(164)
     expect(new Set(carSeats().map((s) => s.id)).size).toBe(55)
     expect(new Set(bikeSeats().map((s) => s.id)).size).toBe(164)
+  })
+
+  it('自行車位編號已前綴正規化，與機車編號完全不相交', () => {
+    const bikeIds = bikeSeats().map((s) => s.id)
+    expect(bikeIds.every((id) => /^B\d{3}$/.test(id))).toBe(true)
+    expect(bikeIds[0]).toBe('B001')
+    expect(bikeIds.at(-1)).toBe('B164')
+
+    // 撞號防呆：盤點檔裡 164 格自行車有 155 格號碼與機車字面重複，前綴後必須 0 交集。
+    const motorIds = new Set(motorSeats().map((s) => s.id))
+    expect(bikeIds.filter((id) => motorIds.has(id))).toEqual([])
+  })
+
+  it('公益自行車位 114–118 在池內，且可承租池已排除', () => {
+    const all = new Set(bikeSeats().map((s) => s.id))
+    for (const id of PUBLIC_BIKE_IDS) expect(all.has(id)).toBe(true)
+    expect(PUBLIC_BIKE_IDS).toEqual(['B114', 'B115', 'B116', 'B117', 'B118'])
+    expect(rentableBikeSeats()).toHaveLength(164 - 5)
+    expect(rentableBikeSeats().some((s) => PUBLIC_BIKE_IDS.includes(s.id))).toBe(false)
+  })
+
+  it('公益自行車位帶 public 旗標（盤點檔沒標，改依辦法清單貼）', () => {
+    const flagged = bikeSeats().filter((s) => s.public)
+    expect(flagged.map((s) => s.id)).toEqual(PUBLIC_BIKE_IDS)
+    expect(flagged).toHaveLength(5) // 地圖/列印圖要靠這個旗標畫公益標示
+    // 機車的公益旗標來自盤點檔（平面圖有金框），兩者來源不同但欄位一致
+    expect(motorSeats().filter((s) => s.public)).toHaveLength(20)
   })
 
   it('分類摘要與來源一致（機車三型別合計 655、總點數 929）', () => {

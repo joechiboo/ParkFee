@@ -4,7 +4,8 @@
 // 點地圖車位 → 右側表單填車號/類型/繳費 → 指派（鎖定）；已鎖定者可解除。
 import { ref, computed, onMounted } from 'vue'
 import SeatMap from '../components/SeatMap.vue'
-import { motorSeats } from '../map/seats.js'
+import { motorSeats, bikeSeats } from '../map/seats.js'
+import { KIND, compareSeatId, displaySeatId, normalizeSeatInput } from '../map/seat-id.js'
 import { lockedSeats, refreshLocked, listAssignments, assignSeat, unlockSeat, setLocked } from '../store/locked.js'
 import { sessionHousehold } from '../store/session.js'
 import { isAdmin } from '../store/roles.js'
@@ -53,31 +54,41 @@ async function reloadAssignments() {
 }
 
 // ── 批次鎖定／解除（動線/結構/整區）：支援範圍語法。純鎖定(只存 id)、可再批次解除。──
-const seatIdSet = new Set(seats.map((s) => String(s.id)))
+//
+// ⚠️ 車種切換是必要的，不是方便功能：機車 1–655 與自行車 1–164 的地面號碼有 155 個重複，
+//    打「12」在兩種車都是合法編號。若不指定車種，想鎖自行車 12 會**安靜地鎖到機車 12**——
+//    既有的「不存在編號」提示救不了，因為那些號碼在機車池裡確實存在。
+const batchKind = ref(KIND.MOTOR)
+const batchSeatIds = computed(
+  () => new Set((batchKind.value === KIND.BIKE ? bikeSeats() : seats).map((s) => String(s.id))),
+)
 const batchInput = ref('')
 const batchMsg = ref('')
 
 // 解析輸入：範圍 423-438 / 423–438 / 423~438，加逗號/空白/換行分隔的單號，混用皆可。
-function parseSeatInput(text) {
-  const ids = new Set()
+// 使用者一律打地面看到的數字；依 batchKind 正規化（自行車 12 → B012）。
+function parseSeatInput(text, kind = batchKind.value) {
+  const nums = new Set()
   const rest = String(text).replace(/(\d+)\s*[-–—~〜至到]\s*(\d+)/g, (_, a, b) => {
     let x = +a
     let y = +b
     if (x > y) [x, y] = [y, x]
-    for (let i = x; i <= y; i++) ids.add(String(i))
+    for (let i = x; i <= y; i++) nums.add(String(i))
     return ' '
   })
-  for (const m of rest.match(/\d+/g) || []) ids.add(m)
-  return [...ids]
+  for (const m of rest.match(/\d+/g) || []) nums.add(m)
+  return [...nums].map((n) => normalizeSeatInput(n, kind)).filter(Boolean)
 }
-const parsedValid = computed(() => parseSeatInput(batchInput.value).filter((id) => seatIdSet.has(id)))
+const parsedValid = computed(() =>
+  parseSeatInput(batchInput.value).filter((id) => batchSeatIds.value.has(id)),
+)
 
 // mode：'lock' 加入鎖定 ∪、'unlock' 從鎖定移除。setLocked 整批取代，故都以現有清單為基準運算。
 async function runBatch(mode) {
   batchMsg.value = ''
   const parsed = parseSeatInput(batchInput.value)
-  const valid = parsed.filter((id) => seatIdSet.has(id))
-  const unknown = parsed.filter((id) => !seatIdSet.has(id))
+  const valid = parsed.filter((id) => batchSeatIds.value.has(id))
+  const unknown = parsed.filter((id) => !batchSeatIds.value.has(id)).map(displaySeatId)
   if (!valid.length) {
     batchMsg.value = '沒讀到有效車位編號'
     return
@@ -280,6 +291,20 @@ function decorate(s) {
             <p class="mt-1 text-xs text-slate-500">
               支援<b>範圍</b>：<code class="rounded bg-white px-1">423-438</code>；單號 <code class="rounded bg-white px-1">300 302</code>；混用皆可（逗號/空白/換行/、）。鎖定＝不給選；解除＝放回可選。
             </p>
+            <div class="mt-2 flex items-center gap-2">
+              <span class="text-xs font-medium text-slate-600">車種</span>
+              <label
+                v-for="k in [KIND.MOTOR, KIND.BIKE]"
+                :key="k"
+                class="cursor-pointer rounded border px-2 py-1 text-xs"
+                :class="batchKind === k ? 'border-rose-500 bg-rose-100 font-semibold text-rose-800' : 'border-slate-300 bg-white text-slate-600'"
+              >
+                <input v-model="batchKind" type="radio" :value="k" class="hidden" />{{ k }}
+              </label>
+              <span class="text-xs text-slate-500">
+                機車 1–655、自行車 1–164 <b class="text-rose-700">號碼會重複</b>，請先選對車種
+              </span>
+            </div>
             <textarea
               v-model="batchInput"
               rows="2"
@@ -307,12 +332,13 @@ function decorate(s) {
             <div class="font-semibold">已佔用 <span class="text-slate-400">(鎖定 {{ lockedIds.length }} · 抽籤 {{ lotteryCount }})</span></div>
             <div v-if="assignments.length" class="mt-3 space-y-1.5">
               <div
-                v-for="a in [...assignments].sort((x, y) => +x.車位編號 - +y.車位編號)"
+                v-for="a in [...assignments].sort((x, y) => compareSeatId(x.車位編號, y.車位編號))"
                 :key="a.車位編號"
                 class="flex items-center justify-between rounded bg-slate-50 px-2 py-1 text-xs"
               >
                 <button class="text-left hover:underline" @click="selectSeat(seats.find((s) => String(s.id) === String(a.車位編號)) || { id: a.車位編號 })">
-                  <span class="font-mono font-semibold" :class="a.locked ? 'text-rose-700' : 'text-amber-600'">{{ a.車位編號 }}</span>
+                  <span class="font-mono font-semibold" :class="a.locked ? 'text-rose-700' : 'text-amber-600'">{{ displaySeatId(a.車位編號) }}</span>
+                  <span v-if="String(a.車位編號).startsWith('B')" class="ml-1 rounded bg-sky-100 px-1 text-[10px] text-sky-700">自行車</span>
                   <span v-if="!a.locked" class="ml-1 text-amber-600">抽</span>
                   <span v-if="a.戶號" class="ml-1 text-slate-600">{{ a.戶號 }}</span>
                   <span v-if="a.車號" class="ml-1 font-mono text-slate-400">{{ a.車號 }}</span>

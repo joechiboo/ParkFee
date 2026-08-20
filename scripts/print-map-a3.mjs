@@ -6,8 +6,18 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
+import { toBikeId, PUBLIC_BIKE_IDS } from '../src/map/seat-id.js'
 
 const cls = JSON.parse(readFileSync('src/map/b1-classification.json', 'utf8'))
+
+// 盤點檔的 public 只標了機車 20 格（平面圖上有金框）；公益**自行車**位 114–118 是辦法參二(七)
+// 明列、圖上無視覺標示 → 盤點檔沒有、必須另外對照，否則列印圖會漏標這 5 格。
+const PUBLIC_BIKE = new Set(PUBLIC_BIKE_IDS)
+const isPublicSeat = (s) => (s.cat === 'bike' ? PUBLIC_BIKE.has(toBikeId(s.id)) : !!s.public)
+
+// 鎖定清單裡自行車存的是正規形 B012、機車是裸數字 12 → 依 cat 換算後才比對。
+// 若直接用 s.id 比，機車 12 被鎖時會讓自行車 12 也畫上鎖定圈（兩者地面號碼重複）。
+const lockKeyOf = (s) => (s.cat === 'bike' ? toBikeId(s.id) : String(s.id))
 const { dispW, dispH } = cls.meta
 
 // 目前鎖定保留清單（Supabase locked_seat，anon 可讀）
@@ -106,9 +116,9 @@ for (const s of cls.seats) {
   counts[cat] = (counts[cat] || 0) + 1
   const cx = toX(s.x), cy = toY(s.y)
   page.drawCircle({ x: cx, y: cy, size: r, color: CAT[cat].color, opacity: 0.9 })
-  if (s.public) // 公益位：金色粗框
+  if (isPublicSeat(s)) // 公益位：金色粗框（機車 20 格來自盤點檔、自行車 5 格來自辦法清單）
     page.drawCircle({ x: cx, y: cy, size: r + 0.6, borderColor: rgb(0.83, 0.66, 0.12), borderWidth: 1.4, opacity: 0 })
-  if (locked && locked.has(String(s.id)) && (cat === 'motor' || cat === 'small' || cat === 'access')) {
+  if (locked && locked.has(lockKeyOf(s)) && cat !== 'car') {
     page.drawCircle({ x: cx, y: cy, size: r + 0.7, borderColor: rgb(0.1, 0.1, 0.12), borderWidth: 1.6, opacity: 0 })
     lockedDrawn++
   }

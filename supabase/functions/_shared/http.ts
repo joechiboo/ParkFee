@@ -1,6 +1,6 @@
 // Edge Function 共用：CORS、JSON 回應、admin（service_role）client、整戶查詢、管理員驗證。
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2'
-import { normalizeHousehold, normalizeTWPlate } from './normalize.ts'
+import { isBikeVehicleKey, normalizeHousehold, normalizeTWPlate } from './normalize.ts'
 
 // 額外管理員戶號：真實戶號 + 已登記車牌登入即可管理（免共用密碼）。要加管理員就改這裡。
 const ADMIN_HOUSEHOLDS = ['H3-6']
@@ -43,6 +43,20 @@ export async function verifyAdmin(
   return !!data && data.戶號 === hid
 }
 
+// 擁有權驗證（編輯登記、改志願用）：認證車號（登入時用的車號）須「目前」屬於該戶。
+// 自行車的合成車號不算憑證（住戶不會知道），故**純自行車戶無法線上編輯**，一律臨櫃由物業處理。
+// 電話當憑證已否決（2026-08-19），不再提供第二條路。
+export async function verifyOwnership(
+  db: SupabaseClient,
+  hid: string,
+  body: { 認證車號?: string },
+): Promise<boolean> {
+  const plate = normalizeTWPlate(body?.認證車號)
+  if (!plate || isBikeVehicleKey(plate)) return false
+  const { data } = await db.from('vehicle').select('戶號').eq('車號', plate).maybeSingle()
+  return !!data && data.戶號 === hid
+}
+
 // 取整戶（含車輛，依第幾輛排序）；找不到回 null。
 export async function fetchHousehold(db: SupabaseClient, hid: string) {
   const { data: h } = await db
@@ -53,8 +67,11 @@ export async function fetchHousehold(db: SupabaseClient, hid: string) {
   if (!h) return null
   const { data: vehicles } = await db
     .from('vehicle')
-    .select('車號, 戶號, 車種, 第幾輛, 身障, 志願小位, 車位編號, 車位類型, 配位狀態, 簽約期限, 已繳費')
+    .select(
+      '車號, 戶號, 車種, 第幾輛, 身障, 志願小位, 特徵, 車位編號, 車位類型, 配位狀態, 簽約期限, 已繳費',
+    )
     .eq('戶號', hid)
+    .order('車種')
     .order('第幾輛')
   return {
     戶號: h.戶號,

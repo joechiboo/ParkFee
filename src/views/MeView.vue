@@ -6,6 +6,7 @@ import { editTarget } from '../store/editTarget.js'
 import { sessionHousehold, sessionPlate, clearSession, refreshHousehold } from '../store/session.js'
 import { tryAdminLogin, isAdminAccount } from '../store/roles.js'
 import { feeFor } from '../data/fee.js'
+import { displaySeatIds } from '../map/seat-id.js'
 
 // 抽籤結果是否已公布（任一車有配位狀態）。
 const hasResult = computed(() => (household.value?.vehicles || []).some((v) => v.配位狀態))
@@ -94,7 +95,7 @@ function logout() {
                   <span v-if="v.身障" class="text-xs text-slate-400">·身障</span>
                   <span v-if="v.志願小位" class="text-xs text-slate-400">·志願小位</span>
                 </td>
-                <td class="px-3 py-2 font-mono">{{ v.車位編號 || '—' }}<span v-if="v.車位類型" class="text-xs text-slate-400">（{{ v.車位類型 }}）</span></td>
+                <td class="px-3 py-2 font-mono">{{ displaySeatIds(v.車位編號) || '—' }}<span v-if="v.車位類型" class="text-xs text-slate-400">（{{ v.車位類型 }}）</span></td>
                 <td class="px-3 py-2 text-sm">
                   <template v-if="v.配位狀態">
                     <span :class="v.配位狀態 === '分配' ? 'font-medium text-emerald-700' : 'text-rose-600'">{{ v.配位狀態 }}</span>

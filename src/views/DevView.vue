@@ -6,6 +6,7 @@ import { register, saveWishes, publishResult, RegistrationError } from '../store
 import { adminAuth } from '../store/session.js'
 import { distribute } from '../lottery/distribute.js'
 import { resultRows } from '../export/result.js'
+import { displaySeatIds } from '../map/seat-id.js'
 import { buildRoster } from '../data/registry.js'
 import { parseCSVObjects } from '../data/csv.js'
 import { setImportedRoster, clearImportedRoster } from '../store/roster.js'
@@ -231,7 +232,7 @@ function runDemo() {
               <tr v-for="(r, i) in demoRows" :key="i" class="border-t border-slate-100">
                 <td class="px-2 py-1 font-mono">{{ r.戶號 }}</td>
                 <td class="px-2 py-1 font-mono">{{ r.車號 }}</td>
-                <td class="px-2 py-1">{{ r.車位編號 || '—' }}</td>
+                <td class="px-2 py-1">{{ displaySeatIds(r.車位編號) || "—" }}</td>
                 <td class="px-2 py-1">{{ r.車位類型 || '—' }}</td>
                 <td class="px-2 py-1">{{ r.應繳金額 || '—' }}</td>
                 <td class="px-2 py-1" :class="r.狀態 === '分配' ? 'text-emerald-700' : 'text-rose-600'">{{ r.狀態 }}</td>

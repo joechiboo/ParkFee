@@ -4,6 +4,7 @@
 
 import { feeFor } from '../data/fee.js'
 import { toCSV } from '../data/csv.js'
+import { displaySeatIds } from '../map/seat-id.js'
 
 // HANDOFF §8 配位結果欄位（末欄 備註 為作業輔助：配位方式／落選原因）。
 export const RESULT_COLUMNS = ['戶號', '車號', '車位編號', '車位類型', '應繳金額', '簽約期限', '狀態', '備註']
@@ -30,7 +31,8 @@ export function resultRows(result, { 公告日 = '' } = {}) {
     rows.push({
       戶號: a.戶號,
       車號: a.車號,
-      車位編號: a.車位編號,
+      // 剝掉自行車的 B 前綴 → 與地面漆的數字一致；車種由「車位類型」欄（大/小/無障礙/自行車）區分。
+      車位編號: displaySeatIds(a.車位編號),
       車位類型: a.車位類型,
       應繳金額: feeFor(a.車種),
       簽約期限: paid ? '' : 期限, // 已繳者免簽約倒數；大位中籤者才有
