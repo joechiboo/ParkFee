@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>地下室停車場違規勸導單</title>
+<style>
+  body{font-family:"標楷體","DFKai-SB","Microsoft JhengHei",serif;max-width:720px;margin:24px auto;padding:0 24px;color:#000;line-height:1.9;font-size:14px}
+  h1{font-size:20px;text-align:center;margin:0 0 14px;letter-spacing:4px}
+  table.fields{width:100%;border-collapse:collapse;margin:0 0 14px}
+  table.fields td{border:1px solid #000;padding:6px 8px;font-size:13.5px}
+  table.fields td.label{width:20%;background:#f5f5f5;text-align:center}
+  p{margin:10px 0;text-align:justify}
+  .box{border:1px solid #000;padding:10px 14px;margin:12px 0}
+  .box p{margin:6px 0}
+  .sign{margin-top:30px}
+  .sign p{margin:16px 0}
+  .foot{margin-top:20px;font-size:11.5px;color:#555;text-align:right}
+  @media print{body{margin:0 auto} .foot{position:fixed;bottom:8mm;right:10mm}}
+</style>
+</head>
+<body>
+
+<h1>樂菲莊園社區地下室停車場違規勸導單</h1>
+
+<p>親愛的住戶（貴賓）您好：為了考量社區之公共安全及整體防護，對於下列違規事項，請您於 ＿＿＿＿ 年 ＿＿ 月 ＿＿ 日 ＿＿ 點前盡速處理，逾期不處理者管理中心將依規定處理，並先以公佈「住戶違規相片與違規資料」請君子自重，懇請配合！</p>
+
+<table class="fields">
+  <tr><td class="label">單據編號</td><td style="width:30%"></td><td class="label">違規日期時間</td><td>　＿＿ 年 ＿＿ 月 ＿＿ 日 ＿＿ 時 ＿＿ 分</td></tr>
+  <tr><td class="label">車　　號</td><td></td><td class="label">戶　　號</td><td></td></tr>
+</table>
+
+<div class="box">
+  <p><b>違規分類</b>：□ 汽車　□ 機車　□ 自行車　□ 雜物　□ 其它 ＿＿＿＿＿＿＿＿</p>
+</div>
+
+<div class="box">
+  <p><b>違規事項</b>：</p>
+  <p>□ 非本社區車輛，任意進入停放（每日罰款 3,000 元）</p>
+  <p>□ 佔用他人車位（每日罰款 3,000 元）</p>
+  <p>□ 未依規定停放於車格內</p>
+  <p>□ 停車超出停車格線影響他人停車權益</p>
+  <p>□ 佔用公共區域</p>
+</div>
+
+<div class="sign">
+  <p>開單人員簽章：＿＿＿＿＿＿＿＿＿＿</p>
+</div>
+
+<p class="foot">樂菲莊園社區地下室停車場管理辦法【附件四】</p>
+
+</body>
+</html>
