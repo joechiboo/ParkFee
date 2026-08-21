@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>e-Tag 申請書</title>
+<style>
+  body{font-family:"標楷體","DFKai-SB","Microsoft JhengHei",serif;max-width:720px;margin:24px auto;padding:0 24px;color:#000;line-height:1.9;font-size:14px}
+  h1{font-size:20px;text-align:center;margin:0 0 14px;letter-spacing:4px}
+  table.fields{width:100%;border-collapse:collapse;margin:0 0 14px}
+  table.fields td{border:1px solid #000;padding:6px 8px;font-size:13.5px}
+  table.fields td.label{width:17%;background:#f5f5f5;text-align:center}
+  p{margin:10px 0;text-align:justify}
+  .box{border:1px solid #000;padding:10px 14px;margin:12px 0}
+  .sign{margin-top:34px}
+  .sign p{margin:16px 0}
+  .foot{margin-top:20px;font-size:11.5px;color:#555;text-align:right}
+  @media print{body{margin:0 auto} .foot{position:fixed;bottom:8mm;right:10mm}}
+</style>
+</head>
+<body>
+
+<h1>樂菲莊園社區 e-Tag 申請書</h1>
+
+<table class="fields">
+  <tr><td class="label">申 請 人</td><td style="width:33%"></td><td class="label">戶　　號</td><td style="width:33%"></td></tr>
+  <tr><td class="label">身分證號</td><td></td><td class="label">聯絡電話</td><td></td></tr>
+  <tr><td class="label">聯絡地址</td><td colspan="3"></td></tr>
+</table>
+<p style="font-size:12.5px;color:#333">※ 辦理時須出示證明文件。</p>
+
+<p>本人於民國 ＿＿＿＿ 年 ＿＿ 月 ＿＿ 日，因　□ 遺失　□ 增購　，向樂菲莊園社區申請：</p>
+
+<div class="box">
+  <p>□ e-Tag 貼紙 ＿＿ 枚，編號：＿＿＿＿＿＿＿＿＿＿，金額：＿＿＿＿＿ 元（收據編號：＿＿＿＿＿＿）</p>
+  <p>□ 兩輛車輪流停放同一車位，押金新臺幣 3,000 元整（收據編號：＿＿＿＿＿＿）</p>
+</div>
+
+<p>本人保證車位絕未借予他人使用或有任何不法情事，如造成社區住戶權益受損，並經法院判決確定，可歸責於本人者，本人願負損害賠償責任。</p>
+
+<p>此致</p>
+<p style="margin-left:2em">樂菲莊園社區管理委員會</p>
+
+<div class="sign">
+  <p>申請人簽名／蓋章：＿＿＿＿＿＿＿＿＿＿＿＿</p>
+  <p>中華民國　＿＿＿＿　年　＿＿　月　＿＿　日</p>
+</div>
+
+<p class="foot">樂菲莊園社區地下室停車場管理辦法【附件三】</p>
+
+</body>
+</html>
