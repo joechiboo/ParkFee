@@ -178,6 +178,8 @@ const current = convert('docs/05-停車場管理辦法.md')
 const draft = convert('docs/19-辦法修訂草案.md')
 
 copyFileSync('docs/19-辦法修訂草案-標紅版.html', 'public/bylaw-redline.html')
+// 例會提案單一頁版也上線：委員在 LINE 收連結即可看，免傳檔
+copyFileSync('docs/20-例會提案單-A4.html', 'public/agenda-a4.html')
 
 const outPath = 'src/data/bylaw-content.js'
 writeFileSync(
