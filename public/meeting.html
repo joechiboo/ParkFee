@@ -12,9 +12,15 @@
   .wrap{max-width:640px;margin:0 auto}
   h1{font-size:20px;margin:0 0 4px;letter-spacing:.5px}
   .sub{color:#666;font-size:13.5px;margin:0 0 20px}
-  a.card{display:block;background:#fff;border:1px solid #e2e5ea;border-radius:10px;padding:14px 16px;
-         margin:0 0 12px;text-decoration:none;color:inherit;box-shadow:0 1px 2px rgba(0,0,0,.04)}
-  a.card:active{background:#f0f4ff}
+  .card{background:#fff;border:1px solid #e2e5ea;border-radius:10px;padding:14px 16px;
+        margin:0 0 12px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .card a.main{display:block;text-decoration:none;color:inherit}
+  .card a.main:active{opacity:.6}
+  .row{display:flex;align-items:center;gap:8px}
+  .row .grow{flex:1;min-width:0}
+  a.pdf{flex:none;font-size:12.5px;text-decoration:none;color:#c1121f;border:1px solid #e6b8bc;
+        background:#fdf3f3;border-radius:6px;padding:5px 10px;white-space:nowrap}
+  a.pdf:active{background:#f7dfe1}
   .no{display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:50%;
       background:#c1121f;color:#fff;font-size:13px;margin-right:8px;vertical-align:1px}
   .ttl{font-weight:700;font-size:16px}
@@ -33,23 +39,36 @@
 <div class="wrap">
 
   <h1>9月例會 停車場管理提案</h1>
-  <p class="sub">會前材料｜共 12 題＋管理辦法修訂 14 項</p>
+  <p class="sub">會前材料｜共 12 題＋管理辦法修訂 14 項<br>點標題線上看，點「⤓ PDF」可存檔或列印</p>
 
-  <a class="card" href="agenda-a4.html">
-    <div><span class="no">1</span><span class="ttl">例會提案單</span><span class="tag">1 頁</span></div>
-    <p class="desc">這次要決定的 12 題，含各題選項與建議案。先看這份。</p>
-  </a>
-
-  <a class="card" href="bylaw-redline.html">
-    <div><span class="no">2</span><span class="ttl">管理辦法修訂草案</span><span class="tag">標紅版</span></div>
-    <p class="desc">辦法全文，紅字為異動處，共 14 項修正；四份附件附於文末。</p>
-  </a>
-
-  <a class="card" href="print/b1-map-a3.pdf">
-    <div><span class="no">3</span><span class="ttl">B1 車位配置圖</span><span class="tag">A3 PDF</span></div>
-    <p class="desc">搭配第 2、3 題參考。金框＝公益位、黑框＝鎖定不進抽籤。</p>
+  <div class="card">
+    <div class="row">
+      <a class="main grow" href="agenda-a4.html">
+        <div><span class="no">1</span><span class="ttl">例會提案單</span><span class="tag">1 頁</span></div>
+        <p class="desc">這次要決定的 12 題，含各題選項與建議案。先看這份。</p>
+      </a>
+      <a class="pdf" href="agenda-a4.html?print=1">⤓ PDF</a>
+    </div>
+  </div>
+  <div class="card">
+    <div class="row">
+      <a class="main grow" href="bylaw-redline.html">
+        <div><span class="no">2</span><span class="ttl">管理辦法修訂草案</span><span class="tag">標紅版</span></div>
+        <p class="desc">辦法全文，紅字為異動處，共 14 項修正；四份附件附於文末。</p>
+      </a>
+      <a class="pdf" href="bylaw-redline.html?print=1">⤓ PDF</a>
+    </div>
+  </div>
+  <div class="card">
+    <div class="row">
+      <a class="main grow" href="print/b1-map-a3.pdf">
+        <div><span class="no">3</span><span class="ttl">B1 車位配置圖</span><span class="tag">A3 PDF</span></div>
+        <p class="desc">搭配第 2、3 題參考。金框＝公益位、黑框＝鎖定不進抽籤。</p>
     <img class="map" src="print/png/b1-map-a3.png" alt="B1 車位配置圖">
-  </a>
+      </a>
+      
+    </div>
+  </div>
 
   <footer>有問題歡迎先在群組討論，會議當天逐題確認</footer>
 
