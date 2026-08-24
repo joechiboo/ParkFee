@@ -95,20 +95,44 @@ describe('distribute — 填志願 + 統一分發（第一階段）', () => {
     expect(r.assigned[0].車位編號).toBe('3、4')
   })
 
-  it('重機：可含無障礙位（無障礙與大位連號成對）', () => {
+  // 重機取無障礙位＝單格即可（該型較寬，2026-08-24 決策）；無障礙不參與相鄰配對。
+  it('重機：志願指名無障礙位 → 配單格，不再湊相鄰兩格', () => {
+    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: ['10'] }], {
+      seats: [{ id: '9', type: '大' }, { id: '10', type: '無障礙' }],
+    })
+    expect(r.assigned[0].車位編號).toBe('10')
+    expect(r.assigned[0].占用位數).toBe(1)
+  })
+
+  it('重機：無障礙不與一般位湊對（僅一格大位 + 一格無障礙 → 取無障礙單格）', () => {
     const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
       seats: [{ id: '9', type: '大' }, { id: '10', type: '無障礙' }],
     })
-    expect(r.assigned[0].車位編號).toBe('9、10')
-    expect(r.assigned[0].車位類型).toBe('大、無障礙')
+    expect(r.assigned[0].車位編號).toBe('10')
+    expect(r.assigned[0].占用位數).toBe(1)
   })
 
-  it('重機：全場無相鄰對 → 落選 HEAVY_SHORT，不配單格', () => {
+  it('重機：無相鄰對但有無障礙位 → 退而配無障礙單格', () => {
     const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
       seats: [{ id: '1', type: '大' }, { id: '3', type: '大' }, { id: '10', type: '無障礙' }],
     })
+    expect(r.assigned[0].車位編號).toBe('10')
+  })
+
+  it('重機：無相鄰對且無無障礙位 → 落選 HEAVY_SHORT，不配一般單格', () => {
+    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
+      seats: [{ id: '1', type: '大' }, { id: '3', type: '大' }],
+    })
     expect(r.assigned).toHaveLength(0)
     expect(r.落選[0].原因).toBe(REASON.HEAVY_SHORT)
+  })
+
+  it('重機：有相鄰對時優先配對，不搶無障礙位', () => {
+    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
+      seats: [{ id: '1', type: '大' }, { id: '2', type: '大' }, { id: '10', type: '無障礙' }],
+    })
+    expect(r.assigned[0].車位編號).toBe('1、2')
+    expect(r.assigned[0].占用位數).toBe(2)
   })
 
   // ── 社宅（2026-08-16 Q7）：公益位＝社宅戶專用，雙向分流 ──
@@ -212,8 +236,9 @@ describe('大規模模擬（277 戶 ≈ 401 台、真實 655 座位）— 每月
     const heavies = r.assigned.filter((a) => a.車種 === '重機' && a.配位方式 !== VIA.PRESET)
     expect(heavies.length).toBeGreaterThan(0)
     for (const h of heavies) {
-      if (h.配位方式 === VIA.ACCESSIBLE) {
-        // 身障重機走 R0 取一格無障礙位（該型車位較寬）——非相鄰兩格。
+      if (h.車位類型 === '無障礙') {
+        // 重機取無障礙位＝單格（該型車位較寬）：身障戶走 R0、一般戶得於 R1 以志願指名
+        // 或在湊不到相鄰兩格時退而求其次。
         expect(h.占用位數).toBe(1)
         continue
       }

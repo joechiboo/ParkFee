@@ -69,9 +69,11 @@ export const REASON = {
   HEAVY_SHORT: '無相鄰兩格可配重機',
 }
 
-// 車種 → 可停型別（志願篩選用）。重機取相鄰兩格（HEAVY_TYPES）、不走此表。
+// 車種 → 可停型別（志願篩選用）。重機取相鄰兩格（HEAVY_PAIR_TYPES）或單格無障礙、不走此表。
 const COMPAT = { general: ['大', '小'], small: ['小'] }
-const HEAVY_TYPES = new Set(['大', '小', '無障礙'])
+// 重機「相鄰兩格」的配對候選＝一般機車位。**無障礙位不列入配對**：該型車位較寬，
+// 一台重機停一格即足（2026-08-24 使用者確認）→ 走單格路徑，避免一台重機吃掉兩格無障礙位。
+const HEAVY_PAIR_TYPES = new Set(['大', '小'])
 
 function toEntry(r, index) {
   return {
@@ -181,9 +183,26 @@ export function distribute({
 
   // 重機：穿插一般車位取「相鄰兩格」（編號連號；不限大小、可含無障礙——2026-08-16 決議）。
   // 先取志願中「可湊相鄰對」的格；志願落空/沒填 → 全場最低號相鄰對；無相鄰對 → null（HEAVY_SHORT）。
+  // 重機配位（辦法肆五修訂）：相鄰之兩個一般機車位，**或**單獨一個無障礙機車位。
+  // 順序：①志願指名的無障礙位 → 單格 ②志願／全池的相鄰兩格 ③湊不到兩格時，退而取剩餘無障礙單格。
   const takeHeavy = (wishList = [], ok = () => true) => {
-    const availNums = seats
-      .filter((s) => HEAVY_TYPES.has(s.type) && pool.isAvail(s.id) && ok(s))
+    const usable = seats.filter((s) => pool.isAvail(s.id) && ok(s))
+    const accessibleById = new Map(
+      usable.filter((s) => s.type === '無障礙').map((s) => [String(s.id), s]),
+    )
+    const takeSingle = (ids) => {
+      for (const id of ids) {
+        const s = accessibleById.get(String(id))
+        if (s) return [pool.take(s.id)]
+      }
+      return null
+    }
+
+    const wishedAccessible = takeSingle(wishList) // ①
+    if (wishedAccessible) return wishedAccessible
+
+    const availNums = usable // ②
+      .filter((s) => HEAVY_PAIR_TYPES.has(s.type))
       .map((s) => +s.id)
       .sort((a, b) => a - b)
     const avail = new Set(availNums)
@@ -197,7 +216,8 @@ export function distribute({
       const p = pairAt(n)
       if (p) return p.map((x) => pool.take(String(x)))
     }
-    return null
+
+    return takeSingle([...accessibleById.keys()]) // ③
   }
 
   // 車位編號 → 型別查詢：優先用傳入 pool，否則查完整主檔（已指派位多半已 locked、不在 pool）。
