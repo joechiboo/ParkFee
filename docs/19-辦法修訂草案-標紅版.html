@@ -39,6 +39,9 @@
     body{margin:0 auto;max-width:100%}
     h2{page-break-after:avoid} p,.note{page-break-inside:avoid}
     .points{page-break-inside:avoid}
+    /* 四個附件各自獨立一頁（實際要拿去填寫，不能跟前文擠在一起） */
+    h2.annex{page-break-before:always;page-break-after:avoid}
+    .sign,.box{page-break-inside:avoid}
   }
 </style>
 </head>
@@ -54,7 +57,7 @@
 </p>
 
 <div class="points">
-<h3>本次修正要點（共 15 項）</h3>
+<h3>本次修正要點（共 14 項）</h3>
 <ol>
   <li>參、二（四）（五）——一般（大）、（小）機車位數量依現場清點結果修正為大 317、小 330（總數 655 不變）。</li>
   <li>肆、五——重型機車停放明確化為「相鄰兩格、不限大小」，並得承租無障礙機車位。</li>
@@ -70,7 +73,6 @@
   <li>伍、三 增訂（七）——自行車位連續三個月無車停放者收回，由候補遞補。</li>
   <li>【附件一】四——承租期限之月、日固定載明為「一月一日起至同年十二月三十一日止」，僅保留年度空格。</li>
   <li>【附件二】三（六）——「機車停車位」誤植更正為「自行車停車位」；四——使用期限比照附件一，月日固定、僅保留年度空格；並將「車號」欄改為「自行車特徵」（自行車無車牌）、增列識別貼紙領取簽收欄。</li>
-  <li>【附件四】——增列開單人員簽章欄（原單無開單人欄位，爭議時無從追溯）。</li>
 </ol>
 </div>
 
@@ -194,7 +196,7 @@
 
 <hr>
 
-<h2 class="changed">【附件一】機車停車位承租合約書<span class="tag">修正</span></h2>
+<h2 class="changed annex">【附件一】機車停車位承租合約書<span class="tag">修正</span></h2>
 <table class="fields">
   <tr><td class="label">車位編號</td><td style="width:34%"></td><td class="label">車　　號</td><td style="width:34%"></td></tr>
   <tr><td class="label">承 租 人</td><td></td><td class="label">聯絡電話</td><td></td></tr>
@@ -223,7 +225,7 @@
   <p>中華民國　＿＿＿＿　年　＿＿　月　＿＿　日</p>
 </div>
 
-<h2 class="changed">【附件二】自行車停車位使用承諾書<span class="tag">修正</span></h2>
+<h2 class="changed annex">【附件二】自行車停車位使用承諾書<span class="tag">修正</span></h2>
 <table class="fields">
   <tr><td class="label">車位編號</td><td style="width:34%"></td><td class="label">戶　　號</td><td style="width:34%"></td></tr>
   <tr><td class="label">使 用 人</td><td></td><td class="label">聯絡電話</td><td></td></tr>
@@ -251,7 +253,7 @@
 </div>
 <p class="note">說明：識別貼紙依伍、五規定須黏貼，發放時當場簽收可省一份簽收單；張數配合自行車實際台數（第 11 題採「一位得停多台」時尤需記載）。</p>
 
-<h2>【附件三】e-Tag 申請書</h2>
+<h2 class="annex">【附件三】e-Tag 申請書</h2>
 <table class="fields">
   <tr><td class="label">申 請 人</td><td style="width:34%"></td><td class="label">戶　　號</td><td style="width:34%"></td></tr>
   <tr><td class="label">身分證號</td><td></td><td class="label">聯絡電話</td><td></td></tr>
@@ -270,7 +272,7 @@
   <p>中華民國　＿＿＿＿　年　＿＿　月　＿＿　日</p>
 </div>
 
-<h2 class="changed">【附件四】地下室停車場違規勸導單<span class="tag">修正</span></h2>
+<h2 class="annex">【附件四】地下室停車場違規勸導單</h2>
 <p>親愛的住戶（貴賓）您好：為了考量社區之公共安全及整體防護，對於下列違規事項，請您於 ＿＿ 年 ＿＿ 月 ＿＿ 日 ＿＿ 點前盡速處理，逾期不處理者管理中心將依規定處理，並先以公佈「住戶違規相片與違規資料」請君子自重，懇請配合！</p>
 <table class="fields">
   <tr><td class="label">單據編號</td><td style="width:30%"></td><td class="label">違規日期時間</td><td>　＿＿ 年 ＿＿ 月 ＿＿ 日 ＿＿ 時 ＿＿ 分</td></tr>
@@ -287,10 +289,6 @@
   <p>□ 停車超出停車格線影響他人停車權益</p>
   <p>□ 佔用公共區域</p>
 </div>
-<div class="sign">
-  <p><ins>開單人員簽章：＿＿＿＿＿＿＿＿＿＿</ins></p>
-</div>
-<p class="note">說明：原勸導單無開單人員欄位，查核爭議時無從追溯係何人、何時開立，爰增列簽章欄。</p>
 
 </body>
 </html>
