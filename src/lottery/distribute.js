@@ -230,10 +230,13 @@ export function distribute({
     rounds.push({ round: '指派', name: '物業指派（免抽）', draws: [], assignments: a })
   }
 
-  // ── Round 0：無障礙（身障第 1 輛優先；公益區無無障礙格 → 社宅戶不進此輪、直接走 R1）──
+  // ── Round 0：無障礙（身障第 1 輛優先）──────────────────────────────
+  // 無障礙位不分社宅／一般身分：有實際需要（身障）即可承租（2026-08-24 使用者決策）。
+  // 公益區 20 格無無障礙格，故社宅身障戶配到的是一般無障礙位——這是 Q7「社宅限公益位」
+  // 的明文例外；未中籤者仍回 R1 走公益位分流。
   {
     const nonPublic = (s) => !s.public
-    const cands = pending.filter((e) => e.身障 && e.第幾輛 === 1 && !e.社宅)
+    const cands = pending.filter((e) => e.身障 && e.第幾輛 === 1)
     const cap = pool.countOf('無障礙', nonPublic)
     const draws = []
     let winners

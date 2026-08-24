@@ -136,6 +136,19 @@ describe('distribute — 填志願 + 統一分發（第一階段）', () => {
     expect(r.落選[0].原因).toBe(REASON.LOST)
   })
 
+  it('社宅身障戶：走 R0 配到一般無障礙位（無障礙不分社宅身分，2026-08-24 決策）', () => {
+    const seats = [...MIX, { id: '90', type: '無障礙' }]
+    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 社宅: 'Y', 身障: 'Y', 車位志願: [] }], { seats })
+    expect(r.assigned[0].車位編號).toBe('90')
+  })
+
+  it('社宅身障戶：無障礙位已滿 → 回 R1 走公益位分流（不吃一般位）', () => {
+    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 社宅: 'Y', 身障: 'Y', 車位志願: ['9'] }], {
+      seats: MIX, // MIX 無無障礙格 → R0 無位可配
+    })
+    expect(r.assigned[0].車位編號).toBe('9')
+  })
+
   it('社宅戶志願小位：takeLowest 只撿公益小位（不吃一般小位）', () => {
     const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 社宅: 'Y', 志願小位: 'Y', 車位志願: [] }], {
       seats: MIX,
@@ -183,19 +196,27 @@ describe('大規模模擬（277 戶 ≈ 401 台、真實 655 座位）— 每月
     expect(new Set(ids).size).toBe(ids.length)
   })
 
-  it('社宅戶只落公益位、一般戶不落公益位（雙向）', () => {
+  it('社宅戶只落公益位、一般戶不落公益位（雙向；R0 無障礙為明文例外）', () => {
     const socialHouses = new Set(entries.filter((e) => e.社宅 === 'Y').map((e) => e.戶號))
     for (const a of r.assigned) {
       const inPublic = a.車位編號.split('、').map((id) => publicIds.has(id))
+      // 無障礙位不分社宅／一般身分（2026-08-24 決策）：公益區無無障礙格，
+      // 社宅身障戶走 R0 時配到的是一般無障礙位 → 不受「只落公益位」拘束。
+      if (a.配位方式 === VIA.ACCESSIBLE) continue
       if (socialHouses.has(a.戶號)) expect(inPublic.every(Boolean)).toBe(true)
       else expect(inPublic.some(Boolean)).toBe(false)
     }
   })
 
-  it('重機都占相鄰兩格（編號連號）', () => {
+  it('重機都占相鄰兩格（編號連號）；走 R0 無障礙者為單格', () => {
     const heavies = r.assigned.filter((a) => a.車種 === '重機' && a.配位方式 !== VIA.PRESET)
     expect(heavies.length).toBeGreaterThan(0)
     for (const h of heavies) {
+      if (h.配位方式 === VIA.ACCESSIBLE) {
+        // 身障重機走 R0 取一格無障礙位（該型車位較寬）——非相鄰兩格。
+        expect(h.占用位數).toBe(1)
+        continue
+      }
       const [x, y] = h.車位編號.split('、').map(Number)
       expect(h.占用位數).toBe(2)
       expect(y - x).toBe(1)
