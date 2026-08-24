@@ -135,21 +135,30 @@ const pitch = (() => {
   return Number.isFinite(min) ? min : 14
 })()
 const r = (BIKE_ONLY ? Math.min(7, pitch * 0.47) : 7) * scale
+// ⚠️ 分兩趟畫：先鋪滿所有底色圓點，標記與編號才疊上去。
+// 原因：小車位（間距 8.1pt）與自行車位（6.5pt）的間距小於圓直徑（10.8pt），
+// 單趟畫時「後一格的實心圓」會蓋掉「前一格的金圈／黑圈」——連號的公益自行車位
+// 114–118 幾乎整串被抹掉，看起來像沒圈。
 const counts = {}
 let lockedDrawn = 0
-for (const s of cls.seats) {
+const printable = cls.seats.filter(willPrint) // noise/excl／非本版車種 不印
+
+for (const s of printable) {
   const cat = catOf(s)
-  if (!willPrint(s)) continue // noise/excl／非本版車種 不印
   counts[cat] = (counts[cat] || 0) + 1
+  page.drawCircle({ x: toX(s.x), y: toY(s.y), size: r, color: CAT[cat].color, opacity: 0.9 })
+}
+
+const fs = Math.max(2.8, r * 0.92)
+for (const s of printable) {
+  const cat = catOf(s)
   const cx = toX(s.x), cy = toY(s.y)
-  page.drawCircle({ x: cx, y: cy, size: r, color: CAT[cat].color, opacity: 0.9 })
   if (isPublicSeat(s)) // 公益位：金色粗框（機車 20 格來自盤點檔、自行車 5 格來自辦法清單）
     page.drawCircle({ x: cx, y: cy, size: r + 0.6, borderColor: rgb(0.83, 0.66, 0.12), borderWidth: 1.4, opacity: 0 })
   if (locked && locked.has(lockKeyOf(s)) && cat !== 'car') {
     page.drawCircle({ x: cx, y: cy, size: r + 0.7, borderColor: rgb(0.1, 0.1, 0.12), borderWidth: 1.6, opacity: 0 })
     lockedDrawn++
   }
-  const fs = Math.max(2.8, r * 0.92)
   const w = num.widthOfTextAtSize(String(s.id), fs)
   page.drawText(String(s.id), { x: cx - w / 2, y: cy - fs * 0.36, size: fs, font: num, color: rgb(1, 1, 1) })
 }
@@ -185,4 +194,7 @@ try {
   writeFileSync(out, bytes)
   console.warn('⚠️ ' + BASE + '.pdf 使用中（先關閱讀器再重跑可覆蓋原檔），已改寫到 ' + out)
 }
-console.log('wrote ' + out + ' —', PW > PH ? 'A3 橫式' : 'A3 直式', JSON.stringify(counts), 'locked:', locked ? lockedDrawn : 'n/a')
+const pub = printable.filter(isPublicSeat)
+const pubBike = pub.filter((s) => s.cat === 'bike').length
+console.log('wrote ' + out + ' —', PW > PH ? 'A3 橫式' : 'A3 直式', JSON.stringify(counts),
+  'locked:', locked ? lockedDrawn : 'n/a', `public: ${pub.length}（機車 ${pub.length - pubBike}＋自行車 ${pubBike}）`)
