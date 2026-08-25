@@ -4,7 +4,9 @@
 export const ANNUAL_FEE = { 一般: 1200, 重機: 3600, 自行車: 0 }
 
 // 依車種回傳年繳金額（未知車種一律以一般機車計，維持既有行為）。
-export function feeFor(車種) {
+// 第 2 參數帶 { 工作人員: true } → 0 元（辦法伍二（十二）：工作人員使用剩餘車位免收費）。
+export function feeFor(車種, opts = {}) {
+  if (opts.工作人員) return 0
   if (車種 === '重機') return ANNUAL_FEE.重機
   if (車種 === '自行車') return ANNUAL_FEE.自行車
   return ANNUAL_FEE.一般

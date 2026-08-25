@@ -34,6 +34,7 @@ export const VIA = {
   WISH: '志願分發',
   PRESET: '物業指派', // 抽籤前由物業指派（保留/大位保底/重機雙位等），免抽、直接記入結果
   COMPUTER: '電腦選號', // 志願落空且勾電腦選號 → 系統自動配本棟靠電梯剩位
+  STAFF: '工作人員', // 住戶全部配完後，工作人員撿剩餘一般位（免費、可收回）
 }
 
 // 戶號首字母 → 棟（電梯核心）。A/B→AB、C/D→CD、E/F→EF、G/H→GH。其他（如 S）→ null（無本棟，直接走鄰棟全域序）。
@@ -67,6 +68,7 @@ export const REASON = {
   NO_WISH: '未填志願',
   NO_SMALL: '小位不足',
   HEAVY_SHORT: '無相鄰兩格可配重機',
+  STAFF_PENDING: '暫緩（尚有住戶未配到車位）', // 工作人員專用：住戶優先，讓位義務在前
 }
 
 // 車種 → 可停型別（志願篩選用）。重機取相鄰兩格（HEAVY_PAIR_TYPES）或單格無障礙、不走此表。
@@ -87,6 +89,9 @@ function toEntry(r, index) {
     車位編號: String(r.車位編號 ?? '').trim(), // 物業抽籤前已指派（空＝待抽）；重機兩位頓號分隔
     已繳費: r.已繳費 === true || r.已繳費 === 'Y' || r.已繳費 === 'y',
     社宅: r.社宅 === true || r.社宅 === 'Y' || r.社宅 === 'y', // 社會住宅住戶 → 只配公益位
+    // 社區工作人員（辦法伍二（十二））：與住戶一起登記選位，但**配位排在最後**、只撿剩餘位。
+    // 辦法限制的是配位時點（「停車資格程序完結後如有剩餘車位」），不限制登記時點。
+    工作人員: r.工作人員 === true || r.工作人員 === 'Y' || r.工作人員 === 'y',
 
     // 電腦選號：志願落空時是否要系統自動配本棟剩位。相容舊欄位「志願落選保底」。
     電腦選號:
@@ -151,7 +156,10 @@ export function distribute({
   const entries = registrations.filter((r) => r.車種 !== KIND.BIKE).map(toEntry)
   // 物業抽籤前已指派者（vehicle 已有車位編號）：直接列入結果、佔住該戶名額，不進任何抽籤輪。
   const preset = entries.filter((e) => e.車位編號)
-  const pending = entries.filter((e) => !e.車位編號)
+  const pendingAll = entries.filter((e) => !e.車位編號)
+  // 工作人員抽離住戶輪次（R0/R1/R2+/電腦選位），另於最後一輪撿剩位。
+  const staff = pendingAll.filter((e) => e.工作人員)
+  const pending = pendingAll.filter((e) => !e.工作人員)
 
   const assigned = []
   const lost = [] // 落選名單 → 交物業第二階段（勾保底→就近補、未勾→候補）
@@ -405,6 +413,49 @@ export function distribute({
     if (targets.length) {
       say(`電腦選位：勾選且落空 ${targets.length} 台，配到 ${a.length} 台（本棟優先靠電梯）`)
       rounds.push({ round: '電腦', name: '電腦選位（本棟靠電梯補位）', draws: [], assignments: a })
+    }
+  }
+
+  // ── 最後一輪：工作人員（辦法伍二（十二））────────────────────────────
+  // 住戶全部配完（含電腦選位）後才跑，只撿**剩餘的一般位**：
+  //   ・不碰公益位（社宅專用）與無障礙位（留給行動不便者）
+  //   ・免收費、須簽承諾書、住戶申請第一個車位時無條件讓出 → 結果標 VIA.STAFF 供後續辨識
+  // 依序：先各自志願中仍剩者，再取全場最低號；同順序依登記序（不抽籤——非住戶權利，不佔順序號）。
+  if (staff.length) {
+    // ⚠️ 住戶優先：只要還有「完全沒配到車位的戶」（第 1 輛落選且該戶無任何配位，
+    //    含電腦選位也沒補到），工作人員一律**暫緩**、不先占位——辦法伍二（十二）明定
+    //    住戶申請第一個車位時工作人員須無條件讓出，先給了再收回徒增糾紛。
+    //    （僅第 2、3 輛落選者不擋：辦法規定工作人員讓位順位在「一戶多位」住戶之前，
+    //      即第二位以上之需求不優先於工作人員。）
+    const unplaced = lost.filter((l) => l.第幾輛 === 1 && !assignedHouse.has(l.戶號))
+    if (unplaced.length) {
+      for (const e of staff) lose(e, '工作人員', REASON.STAFF_PENDING)
+      say(`工作人員：${staff.length} 台全數暫緩——尚有 ${unplaced.length} 戶未配到車位（住戶優先）`)
+      rounds.push({ round: '工作人員', name: '工作人員（暫緩：住戶尚未配完）', draws: [], assignments: [] })
+    } else {
+    const ok = (s) => !s.public && s.type !== '無障礙'
+    const a = []
+    for (const e of [...staff].sort((x, y) => x._order - y._order)) {
+      if (e.車種 === '重機') {
+        const taken = takeHeavy(e.車位志願, ok)
+        if (!taken) {
+          lose(e, '工作人員', REASON.HEAVY_SHORT)
+          continue
+        }
+        record(e, taken, VIA.STAFF, '工作人員')
+        a.push({ 戶號: e.戶號, 車位編號: taken.map((s) => s.id).join('、'), 配位方式: VIA.STAFF })
+        continue
+      }
+      const s = pickWish(pool, e.車位志願, COMPAT.general, ok) || pool.takeLowest('大', ok) || pool.takeLowest('小', ok)
+      if (!s) {
+        lose(e, '工作人員', REASON.LOST)
+        continue
+      }
+      record(e, [s], VIA.STAFF, '工作人員')
+      a.push({ 戶號: e.戶號, 車位編號: s.id, 配位方式: VIA.STAFF })
+    }
+    say(`工作人員：${staff.length} 台，住戶配完後撿剩位 ${a.length} 台（免費、可收回）`)
+    rounds.push({ round: '工作人員', name: '工作人員（住戶配完後之剩餘位）', draws: [], assignments: a })
     }
   }
 

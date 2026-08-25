@@ -1,3 +1,4 @@
+import { VIA } from '../lottery/distribute.js'
 // 配位結果 → 清單列 / CSV（純函式）。
 //   來源：distribute() 的回傳（assigned / 落選）。欄位依 HANDOFF §8 + 備註。
 //   供 AllocateView 下載配位結果 CSV，亦供 ResultView 顯示清單（同一份資料）。
@@ -34,7 +35,7 @@ export function resultRows(result, { 公告日 = '' } = {}) {
       // 剝掉自行車的 B 前綴 → 與地面漆的數字一致；車種由「車位類型」欄（大/小/無障礙/自行車）區分。
       車位編號: displaySeatIds(a.車位編號),
       車位類型: a.車位類型,
-      應繳金額: feeFor(a.車種),
+      應繳金額: feeFor(a.車種, { 工作人員: a.配位方式 === VIA.STAFF }),
       簽約期限: paid ? '' : 期限, // 已繳者免簽約倒數；大位中籤者才有
       狀態: paid ? '已繳' : '分配',
       備註: a.配位方式 || '',

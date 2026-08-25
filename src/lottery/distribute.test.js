@@ -135,6 +135,48 @@ describe('distribute — 填志願 + 統一分發（第一階段）', () => {
     expect(r.assigned[0].占用位數).toBe(2)
   })
 
+  // ── 工作人員（辦法伍二（十二））：一起登記選位，但配位排最後、只撿剩位 ──
+  describe('工作人員', () => {
+    const staffRow = (n = 1) => ({ 戶號: `員工${n}`, 車號: `S${n}`, 第幾輛: 1, 工作人員: 'Y', 車位志願: [] })
+
+    it('住戶全配完後才配，且只撿剩餘一般位', () => {
+      const r = run(
+        [{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車位志願: ['1'] }, staffRow()],
+        { seats: [{ id: '1', type: '大' }, { id: '2', type: '大' }] },
+      )
+      const staff = r.assigned.find((a) => a.戶號 === '員工1')
+      expect(staff.車位編號).toBe('2') // 住戶先拿 1
+      expect(staff.配位方式).toBe(VIA.STAFF)
+    })
+
+    it('有住戶完全沒配到車位 → 工作人員全數暫緩，不先占位', () => {
+      const r = run(
+        [
+          { 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車位志願: ['1'] },
+          { 戶號: 'B', 車號: 'X2', 第幾輛: 1, 車位志願: ['1'] }, // 撞號 → B 落選
+          staffRow(),
+        ],
+        { seats: [{ id: '1', type: '大' }, { id: '2', type: '大' }] },
+      )
+      expect(r.assigned.some((a) => a.戶號 === '員工1')).toBe(false)
+      expect(r.落選.find((l) => l.戶號 === '員工1').原因).toBe(REASON.STAFF_PENDING)
+      expect(r.assigned.some((a) => a.車位編號 === '2')).toBe(false) // 剩位留著給落選住戶
+    })
+
+    it('不碰公益位與無障礙位', () => {
+      const r = run([staffRow()], {
+        seats: [{ id: '9', type: '大', public: true }, { id: '10', type: '無障礙' }],
+      })
+      expect(r.assigned).toHaveLength(0)
+      expect(r.落選[0].原因).toBe(REASON.LOST)
+    })
+
+    it('不佔順序號（非住戶權利，不進抽籤）', () => {
+      const r = run([staffRow()], { seats: [{ id: '1', type: '大' }] })
+      expect(r.assigned[0].順序號).toBeNull()
+    })
+  })
+
   // ── 社宅（2026-08-16 Q7）：公益位＝社宅戶專用，雙向分流 ──
   const MIX = [
     { id: '1', type: '小' },
