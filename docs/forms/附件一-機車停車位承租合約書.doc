@@ -4,34 +4,35 @@
 <meta charset="utf-8">
 <title>機車停車位承租合約書</title>
 <style>
-  body{font-family:"標楷體","DFKai-SB","Microsoft JhengHei",serif;max-width:720px;margin:24px auto;padding:0 24px;color:#000;line-height:1.8;font-size:14px}
-  h1{font-size:20px;text-align:center;margin:0 0 14px;letter-spacing:4px}
-  table.fields{width:100%;border-collapse:collapse;margin:0 0 14px}
-  table.fields td{border:1px solid #000;padding:6px 8px;font-size:13.5px}
-  table.fields td.label{width:17%;background:#f5f5f5;text-align:center}
-  p{margin:8px 0;text-align:justify}
-  .sub{margin-left:2em}
-  .sign{margin-top:34px}
-  .sign p{margin:16px 0}
-  .foot{margin-top:20px;font-size:11.5px;color:#555;text-align:right}
-  @media print{body{margin:0 auto} .foot{position:fixed;bottom:8mm;right:10mm}}
+  body{font-family:"標楷體","DFKai-SB","Microsoft JhengHei",serif;max-width:720px;margin:24px auto;padding:0 24px;color:#000;line-height:1.85;font-size:14.5px}
+  .hd{position:relative;margin:0 0 10px}
+  .tag{position:absolute;left:0;top:6px;font-size:14px}
+  h1{font-size:20px;text-align:center;margin:0;letter-spacing:4px}
+  /* 懸掛縮排：換行對齊上一行的文字起點，不回到最左 */
+  p{margin:6px 0;text-align:justify}
+  .n{padding-left:2em;text-indent:-2em}
+  .sub{margin-left:2em;padding-left:1.7em;text-indent:-1.7em}
+  .fld{margin:5px 0}
+  .ln{display:inline-block;border-bottom:1px solid #555;min-width:170px;height:1.15em;vertical-align:-3px}
+  .ln.lg{min-width:420px}
+  .sign{margin-top:22px}
+  .need{font-size:13.5px}
+  @media print{body{margin:0 auto} .sign,.hd{page-break-inside:avoid}}
 </style>
 </head>
 <body>
 
-<h1>樂菲莊園社區地下室機車停車位承租合約書</h1>
+<div class="hd">
+  <span class="tag">【附件一】</span>
+  <h1>機車停車位承租合約書</h1>
+</div>
 
-<table class="fields">
-  <tr><td class="label">車位編號</td><td style="width:33%"></td><td class="label">車　　號</td><td style="width:33%"></td></tr>
-  <tr><td class="label">承 租 人</td><td></td><td class="label">聯絡電話</td><td></td></tr>
-  <tr><td class="label">戶　　號</td><td></td><td class="label">身分證號</td><td></td></tr>
-  <tr><td class="label">聯絡地址</td><td colspan="3"></td></tr>
-</table>
-<p style="font-size:12.5px;color:#333">※ 辦理時須出示證明文件。</p>
+<p class="fld">車位編號：<span class="ln"></span></p>
+<p class="fld">車　　號：<span class="ln"></span></p>
 
-<p>一、本人承諾於使用樂菲莊園社區地下室機車停車位時，願遵守「地下停車場管理辦法」之規定，如有違規一經查覺，願接受規定處份，情節嚴重者，無異議接受取消停車資格。</p>
-<p>二、機車位承租人，若社區未來因管理之考量，需進行機車位之調整，機車位承租人仍需配合社區機車位之調整。</p>
-<p>三、『地下停車場管理辦法』：</p>
+<p class="n">一、本人承諾於使用樂菲莊園社區地下室機車停車位時，願遵守「地下停車場管理辦法」之規定，如有違規一經查覺，願接受規定處份，情節嚴重者，無異議接受取消停車資格。</p>
+<p class="n">二、機車位承租人，若社區未來因管理之考量，需進行機車位之調整，機車位承租人仍需配合社區機車位之調整。</p>
+<p class="n">三、『地下停車場管理辦法』：</p>
 <p class="sub">1. 機車進出社區地下室停車場須裝置 e-Tag 貼紙供設備辨識。</p>
 <p class="sub">2. 不影響其他機車承租人之利益，其機車停車位除停放機車外，其不得停放機車以外之任何車輛或堆放任何雜物。</p>
 <p class="sub">3. 本社區所有權人出讓所有權後，即自動喪失停車權，應於當日取消登記。</p>
@@ -39,17 +40,18 @@
 <p class="sub">5. 違反停車規定之車輛應取消登記，不得繼續進出地下室停車場。</p>
 <p class="sub">6. 機車停車位限樂菲莊園社區住戶（或承租戶），為維護社區安全，經查獲租用於社區之外居民，並提報管委會會議討論後，確認違規者，立即取消停車資格。</p>
 <p class="sub">7. 本社區啟用智慧型停車管理系統，進出車輛須裝置 e-Tag 貼紙供設備辨識。如無裝置 e-Tag 貼紙者，須向管理中心以時價購買 e-Tag 貼紙，並裝置於足以讓設備辨識處。</p>
-<p>四、本社區機車停車位承租期限：自民國 ＿＿＿＿ 年一月一日起至同年十二月三十一日止。</p>
-<p>五、維護清潔費：每一機車停車位每月新臺幣 100 元，本社區機車位足額時，250CC 以上重型機車承租相鄰之兩個機車位，其維護清潔費以每月新臺幣 300 元計，每次繳費以到期月份計算，一次繳清當年度維護清潔費。</p>
-<p>六、若承租戶中途退租，依其剩餘月份計算退費，使用不滿一個月以一個月計算。</p>
-<p>七、三次違停或放置雜物，經查獲公告，並提報管委會會議討論後，確認違規者，立即取消停車資格。</p>
+<p class="n">四、本社區機車停車位承租期限：自民國 ＿＿＿＿ 年一月一日起至同年十二月三十一日止。</p>
+<p class="n">五、維護清潔費：每一機車停車位每月新臺幣 100 元，本社區機車位足額時，250CC 以上重型機車承租相鄰之兩個機車位，其維護清潔費以每月新臺幣 300 元計，每次繳費以到期月份計算，一次繳清當年度維護清潔費。</p>
+<p class="n">六、若承租戶中途退租，依其剩餘月份計算退費，使用不滿一個月以一個月計算。</p>
+<p class="n">七、三次違停或放置雜物，經查獲公告，並提報管委會會議討論後，確認違規者，立即取消停車資格。</p>
 
 <div class="sign">
-  <p>立合約書人（承租人）簽章：＿＿＿＿＿＿＿＿＿＿＿＿</p>
-  <p>中華民國　＿＿＿＿　年　＿＿　月　＿＿　日</p>
+  <p class="fld">承 租 人：<span class="ln"></span>　　聯絡電話：<span class="ln"></span></p>
+  <p class="fld">戶　　號：<span class="ln"></span></p>
+  <p class="fld">身分證號：<span class="ln"></span>　　日　　期：<span class="ln"></span></p>
+  <p class="need">【需出示證明文件】</p>
+  <p class="fld">聯絡地址：<span class="ln lg"></span></p>
 </div>
-
-<p class="foot">樂菲莊園社區地下室停車場管理辦法【附件一】</p>
 
 </body>
 </html>
