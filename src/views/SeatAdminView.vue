@@ -6,7 +6,7 @@ import { ref, computed, onMounted } from 'vue'
 import SeatMap from '../components/SeatMap.vue'
 import { motorSeats, bikeSeats } from '../map/seats.js'
 import { KIND, compareSeatId, displaySeatId, normalizeSeatInput } from '../map/seat-id.js'
-import { lockedSeats, refreshLocked, listAssignments, assignSeat, unlockSeat, setLocked } from '../store/locked.js'
+import { lockedSeats, refreshLocked, listAssignments, assignSeat, unlockSeat, setLocked, AssignNeedsConfirm } from '../store/locked.js'
 import { sessionHousehold } from '../store/session.js'
 import { isAdmin } from '../store/roles.js'
 
@@ -124,7 +124,7 @@ function selectSeat(s) {
   }
 }
 
-async function doAssign() {
+async function doAssign(強制 = false) {
   if (!selected.value) return
   err.value = ''
   saving.value = true
@@ -132,14 +132,25 @@ async function doAssign() {
     await assignSeat({
       車位編號: String(selected.value.id),
       車位類型: selected.value.type,
+      車位公益: !!selected.value.public, // 後端據此比對該戶社宅旗標（公益位＝社宅戶專用）
       車號: form.value.車號.trim().toUpperCase(),
       配位狀態: form.value.配位狀態,
       已繳費: form.value.已繳費,
+      ...(強制 ? { 強制: true } : {}),
     })
     await reloadAssignments()
     selected.value = null
   } catch (e) {
-    err.value = e?.message || '指派失敗'
+    if (e instanceof AssignNeedsConfirm) {
+      // 公益位／社宅戶不相符：不直接擋，但要物業明確確認一次（可能是例外情形）
+      if (window.confirm(`${e.message}\n\n仍要指派嗎？`)) {
+        saving.value = false
+        return doAssign(true)
+      }
+      err.value = ''
+    } else {
+      err.value = e?.message || '指派失敗'
+    }
   } finally {
     saving.value = false
   }
@@ -265,6 +276,9 @@ function decorate(s) {
                 已繳費
               </label>
 
+              <p v-if="selected.public" class="mt-2 rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                ⚠️ <b>公益設施車位</b>——依辦法伍二（二）限<b>社會住宅承租戶</b>承租。指派非社宅戶時會再次確認。
+              </p>
               <p v-if="selectedIsLottery" class="mt-2 rounded bg-amber-50 px-2 py-1 text-xs text-amber-700">
                 此位為<b>抽籤分配</b>給 {{ selectedAssign.戶號 }}。可勾繳費後「指派並鎖定」標記已繳；不提供解除以免清掉中籤結果。
               </p>

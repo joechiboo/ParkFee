@@ -58,6 +58,30 @@ Deno.serve(async (req) => {
     const plate = String(body.車號 ?? '').trim().toUpperCase()
 
     if (op === 'assign') {
+      // 公益位資格檢查（2026-08-16 Q7）：公益位＝社宅戶專用，一般戶不得承租；
+      // 反之社宅戶亦不應被指派到一般位。物業指派會繞過配位引擎的分流，故在此攔一次。
+      // 車位是否公益由前端帶入（公益編號清單在前端 seat-id.js／spaces.js）；管理員為可信端，
+      // 此處目的是防手誤而非防惡意 → 不符時回 needsConfirm，前端確認後帶 強制:true 再送。
+      if (plate && !body.強制) {
+        const { data: v } = await db.from('vehicle').select('戶號').eq('車號', plate).maybeSingle()
+        if (v?.戶號) {
+          const { data: h } = await db
+            .from('household')
+            .select('社宅')
+            .eq('戶號', v.戶號)
+            .maybeSingle()
+          const isSocial = h?.社宅 === true
+          const isPublicSeat = body.車位公益 === true
+          if (isSocial !== isPublicSeat) {
+            return json({
+              needsConfirm: true,
+              error: isSocial
+                ? `${v.戶號} 是社會住宅住戶，依辦法伍二（二）限承租公益設施車位，此位並非公益位。`
+                : `車位 ${seat} 為公益設施車位（社宅戶專用），${v.戶號} 並非社會住宅住戶。`,
+            }, 409)
+          }
+        }
+      }
       const { error: lkErr } = await db.from('locked_seat').upsert({ 車位編號: seat })
       if (lkErr) return json({ error: lkErr.message }, 400)
       if (plate) {

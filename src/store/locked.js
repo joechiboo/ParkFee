@@ -59,13 +59,18 @@ export async function setLocked(ids) {
 async function callAssign(body) {
   const { data, error } = await (await client()).functions.invoke('assign-seat', { body })
   let msg = error?.message
+  let payload = null
   try {
-    const j = await error?.context?.json?.()
-    if (j?.error) msg = j.error
+    payload = await error?.context?.json?.()
+    if (payload?.error) msg = payload.error
   } catch {
     /* ignore */
   }
-  if (error) throw new Error(msg || '操作失敗，請稍後再試')
+  if (error) {
+    const e = new Error(msg || '操作失敗，請稍後再試')
+    if (payload?.needsConfirm) e.needsConfirm = true // 公益位資格不符 → 前端跳確認
+    throw e
+  }
   if (data?.error) throw new Error(data.error)
   return data
 }
@@ -80,11 +85,21 @@ export async function listAssignments() {
 
 // 指派/鎖定一個車位。rec：{ 車位編號, 車位類型, 車號?, 配位狀態?, 已繳費? }。
 // 帶車號 → 把該車指派到此位（寫 vehicle）；不帶 → 純鎖定（保留/維修）。
+// 公益位資格不符時後端回 409 + needsConfirm；前端確認後再帶 強制:true 呼叫一次。
+export class AssignNeedsConfirm extends Error {}
+
 export async function assignSeat(rec) {
   const seat = String(rec?.車位編號 ?? '').trim()
   if (!seat) throw new Error('缺少車位編號')
   if (useSupabase) {
-    await callAssign({ op: 'assign', ...rec, 車位編號: seat, ...adminAuth() })
+    try {
+      await callAssign({ op: 'assign', ...rec, 車位編號: seat, ...adminAuth() })
+    } catch (e) {
+      const msg = e?.message || ''
+      // supabase-js 把非 2xx 包成 FunctionsHttpError，訊息裡帶回應內容
+      if (e?.needsConfirm) throw new AssignNeedsConfirm(msg)
+      throw e
+    }
   }
   const next = new Set(lockedSeats.value)
   next.add(seat)
