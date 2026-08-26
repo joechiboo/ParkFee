@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeHousehold, isValidHousehold } from './household.js'
+import { normalizeHousehold, isValidHousehold, isStaffHousehold, staffHousehold } from './household.js'
 
 describe('戶號正規化', () => {
   it('轉大寫、去頭尾與中間空白', () => {
@@ -35,5 +35,28 @@ describe('戶號驗證', () => {
     expect(isValidHousehold('Z3-6')).toBe(false) // 無此棟別
     expect(isValidHousehold('36')).toBe(false) // 缺棟別與分隔
     expect(isValidHousehold('H3_6')).toBe(false) // 分隔符錯
+  })
+
+  // 社區工作人員（2026-08-26）：無戶號 → 合成鍵「員工-<編號>」，沿用同一個識別欄位，
+  // 登入仍是「戶號＋車號」比對，故整條登記/選位/結果線不必另做一套。
+  describe('工作人員合成戶號', () => {
+    it('員工-01 視為合法戶號', () => {
+      expect(isValidHousehold('員工-01')).toBe(true)
+      expect(isStaffHousehold('員工-01')).toBe(true)
+    })
+
+    it('住戶戶號不會被誤判為工作人員', () => {
+      expect(isStaffHousehold('A1-1')).toBe(false)
+      expect(isStaffHousehold('S1-6')).toBe(false)
+    })
+
+    it('staffHousehold 補零到兩碼', () => {
+      expect(staffHousehold(1)).toBe('員工-01')
+      expect(staffHousehold(12)).toBe('員工-12')
+    })
+
+    it('全形數字與空白照樣正規化', () => {
+      expect(isStaffHousehold(' 員工－０３ ')).toBe(true)
+    })
   })
 })

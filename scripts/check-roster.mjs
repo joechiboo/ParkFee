@@ -133,7 +133,9 @@ if (disabled.length > cap.無障礙)
     disabled.map(({ h, c }) => `${h.戶號} ${c.車號}`))
 
 // 3) 戶號格式
-const badHouse = all.filter((h) => !/^[A-HS]\d{1,2}-\d{1,2}$/i.test(h.戶號))
+const badHouse = all.filter(
+  (h) => !/^[A-HS]\d{1,2}-\d{1,2}$/i.test(h.戶號) && !/^員工-\d{1,3}$/.test(h.戶號),
+)
 if (badHouse.length)
   add('warn', '戶號格式不符', '預期如 A3-6（棟樓-戶別）。格式不符會影響去重與對帳。',
     badHouse.map((h) => h.戶號))
