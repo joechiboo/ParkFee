@@ -1,4 +1,4 @@
-import { VIA } from '../lottery/distribute.js'
+import { VIA, REASON } from '../lottery/distribute.js'
 // 配位結果 → 清單列 / CSV（純函式）。
 //   來源：distribute() 的回傳（assigned / 落選）。欄位依 HANDOFF §8 + 備註。
 //   供 AllocateView 下載配位結果 CSV，亦供 ResultView 顯示清單（同一份資料）。
@@ -24,10 +24,14 @@ export function signDeadline(公告日) {
 
 // distribute() 結果 → 清單列陣列（分配在前、未中在後）。
 //   opts.公告日（'YYYY-MM-DD'）→ 帶出簽約期限。
-export function resultRows(result, { 公告日 = '' } = {}) {
+//   opts.公開版=true → 略過工作人員列（2026-08-26）：工作人員配的是住戶配畢後的剩餘位、
+//     免費且隨時可收回，與住戶的承租結果性質不同；且其識別為「員工-NN」或姓名，
+//     公告揭露無實益。物業內部版仍完整保留。
+export function resultRows(result, { 公告日 = '', 公開版 = false } = {}) {
   const 期限 = signDeadline(公告日)
   const rows = []
   for (const a of result.assigned || []) {
+    if (公開版 && a.配位方式 === VIA.STAFF) continue
     const paid = !!a.已繳費 // 物業抽籤前已指派+繳費（小位/無障礙/保留）→ 已結清
     rows.push({
       戶號: a.戶號,
@@ -42,6 +46,7 @@ export function resultRows(result, { 公告日 = '' } = {}) {
     })
   }
   for (const l of result.落選 || []) {
+    if (公開版 && l.原因 === REASON.STAFF_PENDING) continue
     rows.push({
       戶號: l.戶號,
       車號: l.車號,

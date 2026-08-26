@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { resultRows, resultCSV, signDeadline, RESULT_COLUMNS } from './result.js'
+import { VIA, REASON } from '../lottery/distribute.js'
 
 // 手作 distribute() 結果樣本（只含 resultRows 用到的欄位），與引擎解耦。
 const sample = {
@@ -77,5 +78,27 @@ describe('配位結果匯出（result.js）', () => {
 
   it('空結果回只有標題列', () => {
     expect(resultCSV({ assigned: [], 落選: [] })).toBe(RESULT_COLUMNS.join(','))
+  })
+})
+
+// 公告揭露：工作人員配的是住戶配畢後的剩餘位、免費可收回，性質與住戶承租不同 → 公開版隱藏。
+describe('公開版隱藏工作人員（2026-08-26）', () => {
+  const result = {
+    assigned: [
+      { 戶號: 'A1-1', 車號: 'ABC-001', 車種: '一般', 第幾輛: 1, 車位編號: '10', 車位類型: '大', 配位方式: VIA.WISH },
+      { 戶號: '員工-01', 車號: 'S-001', 車種: '一般', 第幾輛: 1, 車位編號: '11', 車位類型: '大', 配位方式: VIA.STAFF },
+    ],
+    落選: [{ 戶號: '員工-02', 車號: 'S-002', 第幾輛: 1, 原因: REASON.STAFF_PENDING }],
+  }
+
+  it('公開版：工作人員的配位與暫緩列都不出現', () => {
+    const rows = resultRows(result, { 公開版: true })
+    expect(rows.map((r) => r.車號)).toEqual(['ABC-001'])
+  })
+
+  it('內部版：工作人員完整保留，且應繳金額為 0', () => {
+    const rows = resultRows(result)
+    expect(rows).toHaveLength(3)
+    expect(rows.find((r) => r.車號 === 'S-001').應繳金額).toBe(0)
   })
 })
