@@ -26,7 +26,9 @@
   .staff .hd{padding:0;text-indent:0;font-weight:bold;margin-bottom:6px}
   .office{border:1px solid #000;padding:8px 12px;margin-top:16px;font-size:13px;background:#fafafa}
   .office p{margin:6px 0}
-  @media print{body{margin:0 auto;font-size:13.5px} h2{page-break-after:avoid} table,.office,.staff,.idbox{page-break-inside:avoid}}
+  @media print{body{margin:0 auto;font-size:13.5px} h2{page-break-after:avoid}
+    /* 第三項起另頁：第 1 頁＝身分/機車/自行車，第 2 頁＝志願序/確認/承諾，版面寬鬆好填 */
+    h2.brk{page-break-before:always} table,.office,.staff,.idbox{page-break-inside:avoid}}
 </style>
 </head>
 <body>
@@ -69,7 +71,7 @@
 <p class="note">※ 自行車無車牌，以「戶號＋車位編號」識別，登記時不必填車號；車位不排志願，由系統隨機配位。</p>
 <p class="note">※ 抽中後須至管理中心簽署使用承諾書並領取識別貼紙，貼於車上供巡場查核。</p>
 
-<h2>三、車位志願序（機車一般大位／重機適用）</h2>
+<h2 class="brk">三、車位志願序（機車一般大位／重機適用）</h2>
 <p style="font-size:13px">請對照櫃台「B1 車位平面圖」，依想要的先後填車位編號（＝地面數字 1–655，例：123、87…）。本戶共用一份，與登記車輛數無關。</p>
 <p class="wish">
   ①<span class="ln sm"></span>　②<span class="ln sm"></span>　③<span class="ln sm"></span>　④<span class="ln sm"></span>　⑤<span class="ln sm"></span><br>
