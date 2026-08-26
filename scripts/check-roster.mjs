@@ -22,16 +22,25 @@ const bikeIds = new Set(cls.seats.filter((s) => s.cat === 'bike').map((s) => toB
 const motorById = new Map(motorSeats.map((s) => [s.id, s]))
 const publicBike = new Set(PUBLIC_BIKE_IDS)
 
+// ── .env（鎖定清單與員工名單共用）──
+const ENV = (() => {
+  const env = { ...process.env }
+  try {
+    for (const line of readFileSync('.env', 'utf8').split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)\s*$/)
+      if (m && env[m[1]] == null) env[m[1]] = m[2].replace(/^["']|["']$/g, '')
+    }
+  } catch {
+    /* 無 .env 也行，靠 process.env */
+  }
+  return env
+})()
+
 // ── 鎖定清單（可選）──
 async function fetchLocked() {
   try {
-    const env = {}
-    for (const line of readFileSync('.env', 'utf8').split(/\r?\n/)) {
-      const m = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)\s*$/)
-      if (m) env[m[1]] = m[2].replace(/^["']|["']$/g, '')
-    }
-    const url = env.SUPABASE_URL || env.VITE_SUPABASE_URL
-    const key = env.VITE_SUPABASE_ANON_KEY
+    const url = ENV.SUPABASE_URL || ENV.VITE_SUPABASE_URL
+    const key = ENV.VITE_SUPABASE_ANON_KEY
     if (!url || !key) return null
     const r = await fetch(`${url}/rest/v1/locked_seat?select=車位編號`, {
       headers: { apikey: key, Authorization: `Bearer ${key}` },
@@ -44,23 +53,41 @@ async function fetchLocked() {
 }
 
 // ── 工作人員名單（可選）──
-// 預設讀 private/staff-roster.txt；可用環境變數 STAFF_ROSTER 指到其他路徑（換機器時方便）。
-// ⚠️ 含員工真名，**本 repo 為公開**故一律不進版控；與 private/roster-*.csv 同進退。
-// 線上表單開放自行勾選「工作人員」→ 無從驗證身分，故於此比對名單，
-// **名單外者標記出來交物業確認**（不自動剔除：可能是新進同仁或名單未更新）。
-function loadStaffRoster() {
-  try {
-    return new Set(
-      readFileSync(process.env.STAFF_ROSTER || 'private/staff-roster.txt', 'utf8')
-        .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter((l) => l && !l.startsWith('#'))
-        // 「崗位-姓名」只取姓名；純姓名原樣
-        .map((l) => (l.includes('-') ? l.slice(l.lastIndexOf('-') + 1) : l).trim()),
-    )
-  } catch {
-    return null
+// 線上表單開放芳鄰自行勾選「工作人員」（免收費用）→ 系統無從驗證身分，
+// 故比對名單，**名單外者標記交物業確認**（不自動剔除：可能是新進同仁或名單未更新）。
+//
+// 來源順序：① Supabase public.staff_roster（需 service_role，換機器免帶檔）
+//           ② private/staff-roster.txt（或環境變數 STAFF_ROSTER 指定之路徑）
+//           ③ 都沒有 → 回 null，改報 info 提示如何建立，不靜默跳過。
+// ⚠️ 名單含員工真名、本 repo 為公開 → 一律不進版控。
+async function loadStaffRoster() {
+  const url = ENV.SUPABASE_URL || ENV.VITE_SUPABASE_URL
+  const sr = ENV.SUPABASE_SERVICE_ROLE_KEY
+  if (url && sr) {
+    try {
+      const r = await fetch(`${url}/rest/v1/staff_roster?select=姓名&在職=eq.true`, {
+        headers: { apikey: sr, Authorization: `Bearer ${sr}` },
+      })
+      if (r.ok) {
+        const rows = await r.json()
+        if (rows.length) return { names: new Set(rows.map((x) => String(x.姓名).trim())), from: 'Supabase' }
+      }
+    } catch {
+      /* 連不到就退回讀檔 */
+    }
   }
+  try {
+    const names = readFileSync(process.env.STAFF_ROSTER || 'private/staff-roster.txt', 'utf8')
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith('#'))
+      // 「崗位-姓名」只取姓名；純姓名原樣
+      .map((l) => (l.includes('-') ? l.slice(l.lastIndexOf('-') + 1) : l).trim())
+    if (names.length) return { names: new Set(names), from: '本機名單檔' }
+  } catch {
+    /* 沒有檔案 */
+  }
+  return null
 }
 
 // ── 名冊 ──
@@ -83,7 +110,7 @@ const rows = parseCSVObjects(
     .join('\n'),
 )
 const locked = await fetchLocked()
-const staffRoster = loadStaffRoster()
+const staffRoster = await loadStaffRoster()
 
 // ── 整理成「戶」與「車」兩層 ──
 const yes = (v) => String(v ?? '').trim().toUpperCase() === 'Y'
@@ -166,7 +193,7 @@ if (badHouse.length)
 const staffHouses = all.filter((h) => h.工作人員 || /^員工-/.test(h.戶號))
 if (staffHouses.length && staffRoster) {
   const nameOf = (h) => h.戶號.replace(/^員工-/, '').trim()
-  const unknown = staffHouses.filter((h) => !staffRoster.has(nameOf(h)))
+  const unknown = staffHouses.filter((h) => !staffRoster.names.has(nameOf(h)))
   if (unknown.length)
     add('warn', '登記為工作人員但不在員工名單中',
       '線上表單可自行勾選、系統無從驗證 → 請物業逐筆確認是否確為社區工作人員（可能是新進同仁或名單未更新）。' +

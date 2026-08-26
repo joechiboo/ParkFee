@@ -1,4 +1,4 @@
-// POST /update-household  { 戶號, 電話, 社宅?, vehicles, 認證車號 }  → { household } | { error }
+// POST /update-household  { 戶號, 電話, 社宅?, 工作人員?, vehicles, 認證車號 }  → { household } | { error }
 // 編輯既有戶：整批取代車輛 + 改電話。戶號不可變。可一併增刪自行車（車號由後端合成，前端不送）。
 // 🔒 擁有權驗證：見 http.ts verifyOwnership——認證車號須「目前」屬於該戶，
 //    否則任何人拿公開 anon key 就能竄改他戶登記。自行車的合成車號不算憑證。
@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405)
 
   try {
-    const { 戶號, 電話, 社宅, vehicles, 認證車號 } = await req.json()
+    const { 戶號, 電話, 社宅, 工作人員, vehicles, 認證車號 } = await req.json()
 
     const hid = normalizeHousehold(戶號)
     if (!hid) return json({ error: '請填寫戶號' }, 400)
@@ -45,8 +45,11 @@ Deno.serve(async (req) => {
     })
     if (error) return json({ error: error.message || '更新失敗，請稍後再試' }, 400)
 
-    // 社宅旗標（RPC 未涵蓋的戶欄位，另行更新；省一次 RPC 改版）
-    if (社宅 !== undefined) await db.from('household').update({ 社宅: !!社宅 }).eq('戶號', hid)
+    // 社宅／工作人員旗標（RPC 未涵蓋的戶欄位，另行更新；省一次 RPC 改版）
+    const 戶旗標: Record<string, boolean> = {}
+    if (社宅 !== undefined) 戶旗標.社宅 = !!社宅
+    if (工作人員 !== undefined) 戶旗標.工作人員 = !!工作人員
+    if (Object.keys(戶旗標).length) await db.from('household').update(戶旗標).eq('戶號', hid)
 
     return json({ household: await fetchHousehold(db, hid) })
   } catch (e) {
