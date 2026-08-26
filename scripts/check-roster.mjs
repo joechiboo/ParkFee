@@ -43,6 +43,26 @@ async function fetchLocked() {
   }
 }
 
+// ── 工作人員名單（可選）──
+// 預設讀 private/staff-roster.txt；可用環境變數 STAFF_ROSTER 指到其他路徑（換機器時方便）。
+// ⚠️ 含員工真名，**本 repo 為公開**故一律不進版控；與 private/roster-*.csv 同進退。
+// 線上表單開放自行勾選「工作人員」→ 無從驗證身分，故於此比對名單，
+// **名單外者標記出來交物業確認**（不自動剔除：可能是新進同仁或名單未更新）。
+function loadStaffRoster() {
+  try {
+    return new Set(
+      readFileSync(process.env.STAFF_ROSTER || 'private/staff-roster.txt', 'utf8')
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter((l) => l && !l.startsWith('#'))
+        // 「崗位-姓名」只取姓名；純姓名原樣
+        .map((l) => (l.includes('-') ? l.slice(l.lastIndexOf('-') + 1) : l).trim()),
+    )
+  } catch {
+    return null
+  }
+}
+
 // ── 名冊 ──
 const argPath = process.argv[2]
 const rosterPath =
@@ -63,6 +83,7 @@ const rows = parseCSVObjects(
     .join('\n'),
 )
 const locked = await fetchLocked()
+const staffRoster = loadStaffRoster()
 
 // ── 整理成「戶」與「車」兩層 ──
 const yes = (v) => String(v ?? '').trim().toUpperCase() === 'Y'
@@ -73,6 +94,7 @@ for (const r of rows) {
     houses.set(id, {
       戶號: id,
       社宅: yes(r.社宅),
+      工作人員: yes(r.工作人員),
       電話: String(r.聯絡電話 ?? '').trim(),
       志願: String(r.車位志願 ?? '').split(/[、,]/).map((s) => s.trim()).filter(Boolean),
       cars: [],
@@ -139,6 +161,22 @@ const badHouse = all.filter(
 if (badHouse.length)
   add('warn', '戶號格式不符', '預期如 A3-6（棟樓-戶別）。格式不符會影響去重與對帳。',
     badHouse.map((h) => h.戶號))
+
+// 3.5) 工作人員：比對名單（線上可自行勾選 → 必須人工把關）
+const staffHouses = all.filter((h) => h.工作人員 || /^員工-/.test(h.戶號))
+if (staffHouses.length && staffRoster) {
+  const nameOf = (h) => h.戶號.replace(/^員工-/, '').trim()
+  const unknown = staffHouses.filter((h) => !staffRoster.has(nameOf(h)))
+  if (unknown.length)
+    add('warn', '登記為工作人員但不在員工名單中',
+      '線上表單可自行勾選、系統無從驗證 → 請物業逐筆確認是否確為社區工作人員（可能是新進同仁或名單未更新）。' +
+      '工作人員免收費用、配位排住戶之後。',
+      unknown.map((h) => `${h.戶號}（${h.cars.map((c) => c.車號).join('、')}）`))
+} else if (staffHouses.length && !staffRoster) {
+  add('info', '有工作人員登記，但找不到員工名單可比對',
+    '請建立 private/staff-roster.txt（一行一位，可用「崗位-姓名」）後重跑，即可標出名單外的登記。',
+    staffHouses.map((h) => h.戶號))
+}
 
 // 4) 車號跨戶重複
 const plateOwners = new Map()
