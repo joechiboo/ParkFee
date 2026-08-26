@@ -20,9 +20,13 @@
   td.blank{height:26px}
   .wish{letter-spacing:1px;font-size:14.5px;margin:8px 0 6px}
   .chk{margin:6px 0}
+  .idbox{border:1.5px solid #000;padding:8px 12px;margin:8px 0}
+  .staff{border:1px dashed #666;padding:9px 13px;margin:10px 0;font-size:13px;background:#fbfbfb}
+  .staff p{margin:5px 0;padding-left:1.6em;text-indent:-1.6em}
+  .staff .hd{padding:0;text-indent:0;font-weight:bold;margin-bottom:6px}
   .office{border:1px solid #000;padding:8px 12px;margin-top:16px;font-size:13px;background:#fafafa}
   .office p{margin:6px 0}
-  @media print{body{margin:0 auto;font-size:13.5px} h2{page-break-after:avoid} table,.office{page-break-inside:avoid}}
+  @media print{body{margin:0 auto;font-size:13.5px} h2{page-break-after:avoid} table,.office,.staff,.idbox{page-break-inside:avoid}}
 </style>
 </head>
 <body>
@@ -34,11 +38,15 @@
   本表不蒐集身分證號；證件查驗於繳費簽約時辦理，出示行車執照或身分證明文件擇一即可。
 </div>
 
-<h2>住戶資料</h2>
-<p class="fld">戶　　號：<span class="ln"></span>　　聯絡電話：<span class="ln"></span>　<span style="font-size:12.5px">（只登記自行車者必填）</span></p>
-<p class="fld">登 記 人：<span class="ln"></span>　　登記日期：<span class="ln sm"></span> 年 <span class="ln sm"></span> 月 <span class="ln sm"></span> 日</p>
-<p class="chk">□ 本戶為「社會住宅」承租戶</p>
-<p class="note">※ 勾選者依辦法伍二（二）限承租「公益設施車位」（機車 1–7、92–104；自行車 114–118），免填第三項車位志願序。</p>
+<h2>申請人資料</h2>
+<div class="idbox">
+  <p class="chk"><b>身分別</b>（擇一勾選）：　□ 住　戶　　□ 社區工作人員</p>
+  <p class="fld">住戶請填　戶　號：<span class="ln"></span>　　　工作人員請填　服務單位／職務：<span class="ln"></span></p>
+</div>
+<p class="fld">申 請 人：<span class="ln"></span>　　聯絡電話：<span class="ln"></span>　<span style="font-size:12.5px">（只登記自行車者必填）</span></p>
+<p class="fld">登記日期：<span class="ln sm"></span> 年 <span class="ln sm"></span> 月 <span class="ln sm"></span> 日</p>
+<p class="chk">□ 本戶為「社會住宅」承租戶　<span style="font-size:12.5px">（工作人員免勾）</span></p>
+<p class="note">※ 勾選社會住宅者依辦法伍二（二）限承租「公益設施車位」（機車 1–7、92–104；自行車 114–118），免填第三項車位志願序。</p>
 
 <h2>一、機車（不登記機車者免填；第 1 輛必填）</h2>
 <table>
@@ -49,7 +57,8 @@
 </table>
 <p class="note">※ 重機占位：承租<b>相鄰兩格</b>機車位（不限大、小），由系統自動帶入鄰格；亦得承租無障礙機車位（該型較寬，占一格即可）。</p>
 <p class="note">※ 志願小位：自願登記一般（小）機車位者免抽籤，依登記順序選位。</p>
-<p class="note">※ 無障礙車位：限行動不便之身心障礙者優先承租，<b>不分一般戶／社會住宅戶</b>。</p>
+<p class="note">※ 無障礙車位：限行動不便之身心障礙者優先承租，<b>不分一般戶／社會住宅戶</b>；工作人員不適用。</p>
+<p class="note">※ 工作人員以申請一輛為原則；如有特殊需要請於背面說明並經管理委員會同意。</p>
 
 <h2>二、自行車（不登記者免填；與機車同梯次登記抽籤，不收費）</h2>
 <table>
@@ -69,12 +78,22 @@
 <p class="chk">□ <b>電腦選號</b>：若所填志願都被較前順序號的住戶選走，同意由電腦自動配「本棟、靠近電梯」的剩餘大位。</p>
 <p class="note">※ 不勾選＝先保留，待配位底定後可自行從剩餘車位挑選（免手續費）；配位後如需再異動屬「換位」，須繳作業費。</p>
 <p class="note">※ 多台車輪到時各自取「志願中仍剩的最高志願」，不必分車填；重機填想要的起始編號即可，系統自動配相鄰兩格。</p>
-<p class="note">※ 下列情形免填本項：志願小位、無障礙位、社會住宅戶、自行車。</p>
+<p class="note">※ 下列情形免填本項：志願小位、無障礙位、社會住宅戶、自行車。工作人員可填，惟<b>公益設施車位與無障礙車位不開放申請</b>，請勿填列。</p>
 
 <h2>四、填表人確認</h2>
 <p class="chk">□ 本人已詳閱並同意「社區地下室停車場管理辦法」相關規定。</p>
 <p class="chk">□ 本人了解：登記不收費；抽中後須於公告後 5 日內到管理中心簽約並一次繳一年費用（機車一般 1,200 元／重機 3,600 元／自行車免費），逾公告後 10 日未辦妥視同放棄，由候補者依序遞補。</p>
-<p class="fld" style="margin-top:14px">住戶簽名／蓋章：<span class="ln lg"></span></p>
+
+<div class="staff">
+  <p class="hd">【以下僅社區工作人員填寫並簽署（辦法伍、二（十二））】</p>
+  <p>一、本人了解所使用之車位為<b>住戶停車資格程序完結後之剩餘車位</b>，配位順序排在全體住戶之後；<b>若尚有住戶未配得車位，本申請將暫緩配位</b>，俟住戶配位完成且仍有餘位時始予配給。</p>
+  <p>二、本人使用車位期間<b>免收維護清潔費</b>，但仍應遵守停車場管理辦法全部規定。</p>
+  <p>三、如有<b>尚未承租機車位之住戶</b>申請第一個機車位者，本人同意<b>無條件終止使用</b>，並於管理中心通知後<b>一個月內讓出</b>；本項讓出義務<b>優先於</b>一戶租用二個以上機車位之住戶。</p>
+  <p>四、本人離職、調職或不再於本社區服務時，應主動告知管理中心並於離職日前讓出車位。</p>
+  <p class="chk" style="padding-left:0;text-indent:0">□ 本人已詳閱並同意上列各項　　工作人員簽名／蓋章：<span class="ln"></span></p>
+</div>
+
+<p class="fld" style="margin-top:14px">申請人簽名／蓋章：<span class="ln lg"></span></p>
 
 <div class="office">
   <p><b>【以下由管理中心填寫】</b></p>
