@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>樂菲莊園 社區工作人員 車位使用申請表（116 年度）</title>
+<style>
+  body{font-family:"標楷體","DFKai-SB","Microsoft JhengHei",serif;max-width:720px;margin:20px auto;padding:0 24px;color:#000;line-height:1.75;font-size:14px}
+  h1{font-size:19px;text-align:center;margin:0 0 2px;letter-spacing:2px}
+  .head{border:1.5px solid #000;padding:8px 12px;margin:0 0 14px;font-size:13px;text-align:center;line-height:1.6}
+  h2{font-size:15px;margin:16px 0 6px;padding:3px 9px;background:#f0f0f0;border-left:4px solid #444}
+  p{margin:5px 0}
+  .fld{margin:6px 0}
+  .ln{display:inline-block;border-bottom:1px solid #555;min-width:150px;height:1.15em;vertical-align:-3px}
+  .ln.sm{min-width:96px}
+  .ln.lg{min-width:400px}
+  .note{font-size:12.5px;color:#333;margin:3px 0 3px 1.2em;text-indent:-1.2em;padding-left:1.2em}
+  table{width:100%;border-collapse:collapse;margin:8px 0}
+  td,th{border:1px solid #000;padding:5px 7px;font-size:13px;text-align:center}
+  th{background:#f5f5f5;font-weight:normal}
+  td.blank{height:26px}
+  .chk{margin:7px 0}
+  .terms{border:1px solid #000;padding:10px 14px;margin:10px 0;font-size:13px}
+  .terms p{margin:6px 0;padding-left:1.6em;text-indent:-1.6em}
+  .office{border:1px solid #000;padding:8px 12px;margin-top:16px;font-size:13px;background:#fafafa}
+  .office p{margin:6px 0}
+  @media print{body{margin:0 auto;font-size:13.5px} h2{page-break-after:avoid} table,.terms,.office{page-break-inside:avoid}}
+</style>
+</head>
+<body>
+
+<h1>樂菲莊園 社區工作人員 車位使用申請表（116 年度）</h1>
+<div class="head">
+  依「社區地下室停車場管理辦法」伍、二（十二）辦理　·　登記期間同住戶：11/15 – 11/30<br>
+  <b>免收維護清潔費</b>；惟須簽立本承諾書，且住戶申請時應無條件讓出。<br>
+  <b>本表與住戶登記表分開受理</b>，配位排序亦不同（詳下方權利義務）。
+</div>
+
+<h2>申請人資料</h2>
+<p class="fld">姓　　名：<span class="ln"></span>　　職　　務：<span class="ln"></span></p>
+<p class="fld">服務單位：<span class="ln"></span>　<span style="font-size:12.5px">（管理中心／保全／清潔／其他）</span></p>
+<p class="fld">聯絡電話：<span class="ln"></span>　　申請日期：<span class="ln sm"></span> 年 <span class="ln sm"></span> 月 <span class="ln sm"></span> 日</p>
+
+<h2>申請車輛</h2>
+<table>
+  <tr><th style="width:14%">順序</th><th style="width:34%">車　號</th><th>車　種</th></tr>
+  <tr><td>第 1 輛</td><td class="blank"></td><td>□ 一般（250CC 以下）　□ 重機（250CC 以上）</td></tr>
+</table>
+<p class="note">※ 每人以申請一輛為原則；如有特殊需要，請於下方備註並經管理委員會同意。</p>
+<p class="fld">備　　註：<span class="ln lg"></span></p>
+
+<h2>車位志願序（選填）</h2>
+<p style="font-size:13px">可對照櫃台「B1 車位平面圖」填寫希望的車位編號；未填或所填皆已配出者，由系統於剩餘車位中自最低號配給。</p>
+<p style="letter-spacing:1px;margin:8px 0">
+  ①<span class="ln sm"></span>　②<span class="ln sm"></span>　③<span class="ln sm"></span>　④<span class="ln sm"></span>　⑤<span class="ln sm"></span>
+</p>
+<p class="note">※ <b>公益設施車位（社會住宅專用）與無障礙車位不開放工作人員申請</b>，請勿填列。</p>
+
+<h2>權利義務（承諾事項）</h2>
+<div class="terms">
+  <p>一、本人了解所使用之車位為<b>住戶停車資格程序完結後之剩餘車位</b>，配位順序排在全體住戶之後；<b>若尚有住戶未配得車位，本申請將暫緩配位</b>，俟住戶配位完成且仍有餘位時始予配給。</p>
+  <p>二、本人使用車位期間<b>免收維護清潔費</b>，但仍應遵守「社區地下室停車場管理辦法」全部規定。</p>
+  <p>三、如有<b>尚未承租機車位之住戶</b>申請第一個機車位者，本人同意<b>無條件終止使用</b>，並於管理中心通知後<b>一個月內讓出</b>；本項讓出義務<b>優先於</b>一戶租用二個以上機車位之住戶。</p>
+  <p>四、本人離職、調職或不再於本社區服務時，應主動告知管理中心並於離職日前讓出車位。</p>
+  <p>五、車輛進出須依規定裝置 e-Tag 供設備辨識；三次違停或放置雜物經查獲公告，並提報管委會確認違規者，立即取消使用資格。</p>
+</div>
+<p class="chk">□ 本人已詳閱並同意上列各項，且同意「社區地下室停車場管理辦法」相關規定。</p>
+<p class="fld" style="margin-top:14px">申請人簽名／蓋章：<span class="ln lg"></span></p>
+
+<div class="office">
+  <p><b>【以下由管理中心填寫】</b></p>
+  <p>收件時間：<span class="ln sm"></span> 年 <span class="ln sm"></span> 月 <span class="ln sm"></span> 日　　收件編號：<span class="ln sm"></span></p>
+  <p>受理人員：<span class="ln"></span>　　已登錄系統：□ 是　　登錄人員：<span class="ln"></span></p>
+  <p>配得車位編號：<span class="ln sm"></span>　　配位日期：<span class="ln sm"></span>　　□ 暫緩（住戶尚未配完）</p>
+</div>
+
+</body>
+</html>
