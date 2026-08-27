@@ -205,6 +205,34 @@ if (staffHouses.length && staffRoster) {
     staffHouses.map((h) => h.戶號))
 }
 
+// 3.6) 身分衝突／不一致（同一戶掛多重身分）
+{
+  const conflict = []
+  const mismatch = []
+  const ignored = []
+  for (const h of all) {
+    const byPrefix = /^員工-/.test(h.戶號)
+    // 社宅（限公益位）× 工作人員（不得用公益位）＝ 規則直接牴觸；
+    // 引擎會把他歸進工作人員輪 → 拿到一般位，等於社宅身分被靜默忽略。
+    if (h.社宅 && h.工作人員) conflict.push(`${h.戶號}（社宅＋工作人員）`)
+    // 旗標與戶號前綴不一致 → 十之八九是登打漏勾或戶號打錯
+    if (byPrefix !== h.工作人員)
+      mismatch.push(`${h.戶號}（戶號${byPrefix ? '有' : '無'}「員工-」前綴，但工作人員旗標為 ${h.工作人員 ? 'Y' : 'N'}）`)
+    // 工作人員不得配無障礙位 → 其身障註記不會生效，避免當事人誤以為已保障
+    if (h.工作人員 && h.cars.some((c) => c.身障)) ignored.push(`${h.戶號}`)
+  }
+  if (conflict.length)
+    add('warn', '同一戶同時具社宅與工作人員身分',
+      '兩者規則牴觸：社宅限公益位、工作人員不得用公益位。引擎會依工作人員處理（配一般剩餘位），' +
+      '社宅身分等同被忽略 → 請確認實際身分後擇一。', conflict)
+  if (mismatch.length)
+    add('warn', '工作人員旗標與戶號前綴不一致',
+      '工作人員戶號應為「員工-<姓名>」。不一致多為登打漏勾或戶號打錯，會影響配位輪次與收費。', mismatch)
+  if (ignored.length)
+    add('info', '工作人員登記了身障需求（無障礙位不開放工作人員）',
+      '該註記不會生效——無障礙位保留給住戶中行動不便者。若確有需求，請循個案由管委會決定。', ignored)
+}
+
 // 4) 車號跨戶重複
 const plateOwners = new Map()
 for (const h of all) for (const c of h.cars) {
