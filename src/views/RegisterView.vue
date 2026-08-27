@@ -74,7 +74,9 @@ async function submit() {
   error.value = ''
   form.戶號 = normalizeHousehold(form.戶號)
   if (!isValidHousehold(form.戶號)) {
-    error.value = '戶號格式不對，請用「棟+樓-戶」，例：H3-6（店面 S1-6）'
+    error.value = form.工作人員
+      ? '工作人員請填「員工-姓名」，例：員工-陳大明'
+      : '戶號格式不對，請用「棟+樓-戶」，例：H3-6（店面 S1-6）'
     return
   }
   form.電話 = formatTWPhone(form.電話)
@@ -121,7 +123,7 @@ async function submit() {
         戶號 <b>{{ done.戶號 }}</b> 已登記
         <span v-if="doneMotorCount">{{ doneMotorCount }} 台機車</span>
         <span v-if="doneMotorCount && doneBikeCount">、</span>
-        <span v-if="doneBikeCount">{{ doneBikeCount }} 台自行車</span>。<span v-if="done.社宅">（社會住宅住戶：限選公益位）</span><span v-if="done.工作人員">（社區工作人員：住戶配畢後之剩餘位，免收費用）</span>
+        <span v-if="doneBikeCount">{{ doneBikeCount }} 台自行車</span>。<span v-if="done.社宅">（社會住宅住戶：限選公益位）</span><span v-if="done.工作人員">（社區工作人員：住戶配畢後之剩餘位）</span>
       </p>
       <p v-if="doneHasMotor" class="mt-2 text-sm text-emerald-800">
         之後可用 <b>戶號 ＋ 任一車號</b> 登入查看登記內容與抽籤結果。
