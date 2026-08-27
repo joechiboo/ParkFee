@@ -123,6 +123,24 @@ describe('名冊去重與雙管道合併', () => {
       expect(e.志願落選保底).toBe('Y')
     }
   })
+
+  // 2026-08-27 全鏈實測抓到：工作人員原本不在傳播清單裡（社宅有、它沒有），
+  // 同一人多台車而紙本只勾第 1 列時，第 2 台會被當住戶配位——提前占位且被收 1,200 元。
+  it('社宅／工作人員亦為戶層級：只勾第1輛列 → 傳播到全戶各列', () => {
+    const { entries } = buildRoster([
+      { 戶號: 'S1-90', 車號: 'AAA-1111', 車種: '一般', 第幾輛: 1, 工作人員: 'Y' },
+      { 戶號: 'S1-90', 車號: 'BBB-2222', 車種: '一般', 第幾輛: 2 }, // 沒勾
+      { 戶號: 'B2-5', 車號: 'CCC-3333', 車種: '一般', 第幾輛: 1, 社宅: 'Y' },
+      { 戶號: 'B2-5', 車號: 'DDD-4444', 車種: '一般', 第幾輛: 2 }, // 沒勾
+    ])
+    const staff = entries.filter((e) => e.戶號 === 'S1-90')
+    const social = entries.filter((e) => e.戶號 === 'B2-5')
+    expect(staff).toHaveLength(2)
+    expect(staff.every((e) => e.工作人員 === 'Y')).toBe(true)
+    expect(social.every((e) => e.社宅 === 'Y')).toBe(true)
+    // 不會反向汙染其他戶
+    expect(social.every((e) => e.工作人員 !== 'Y')).toBe(true)
+  })
 })
 
 describe('範例名冊', () => {
