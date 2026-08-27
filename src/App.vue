@@ -63,7 +63,7 @@ const version = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'Vdev
     <header class="border-b border-slate-200 bg-white">
       <div class="mx-auto flex items-center gap-3 px-4 py-3 sm:gap-6" :class="shellMax">
         <RouterLink to="/" class="shrink-0 text-lg font-bold tracking-tight text-slate-900">
-          ParkFee
+          樂菲莊園
         </RouterLink>
 
         <!-- 桌機：橫列導覽 -->
