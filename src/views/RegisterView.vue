@@ -170,11 +170,15 @@ async function submit() {
       <div class="grid gap-4 sm:grid-cols-2">
         <label class="block">
           <span class="text-sm font-medium text-slate-700">戶號 *</span>
-          <input v-model="form.戶號" @input="onHouseholdInput" :disabled="isEdit" type="text" placeholder="例：H3-6（店面 S1-6）"
+          <input v-model="form.戶號" @input="onHouseholdInput" :disabled="isEdit" type="text"
+            :placeholder="form.工作人員 ? '例：員工-陳大明' : '例：H3-6（店面 S1-6）'"
             style="text-transform:uppercase"
             class="mt-1 w-full rounded border border-slate-300 px-3 py-2.5 text-base sm:text-sm focus:border-slate-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500" />
           <span v-if="isEdit" class="mt-1 block text-xs text-slate-500">編輯模式：戶號不可修改</span>
-          <span v-else-if="form.戶號 && !isValidHousehold(form.戶號)" class="mt-1 block text-xs text-red-600">格式：棟(A–H)+樓(1–15)-戶，例 H3-6；店面 S1-6</span>
+          <span v-else-if="form.戶號 && !isValidHousehold(form.戶號)" class="mt-1 block text-xs text-red-600">
+            <template v-if="form.工作人員">工作人員請填「員工-姓名」，例：員工-陳大明</template>
+            <template v-else>格式：棟(A–H)+樓(1–15)-戶，例 H3-6；店面 S1-6</template>
+          </span>
         </label>
         <label class="block">
           <span class="text-sm font-medium text-slate-700">聯絡電話<span v-if="bikeOnly"> *</span></span>
