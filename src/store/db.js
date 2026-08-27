@@ -13,7 +13,10 @@
 
 import * as local from './local-backend.js'
 
-export { RegistrationError } from './local-backend.js'
+// ⚠️ 不可直接轉出某一邊的類別：local 與 supabase 兩個 backend 各有自己的 RegistrationError，
+//    呼叫端 instanceof 會對不上（走 supabase 時丟的是 supabase 版）→ 後端驗證訊息全被吞成
+//    「請檢查網路」。改由 facade 提供共用基底，兩個 backend 都繼承它。
+export { RegistrationError } from './registration-error.js'
 
 const useSupabase = !!import.meta.env?.VITE_SUPABASE_URL
 

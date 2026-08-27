@@ -7,7 +7,8 @@
 
 import { supabase } from './supabase-client.js'
 
-export class RegistrationError extends Error {}
+export { RegistrationError } from './registration-error.js'
+import { RegistrationError } from './registration-error.js'
 
 // 統一呼叫 Edge Function：成功回 data；後端業務錯誤（{ error }）→ 拋 RegistrationError。
 async function invoke(name, body) {

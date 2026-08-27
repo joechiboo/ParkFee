@@ -2,7 +2,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { register, updateHousehold, RegistrationError } from '../store/db.js'
-import { normalizeHousehold, isValidHousehold } from '../data/household.js'
+import { normalizeHousehold, isValidHousehold, staffHousehold, isStaffHousehold } from '../data/household.js'
 import { normalizeTWPlate } from '../data/plate.js'
 import { formatTWPhone, isValidTWPhone } from '../data/phone.js'
 import { editTarget } from '../store/editTarget.js'
@@ -62,6 +62,14 @@ function onHouseholdInput() {
   form.戶號 = normalizeHousehold(form.戶號)
 }
 
+// 切換身分時同步前綴：勾起來就補「員工-」，取消就拿掉，免得殘留造成格式錯誤。
+function onStaffToggle() {
+  if (!form.戶號) return
+  form.戶號 = form.工作人員
+    ? (isStaffHousehold(form.戶號) ? form.戶號 : staffHousehold(form.戶號))
+    : form.戶號.replace(/^員工-/, '')
+}
+
 const bikeOnly = computed(() => form.vehicles.length > 0 && form.vehicles.every(isBike))
 // 自行車不填志願（辦法伍三(三)(六) 明寫抽車位號碼）→ 只有機車才要導去選位頁。
 const doneHasMotor = computed(() => (done.value?.vehicles || []).some((v) => v.車種 !== BIKE))
@@ -73,9 +81,13 @@ const submitting = ref(false)
 async function submit() {
   error.value = ''
   form.戶號 = normalizeHousehold(form.戶號)
+  // 工作人員戶號一律「員工-<姓名>」；前綴由系統補，櫃檯只需打姓名。
+  if (form.工作人員 && form.戶號 && !isStaffHousehold(form.戶號)) {
+    form.戶號 = staffHousehold(form.戶號)
+  }
   if (!isValidHousehold(form.戶號)) {
     error.value = form.工作人員
-      ? '工作人員請填「員工-姓名」，例：員工-陳大明'
+      ? '請填工作人員姓名'
       : '戶號格式不對，請用「棟+樓-戶」，例：H3-6（店面 S1-6）'
     return
   }
@@ -173,12 +185,12 @@ async function submit() {
         <label class="block">
           <span class="text-sm font-medium text-slate-700">戶號 *</span>
           <input v-model="form.戶號" @input="onHouseholdInput" :disabled="isEdit" type="text"
-            :placeholder="form.工作人員 ? '例：員工-陳大明' : '例：H3-6（店面 S1-6）'"
+            :placeholder="form.工作人員 ? '直接打姓名即可，例：陳大明' : '例：H3-6（店面 S1-6）'"
             style="text-transform:uppercase"
             class="mt-1 w-full rounded border border-slate-300 px-3 py-2.5 text-base sm:text-sm focus:border-slate-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500" />
           <span v-if="isEdit" class="mt-1 block text-xs text-slate-500">編輯模式：戶號不可修改</span>
           <span v-else-if="form.戶號 && !isValidHousehold(form.戶號)" class="mt-1 block text-xs text-red-600">
-            <template v-if="form.工作人員">工作人員請填「員工-姓名」，例：員工-陳大明</template>
+            <template v-if="form.工作人員">請填姓名即可（系統會存成「員工-姓名」）</template>
             <template v-else>格式：棟(A–H)+樓(1–15)-戶，例 H3-6；店面 S1-6</template>
           </span>
         </label>
@@ -196,7 +208,7 @@ async function submit() {
       </label>
 
       <label class="flex items-start gap-2 text-sm text-slate-700">
-        <input v-model="form.工作人員" type="checkbox" class="mt-0.5 h-4 w-4" />
+        <input v-model="form.工作人員" @change="onStaffToggle" type="checkbox" class="mt-0.5 h-4 w-4" />
         <span>
           <b>社區工作人員</b> — 車位為住戶配畢後的剩餘位，住戶需要時須讓出
           <span class="text-slate-500">（由物業核對身分）</span>

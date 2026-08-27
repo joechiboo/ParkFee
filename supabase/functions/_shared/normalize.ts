@@ -11,12 +11,20 @@ export function normalizeHousehold(raw: unknown): string {
     .toUpperCase()
 }
 
-// 戶號格式：住宅 A–H + 樓(1–15) + '-' + 戶(1–3 碼)；店面 S（1F，樓可省）+ '-' + 戶。
+// 戶號格式：住宅 A–H + 樓(1–15) + '-' + 戶(1–3 碼)；店面 S（1F，樓可省）+ '-' + 戶；
+//   社區工作人員無戶號 → 合成鍵「員工-<姓名或編號>」（2026-08-26，與前端 household.js 同步）。
 export function isValidHousehold(raw: unknown): boolean {
   const s = normalizeHousehold(raw)
   if (/^[A-H](1[0-5]|[1-9])-\d{1,3}$/.test(s)) return true
   if (/^S1?-\d{1,3}$/.test(s)) return true
+  if (STAFF_RE.test(s)) return true
   return false
+}
+
+const STAFF_RE = /^員工-.+$/
+
+export function isStaffHousehold(raw: unknown): boolean {
+  return STAFF_RE.test(normalizeHousehold(raw))
 }
 
 // 自行車（docs/10 Q18）：無車牌 → 車號欄存「綁戶號」的合成鍵 '自行車-<戶號>-<序>'。

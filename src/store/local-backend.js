@@ -23,7 +23,8 @@ function save(db) {
   localStorage.setItem(KEY, JSON.stringify(db))
 }
 
-export class RegistrationError extends Error {}
+export { RegistrationError } from './registration-error.js'
+import { RegistrationError } from './registration-error.js'
 
 const normHouse = normalizeHousehold // 單一事實來源：household.js（大寫/全形/去空白）
 
