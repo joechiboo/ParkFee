@@ -24,20 +24,22 @@ export function isValidHousehold(raw) {
   if (/^[A-H](1[0-5]|[1-9])-\d{1,3}$/.test(s)) return true
   // 店面 S（1F）：S + (樓 1 可省) + '-' + 戶
   if (/^S1?-\d{1,3}$/.test(s)) return true
-  // 社區工作人員：員工-<編號>（1–3 碼）
+  // 社區工作人員：員工-<姓名或編號>
   if (STAFF_RE.test(s)) return true
   return false
 }
 
-// 社區工作人員的合成戶號。編號由管理中心給定、僅需在社區內唯一。
-const STAFF_RE = /^員工-\d{1,3}$/
+// 社區工作人員的合成戶號：員工-<姓名或編號>。由櫃檯代打、僅需在社區內唯一。
+// 用姓名而非流水號＝物業不必另外維護對照表（2026-08-26 決）；姓名不外洩，因公告公開版已隱藏工作人員。
+const STAFF_RE = /^員工-.+$/
 
 // 是否為工作人員之合成戶號（非住戶）。配位時排在住戶之後、免收費（辦法伍二（十二））。
 export function isStaffHousehold(raw) {
   return STAFF_RE.test(normalizeHousehold(raw))
 }
 
-// 產生工作人員戶號：staffHousehold(1) → '員工-01'。
-export function staffHousehold(n) {
-  return `員工-${String(Number(n) || 0).padStart(2, '0')}`
+// 產生工作人員戶號：staffHousehold('陳大明') → '員工-陳大明'；給數字則補零 staffHousehold(1) → '員工-01'。
+export function staffHousehold(nameOrNo) {
+  const v = String(nameOrNo ?? '').trim()
+  return `員工-${/^\d+$/.test(v) ? v.padStart(2, '0') : v}`
 }

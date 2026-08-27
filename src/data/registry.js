@@ -154,10 +154,14 @@ export function buildRoster(rows) {
     const wishes = g.rows.find((r) => r.車位志願.length)?.車位志願 ?? []
     const fallback = g.rows.some((r) => r.志願落選保底 === 'Y') ? 'Y' : 'N'
     const social = g.rows.some((r) => r.社宅 === 'Y') ? 'Y' : 'N'
+    // 工作人員亦為戶層級：同一人多台車時，紙本／CSV 可能只在第 1 列勾選 →
+    // 不傳播的話第 2 台會被當住戶配位（提前占位、且會被收費），故與社宅同處理。
+    const staff = g.rows.some((r) => r.工作人員 === 'Y') ? 'Y' : 'N'
     for (const r of g.rows) {
       r.車位志願 = wishes
       r.志願落選保底 = fallback
       r.社宅 = social
+      r.工作人員 = staff
     }
     entries.push(...g.rows)
   }

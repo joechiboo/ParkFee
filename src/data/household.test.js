@@ -50,9 +50,15 @@ describe('戶號驗證', () => {
       expect(isStaffHousehold('S1-6')).toBe(false)
     })
 
-    it('staffHousehold 補零到兩碼', () => {
+    it('員工-<姓名> 亦為合法（櫃檯代打不必維護編號對照表）', () => {
+      expect(isValidHousehold('員工-陳進茂')).toBe(true)
+      expect(isStaffHousehold('員工-陳進茂')).toBe(true)
+    })
+
+    it('staffHousehold：數字補零、姓名原樣', () => {
       expect(staffHousehold(1)).toBe('員工-01')
       expect(staffHousehold(12)).toBe('員工-12')
+      expect(staffHousehold('陳大明')).toBe('員工-陳大明')
     })
 
     it('全形數字與空白照樣正規化', () => {
