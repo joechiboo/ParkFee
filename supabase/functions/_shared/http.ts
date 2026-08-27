@@ -61,7 +61,7 @@ export async function verifyOwnership(
 export async function fetchHousehold(db: SupabaseClient, hid: string) {
   const { data: h } = await db
     .from('household')
-    .select('戶號, 電話, created_at, 車位志願, 志願落選保底, 社宅')
+    .select('戶號, 電話, created_at, 車位志願, 志願落選保底, 社宅, 工作人員')
     .eq('戶號', hid)
     .maybeSingle()
   if (!h) return null
@@ -80,6 +80,8 @@ export async function fetchHousehold(db: SupabaseClient, hid: string) {
     車位志願: h.車位志願 ?? [],
     志願落選保底: !!h.志願落選保底,
     社宅: !!h.社宅, // 社會住宅住戶：限公益位（2026-08-16 Q7）
+    工作人員: !!h.工作人員, // 社區工作人員：配位排住戶之後、免收費（辦法伍二（十二））
+    // ⚠️ 這兩個旗標必須回傳，否則住戶登入後編輯登記時前端讀不到 → 送出即被清成 false
     vehicles: vehicles ?? [],
   }
 }

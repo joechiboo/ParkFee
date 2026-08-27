@@ -40,7 +40,7 @@ export function getHousehold(戶號) {
 
 // 登記即註冊。vehicles: [{車號, 車種, 身障, 志願小位}]，第幾輛依陣列序自動給。
 // 回傳建立後的整戶資料；違規拋 RegistrationError。
-export function register({ 戶號, 電話, 社宅, vehicles }) {
+export function register({ 戶號, 電話, 社宅, 工作人員, vehicles }) {
   const hid = normHouse(戶號)
   if (!hid) throw new RegistrationError('請填寫戶號')
   if (!Array.isArray(vehicles) || vehicles.length === 0)
@@ -71,7 +71,7 @@ export function register({ 戶號, 電話, 社宅, vehicles }) {
     if (db.vehicles[v.車號]) throw new RegistrationError(`車號 ${v.車號} 已被其他戶登記`)
   }
 
-  db.households[hid] = { 戶號: hid, 電話: String(電話 ?? '').trim(), 社宅: !!社宅, createdAt: new Date().toISOString() }
+  db.households[hid] = { 戶號: hid, 電話: String(電話 ?? '').trim(), 社宅: !!社宅, 工作人員: !!工作人員, createdAt: new Date().toISOString() }
   for (const v of cleaned) db.vehicles[v.車號] = v
   save(db)
   return getHousehold(hid)
@@ -80,7 +80,7 @@ export function register({ 戶號, 電話, 社宅, vehicles }) {
 // 更新既有戶的登記（編輯）。戶號不可變、且必須已登記。
 // vehicles 整批取代（重新驗證車號全域唯一、重編「第幾輛」）；電話可更新。
 // 回傳更新後的整戶資料；違規拋 RegistrationError。
-export function updateHousehold({ 戶號, 電話, 社宅, vehicles }) {
+export function updateHousehold({ 戶號, 電話, 社宅, 工作人員, vehicles }) {
   const hid = normHouse(戶號)
   if (!hid) throw new RegistrationError('請填寫戶號')
   const db = load()
@@ -117,6 +117,7 @@ export function updateHousehold({ 戶號, 電話, 社宅, vehicles }) {
     ...db.households[hid],
     電話: String(電話 ?? '').trim(),
     ...(社宅 !== undefined ? { 社宅: !!社宅 } : {}),
+    ...(工作人員 !== undefined ? { 工作人員: !!工作人員 } : {}),
   }
   save(db)
   return getHousehold(hid)

@@ -26,7 +26,9 @@
   > 附帶：**登記表不入辦法**（年度/期間/費用/編號範圍年年可動，且無條文引用它）；如要給它正式地位，改在伍二（八）加一句「登記應以管理委員會公告之登記表辦理」即可，比照第 9 條但書的授權寫法。
 - [~] **工作人員登記入口**：✅ 已做＝合成戶號 `員工-<姓名或編號>`（`isStaffHousehold`/`staffHousehold`＋健檢接受）、公告公開版自動隱藏、後端 `household.工作人員` 欄與 register/update-household（migration 0010，**已部署並驗負面路徑**）、紙本表身分別欄。
   > **2026-08-26 定：線上表單開放自勾工作人員，改以「名單比對」把關**（不擋新進同仁）——✅ 健檢腳本已加：比對 `private/staff-roster.txt`（含真名不進版控，可用 `STAFF_ROSTER` 環境變數指路），名單外者列為 ⚠️ 交物業確認；找不到名單時改報 info 不靜默跳過。
-  > **剩兩件**：①`RegisterView` 加工作人員勾選（同社宅那個）②`SelectView` 擋掉公益位與無障礙位。
+  > ✅ **2026-08-27 `RegisterView` 已加工作人員勾選**（含說明：免收費、排住戶之後、住戶未配完暫緩、須讓出）；
+  > 一併補 `register`／`update-household`／**`login` 回傳**（原本 login 沒帶回旗標 → 住戶登入編輯時會被清成 false），三支已部署並驗負面路徑。
+  > **剩一件**：`SelectView` 擋掉公益位與無障礙位（工作人員不得申請）。
   > ✅ **員工名單已改放 Supabase**（migration 0011 `staff_roster`，RLS deny-all／僅 service_role，**已部署**）——換機器免帶檔。健檢讀取順序＝① Supabase（需 `SUPABASE_SERVICE_ROLE_KEY`）② `private/staff-roster.txt`（或 `STAFF_ROSTER` 環境變數）③ 都沒有則報 info 提示。匯入用 `node scripts/import-staff-roster.mjs`（`--list` 可列出目前名單）；離職者將「在職」改 false、勿刪（辦法要求離職前讓出車位，需留紀錄）。
   > ✅ **名單已匯入**（2026-08-26，經 Dashboard SQL 執行）：管理中心編制 11 位在職；空缺崗位（日班機動、晚班AB、晚班機動）未列。
   > ⚠️ 本機 .env 尚無 `SUPABASE_SERVICE_ROLE_KEY` → 健檢目前仍走 `private/staff-roster.txt`（內容相同、結果一致）；要啟用 DB 來源（換機器免帶檔）再把 key 加進 .env 即可。

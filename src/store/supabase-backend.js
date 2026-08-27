@@ -27,8 +27,8 @@ async function invoke(name, body) {
   return data
 }
 
-export async function register({ 戶號, 電話, 社宅, vehicles }) {
-  const data = await invoke('register', { 戶號, 電話, 社宅, vehicles })
+export async function register({ 戶號, 電話, 社宅, 工作人員, vehicles }) {
+  const data = await invoke('register', { 戶號, 電話, 社宅, 工作人員, vehicles })
   return data.household
 }
 
@@ -40,8 +40,8 @@ export async function login(戶號, 車號) {
 // 編輯既有戶（新增/移除車輛、改電話）。戶號不可變。
 // 需對應 Edge Function 'update-household'（伺服器端用 service_role 驗證後整批取代該戶車輛）。
 // 認證車號＝登入時用的車號（擁有權證明），server 端會驗證它目前屬於該戶才允許編輯。
-export async function updateHousehold({ 戶號, 電話, 社宅, vehicles, 認證車號 }) {
-  const data = await invoke('update-household', { 戶號, 電話, 社宅, vehicles, 認證車號 })
+export async function updateHousehold({ 戶號, 電話, 社宅, 工作人員, vehicles, 認證車號 }) {
+  const data = await invoke('update-household', { 戶號, 電話, 社宅, 工作人員, vehicles, 認證車號 })
   return data.household
 }
 
