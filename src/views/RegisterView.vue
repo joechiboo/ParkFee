@@ -192,7 +192,7 @@ async function submit() {
       <label class="flex items-start gap-2 text-sm text-slate-700">
         <input v-model="form.工作人員" type="checkbox" class="mt-0.5 h-4 w-4" />
         <span>
-          <b>社區工作人員</b> — <b>免收費用</b>；車位為住戶配畢後的剩餘位，住戶需要時須讓出
+          <b>社區工作人員</b> — 車位為住戶配畢後的剩餘位，住戶需要時須讓出
           <span class="text-slate-500">（由物業核對身分）</span>
         </span>
       </label>
