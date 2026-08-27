@@ -1,5 +1,11 @@
 // 戶號 / 車號 正規化與驗證 —— 與前端 src/data/household.js、src/data/plate.js 對齊。
 // ⚠️ 伺服器端必須自行正規化/驗證，不可信任前端送來的值。
+//
+// ⚠️⚠️ 改本檔後，**所有引用它的函式都要一起重新部署**，否則會出現「登記過得了、選位過不了」
+//     這種半通不通的狀態（Edge Function 各自打包一份 _shared，不是共用執行期）。
+//     目前引用者：login / register / save-wishes / update-household
+//     一次部署：npx supabase functions deploy login register save-wishes update-household
+//     查有無新增引用者：grep -rl "normalize.ts" supabase/functions/*/index.ts
 
 // 戶號：全形→半形、各式破折號→連字號、去空白、轉大寫。
 export function normalizeHousehold(raw: unknown): string {
