@@ -16,7 +16,14 @@ const householdId = computed(() => sessionHousehold.value?.戶號 || '')
 // 不寫任何裝置儲存 → 同台電腦換住戶/登出即歸零，不會看到上一位的志願。點選順序即志願序。
 const wishes = ref(sessionHousehold.value?.車位志願?.map(String) || [])
 // 電腦選號：志願全落選時是否由系統自動配本棟靠電梯剩位。payload 欄位仍沿用 志願落選保底（後端相容）。
-const computerPick = ref(!!sessionHousehold.value?.志願落選保底)
+// 預設**打勾**：8/27 模擬顯示未勾者在志願落空後多半整輪配不到（84/183 台落選、場上卻還剩 507 格）。
+// 判斷依據是「以前存過志願沒有」而非旗標值本身——後端回的一律是布林 false，
+// 用 ?? 判斷的話剛登記完的人永遠套不到預設。存過志願者沿用自己的選擇。
+const computerPick = ref(
+  sessionHousehold.value?.車位志願?.length
+    ? !!sessionHousehold.value.志願落選保底
+    : true,
+)
 const orderMap = computed(() => {
   const m = new Map()
   wishes.value.forEach((id, i) => m.set(String(id), i + 1))
@@ -166,7 +173,7 @@ function decorate(s) {
 
         <label class="mt-4 flex items-start gap-2 text-xs text-slate-600">
           <input v-model="computerPick" type="checkbox" class="mt-0.5 h-4 w-4" />
-          <span>☑ <b>電腦選號</b>：志願全落選時，改由電腦自動配<b>本棟、靠電梯</b>的剩餘車位（可重現）；不勾＝進候補、等物業處理。</span>
+          <span><b>電腦選號</b>：志願全落選時，改由電腦自動配<b>本棟、靠電梯</b>的剩餘車位（可重現）；不勾＝進候補、等物業處理。</span>
         </label>
 
         <button
