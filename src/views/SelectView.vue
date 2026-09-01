@@ -39,8 +39,14 @@ const isOccupied = (id) => lockedSeats.value.has(String(id))
 const hasHeavy = computed(() => (sessionHousehold.value?.vehicles || []).some((v) => v.車種 === '重機'))
 // 社宅戶：公益位專用（一般戶不可選公益位）。
 const isSocial = computed(() => !!sessionHousehold.value?.社宅)
+// 工作人員（辦法伍二（十二））：只配住戶配畢後之剩餘「一般位」——
+// 公益位屬社宅戶專用、無障礙位留給行動不便者，兩者引擎都不會配給工作人員
+// （distribute.js 工作人員輪的 ok＝!public && type!=='無障礙'）。
+// 這裡一併擋住，否則他把這些位排進志願只是白填、抽完才發現全落空。
+const isStaff = computed(() => !!sessionHousehold.value?.工作人員)
 const selectable = (s) => {
   if (isOccupied(s.id)) return false
+  if (isStaff.value) return !s.public && s.type !== '無障礙'
   if (isSocial.value) return !!s.public
   if (s.public) return false
   return s.type === '大' || s.type === '小' || (s.type === '無障礙' && hasHeavy.value)
@@ -149,6 +155,10 @@ function decorate(s) {
     <p class="mt-1 text-sm text-slate-500">
       在地圖上<b>依想要的順序</b>點選車位（點選順序＝志願 1、2、3…）；抽出順序號後，系統依序分發你「志願中仍剩的最高志願」。
       <span v-if="householdId">目前戶號 <b>{{ householdId }}</b>。</span>
+      <span v-if="isStaff" class="text-amber-700">
+        （社區工作人員：可選<b>一般大／小位</b>；公益位與無障礙位不開放。實際配位排在<b>全體住戶之後</b>，
+        住戶尚未配完時暫緩。）
+      </span>
       <span v-else class="text-amber-700">未登入：可先試排，<RouterLink to="/me" class="underline">登入</RouterLink>後才能儲存（志願需綁戶號才能進配位）。</span>
     </p>
 
@@ -203,7 +213,7 @@ function decorate(s) {
             <template v-else>
               <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(245,158,11,.6)"></span> 大位</span>
               <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(139,92,246,.7)"></span> 小位</span>
-              <span v-if="hasHeavy"><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(148,163,184,.45)"></span> 無障礙（重機戶可選）</span>
+              <span v-if="hasHeavy && !isStaff"><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(148,163,184,.45)"></span> 無障礙（重機戶可選）</span>
             </template>
             <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-rose-500"></span> 已選</span>
           </div>
@@ -211,6 +221,7 @@ function decorate(s) {
           <div class="mb-1 mt-2 font-medium text-slate-600">不可選</div>
           <div class="flex flex-wrap gap-x-3 gap-y-1">
             <span v-if="!isSocial"><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(234,179,8,.6);outline:1.5px solid #a16207"></span> 公益（社宅戶專用）</span>
+            <span v-if="isStaff"><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(148,163,184,.45)"></span> 無障礙（保留給行動不便住戶）</span>
             <template v-else>
               <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(245,158,11,.6)"></span> 大位</span>
               <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(139,92,246,.7)"></span> 小位</span>
