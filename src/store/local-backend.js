@@ -41,6 +41,34 @@ export function getHousehold(戶號) {
 
 // 登記即註冊。vehicles: [{車號, 車種, 身障, 志願小位}]，第幾輛依陣列序自動給。
 // 回傳建立後的整戶資料；違規拋 RegistrationError。
+// 與 supabase-backend.listRoster 同形狀（本機模式：直接讀 localStorage）。
+export function listRoster() {
+  const db = load()
+  const yn = (b) => (b ? 'Y' : 'N')
+  const rows = []
+  for (const v of Object.values(db.vehicles || {})) {
+    const h = db.households?.[v.戶號] || {}
+    rows.push({
+      戶號: v.戶號,
+      車號: v.車號,
+      車種: v.車種,
+      第幾輛: v.第幾輛,
+      身障: yn(v.身障),
+      志願小位: yn(v.志願小位),
+      登記時間: h.createdAt || '',
+      聯絡電話: h.電話 || '',
+      車位志願: Array.isArray(h.車位志願) ? h.車位志願.join('、') : '',
+      志願落選保底: yn(h.志願落選保底),
+      社宅: yn(h.社宅),
+      工作人員: yn(h.工作人員),
+      來源: '線上',
+      車位編號: v.車位編號 || '',
+      已繳費: yn(v.已繳費),
+    })
+  }
+  return { rows, 戶數: new Set(rows.map((r) => r.戶號)).size, 台數: rows.length }
+}
+
 export function register({ 戶號, 電話, 社宅, 工作人員, vehicles }) {
   const hid = normHouse(戶號)
   if (!hid) throw new RegistrationError('請填寫戶號')

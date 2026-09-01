@@ -13,10 +13,10 @@
 - [ ] **⚠️ 已逾期（原訂 8 月底）**：瀏覽器全鏈實測（export-roster → /dev → /allocate → 發佈 → 結果地圖 → 清除復原；兼 8 月模擬收尾）＋ `SeatAdminView` 指派加公益位資格檢查（小、無依賴）
 - [ ] **9/7 前**：`ExportView` UI 接後端（物業看全部＋下載 CSV；核心 `src/export/result.js` 已有，缺「管理員撈全部」的餵資料線）
 - [ ] **9/7 前要決策（8/22 經理會議先問）**：抽籤日誰操作、在哪跑 → 定 **A** 搬線上管理員頁（順帶解「Supabase 名冊→引擎」缺口）或 **B** 留本機 dev＋寫抽籤日 runbook（export-roster 已覆蓋名冊）。12/1 當天物業自己跑→A；使用者帶筆電跑→B
-- [ ] **`/allocate` 加「從 Supabase 載入名冊」按鈕**（＝TODO 下方「Supabase 名冊 → 配位引擎」缺口的具體做法，**A 路線前置**）：
-  現況 `/allocate` 只吃 `/dev` 匯入的 CSV，沒匯入就退回 277 戶 sample（畫面顯示「樣本」而非「✓ 已載入匯入名冊」）→ 想用真實登記得先 `export-roster.mjs` 產 CSV 再匯入兩步，且**需 service_role**。
-  > 作法：加一支管理員專用 Edge Function（或擴充 `assign-seat` 的 `list` op），用 ADMIN_PASSWORD 驗證後回傳完整名冊，前端接進 `importedRoster`。約 1 小時，**不需 service_role**，物業在瀏覽器即可操作。
-  > ⚠️ **取決於 9/7 的 A/B 決策**：採 A（物業自己跑）非做不可；採 B（帶筆電跑）維持 CSV 匯入亦可。做了 A、B 都能用。
+- [x] **`/allocate`「⬇ 載入真實名冊」按鈕** ✅ 2026-09-01：新增 Edge Function `list-roster`（管理員驗證，回傳 registry schema 的 rows，與 export-roster.mjs 同構）→ `db.listRoster()` →前端 `buildRoster` → `setImportedRoster`。**不需 service_role**，物業以管理員密碼登入即可，12/1 不必帶金鑰出門。
+  已部署並驗三條負面路徑（無憑證／錯密碼／冒充管理員戶號但車牌不符，皆 403 不洩漏）。
+  > ⚠️ **尚未以真實資料實跑**（本機 .env 無 service_role 不影響此路徑，但需管理員登入瀏覽器操作）——併入全鏈實測驗。
+  > 連帶：`ExportView` 接後端所缺的「管理員撈全部」資料線同樣可用這支，不必另外開發。
 - [ ] **9/21 前**：抽籤日路線實作完成（A 或 B）＋抽籤畫面補設種子／監察 log
 - [ ] **9/30 前**：**社區幫費用匯入檔產生器** `scripts/build-shequbang-import.mjs`——吃物業月費檔＋配位結果，填「機車清潔費」欄（一般 1,200／重機 3,600 × 位數），**Big5 無 BOM** 輸出；含戶號↔門牌對照表（可先做，不用等配位）＋總額對帳驗證。9/30 前用模擬配位結果驗完，**12/1 只是餵真資料跑一次**。規格與 5 項待確認見 [docs/24](docs/24-社區幫費用匯入.md)
 - [ ] **🧹 11/15 登記開始前：清乾淨所有測試資料**（不清的話真實名冊會混入測試戶，配位結果與社區幫收費檔全錯）。目前 DB 內的測試資料特徵：

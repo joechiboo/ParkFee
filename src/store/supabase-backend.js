@@ -28,6 +28,12 @@ async function invoke(name, body) {
   return data
 }
 
+// 管理員取完整名冊（household/vehicle 為 RLS deny-all，前端只能經此 Edge Function 讀）。
+// 回傳 { rows, 戶數, 台數 }；rows 欄位＝ registry 的 CSV schema，可直接餵 buildRoster()。
+export async function listRoster(auth) {
+  return await invoke('list-roster', auth)
+}
+
 export async function register({ 戶號, 電話, 社宅, 工作人員, vehicles }) {
   const data = await invoke('register', { 戶號, 電話, 社宅, 工作人員, vehicles })
   return data.household

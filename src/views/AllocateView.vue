@@ -5,11 +5,11 @@ import { distributeBikes, BIKE_VIA } from '../lottery/distribute-bikes.js'
 import { motorSeats, bikeSeats } from '../map/seats.js'
 import { displaySeatId, displaySeatIds } from '../map/seat-id.js'
 import { buildRoster } from '../data/registry.js'
-import { importedRoster, importInfo } from '../store/roster.js'
+import { importedRoster, importInfo, setImportedRoster } from '../store/roster.js'
 import { mergedResultCSV, mergedResultRows } from '../export/result.js'
 import { sampleRoster } from '../data/sample.js'
 import { lockedSeats, refreshLocked } from '../store/locked.js'
-import { publishResult } from '../store/db.js'
+import { publishResult, listRoster } from '../store/db.js'
 import { sessionHousehold, adminAuth } from '../store/session.js'
 import { isAdmin } from '../store/roles.js'
 
@@ -45,6 +45,36 @@ const usingImport = computed(() => !!importedRoster.value)
 const registrations = computed(() => importedRoster.value ?? sampleRegs)
 const source = computed(() => (usingImport.value ? importInfo.value || '匯入名冊' : `${SAMPLE_N} 戶樣本`))
 const houseCount = computed(() => new Set(registrations.value.map((r) => r.戶號)).size)
+
+// ── 從 Supabase 直接載入真實名冊（管理員）──
+// 原本只能「export-roster.mjs 產 CSV → /dev 匯入」兩步，且需 service_role（不該帶出門）。
+// 這裡走 list-roster Edge Function，管理員密碼即可 → 12/1 當天物業自己按一顆鈕就行。
+const loadingRoster = ref(false)
+const rosterErr = ref('')
+async function loadFromCloud() {
+  rosterErr.value = ''
+  loadingRoster.value = true
+  try {
+    const { rows, 戶數, 台數 } = await listRoster(adminAuth())
+    if (!rows?.length) {
+      rosterErr.value = '目前沒有任何登記資料'
+      return
+    }
+    const { entries, invalid, conflicts } = buildRoster(rows)
+    setImportedRoster(
+      entries,
+      `Supabase 即時名冊 · ${戶數} 戶 / ${台數} 台` +
+        (invalid.length ? ` · ⚠️ ${invalid.length} 筆無效` : '') +
+        (conflicts.length ? ` · ⚠️ ${conflicts.length} 筆衝突` : ''),
+    )
+    result.value = null // 換名冊 → 先前結果作廢，避免對照到舊資料
+    bikeResult.value = null
+  } catch (e) {
+    rosterErr.value = e?.message || '載入失敗（需管理員登入）'
+  } finally {
+    loadingRoster.value = false
+  }
+}
 
 // ── 抽籤狀態 ──
 const seed = ref('2027樂菲莊園機車車位抽籤')
@@ -175,9 +205,17 @@ function downloadResultCSV(pub = true) {
       名冊來源：<b>{{ source }}</b>（{{ houseCount }} 戶）。
     </p>
 
-    <p v-if="!usingImport" class="mt-2 rounded bg-sky-50 px-3 py-1.5 text-xs text-sky-700">
-      🎲 目前是<b>範例 demo</b>（{{ SAMPLE_N }} 戶樣本）— 任何人可試跑看演算法。抽籤日請在 <b>dev 專區</b>匯入真實名冊。
+    <p v-if="!usingImport" class="mt-2 flex flex-wrap items-center gap-2 rounded bg-sky-50 px-3 py-1.5 text-xs text-sky-700">
+      <span>🎲 目前是<b>範例 demo</b>（{{ SAMPLE_N }} 戶樣本）— 任何人可試跑看演算法。</span>
+      <button
+        v-if="admin"
+        class="rounded bg-sky-700 px-2.5 py-1 font-medium text-white hover:bg-sky-800 disabled:opacity-50"
+        :disabled="loadingRoster"
+        @click="loadFromCloud"
+      >{{ loadingRoster ? '載入中…' : '⬇ 載入真實名冊' }}</button>
+      <span v-else>抽籤日請以<b>管理員</b>登入後載入真實名冊。</span>
     </p>
+    <p v-if="rosterErr" class="mt-1 rounded bg-rose-50 px-3 py-1.5 text-xs text-rose-700">{{ rosterErr }}</p>
     <p v-else class="mt-2 rounded bg-emerald-50 px-3 py-1.5 text-xs text-emerald-700">
       ✓ 已載入<b>匯入名冊</b>，可執行正式抽籤與發佈。
     </p>

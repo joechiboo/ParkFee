@@ -27,6 +27,11 @@ async function backend() {
   return _backend
 }
 
+// 管理員：取完整登記名冊（供 /allocate 抽籤、/export 匯出）。
+export async function listRoster(auth) {
+  return (await backend()).listRoster(auth)
+}
+
 export async function register(input) {
   return (await backend()).register(input)
 }
