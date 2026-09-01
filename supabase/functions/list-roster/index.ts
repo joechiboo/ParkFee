@@ -7,6 +7,12 @@
 //
 // 回傳 rows 的欄位＝ registry.js 的 REGISTRATION_COLUMNS，與 export-roster.mjs 產的 CSV 同構，
 //   前端可直接餵 buildRoster()。
+//
+// 🔒 **最小化原則**：預設**不回傳聯絡電話**——配位引擎與結果匯出都用不到它
+//   （`distribute.js`／`export/result.js` 皆無此欄），抽籤只需要戶號/車種/旗標/志願。
+//   真正要聯絡住戶的場合（如物業催繳）才帶 `含電話: true` 明確索取。
+//   如此即使管理員密碼外流，預設洩漏面不含全社區約 400 筆電話。
+//   ⚠️ 身障／社宅旗標屬敏感類別但**配位必需**（決定輪次與可用車位），無法省略。
 import { corsHeaders, json, adminClient, verifyAdmin } from '../_shared/http.ts'
 
 const yn = (b: unknown) => (b ? 'Y' : 'N')
@@ -19,6 +25,7 @@ Deno.serve(async (req) => {
     const body = await req.json()
     const db = adminClient()
     if (!(await verifyAdmin(db, body))) return json({ error: '管理員驗證失敗' }, 403)
+    const 含電話 = body?.含電話 === true
 
     const { data: households, error: he } = await db
       .from('household')
@@ -43,7 +50,7 @@ Deno.serve(async (req) => {
         身障: yn(v.身障),
         志願小位: yn(v.志願小位),
         登記時間: h.created_at ?? '',
-        聯絡電話: h.電話 ?? '',
+        聯絡電話: 含電話 ? (h.電話 ?? '') : '', // 預設不送（見檔頭最小化原則）
         // 戶層級；buildRoster 會再傳播到同戶各列（車位志願／社宅／工作人員皆同）
         車位志願: Array.isArray(h.車位志願) ? (h.車位志願 as string[]).join('、') : '',
         志願落選保底: yn(h.志願落選保底),
@@ -60,6 +67,7 @@ Deno.serve(async (req) => {
       戶數: new Set(rows.map((r) => r.戶號)).size,
       台數: rows.length,
       產生時間: new Date().toISOString(),
+      含電話,
     })
   } catch (e) {
     console.error('list-roster error:', e)
