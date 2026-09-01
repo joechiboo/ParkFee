@@ -13,8 +13,11 @@ const SEATS = [
   { id: '10', type: '無障礙' },
 ]
 
+// 合成車位的相鄰表：1-2-3-4 連成一排、10（無障礙）獨立。
+// 引擎預設吃 seat-adjacency.json（真實座標），與這些假 id 幾何無關 → 測試一律注入自己的。
+const ADJ = { 1: ['2'], 2: ['1', '3'], 3: ['2', '4'], 4: ['3'], 9: ['12'], 12: ['9'], 90: [], 10: [], 11: ['10'] }
 const run = (registrations, opts = {}) =>
-  distribute({ registrations, seats: SEATS, seed: 'test', ...opts })
+  distribute({ registrations, seats: SEATS, seed: 'test', adjacency: ADJ, ...opts })
 
 describe('distribute — 填志願 + 統一分發（第一階段）', () => {
   it('單戶取志願序中最高可得（志願 3 在 2 之前 → 給 3）', () => {
@@ -125,6 +128,34 @@ describe('distribute — 填志願 + 統一分發（第一階段）', () => {
     })
     expect(r.assigned).toHaveLength(0)
     expect(r.落選[0].原因).toBe(REASON.HEAVY_SHORT)
+  })
+
+  // 相鄰＝實體相鄰（同排橫連／同列直連），不是編號連號。真實地圖上 654 對連號中
+  // 有 71 對其實隔著走道或跨排（最遠 276-277 相距 667 單位）→ 照編號配會給出停不了的兩格。
+  it('重機：編號連號但實體不相鄰 → 不配對（落選 HEAVY_SHORT）', () => {
+    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
+      seats: [{ id: '1', type: '大' }, { id: '2', type: '大' }],
+      adjacency: { 1: [], 2: [] }, // 編號連號、但幾何上不相鄰
+    })
+    expect(r.assigned).toHaveLength(0)
+    expect(r.落選[0].原因).toBe(REASON.HEAVY_SHORT)
+  })
+
+  it('重機：編號不連號但實體相鄰 → 照配（如轉角處 40 與 55 實際貼在一起）', () => {
+    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
+      seats: [{ id: '40', type: '大' }, { id: '55', type: '小' }],
+      adjacency: { 40: ['55'], 55: ['40'] },
+    })
+    expect(r.assigned[0].車位編號).toBe('40、55')
+    expect(r.assigned[0].車位類型).toBe('大、小') // 一大一小可（辦法肆五不限大小）
+  })
+
+  it('重機：兩小位相鄰亦可配', () => {
+    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
+      seats: [{ id: '1', type: '小' }, { id: '2', type: '小' }],
+      adjacency: { 1: ['2'], 2: ['1'] },
+    })
+    expect(r.assigned[0].車位類型).toBe('小、小')
   })
 
   it('重機：有相鄰對時優先配對，不搶無障礙位', () => {

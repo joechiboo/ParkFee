@@ -11,6 +11,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseCSVObjects } from '../src/data/csv.js'
 import { PUBLIC_BIKE_IDS, toBikeId, isBikeId } from '../src/map/seat-id.js'
+const ADJ = JSON.parse(readFileSync('src/map/seat-adjacency.json', 'utf8')).adj
 
 // ── 車位主檔（直接讀 JSON：seats.js 走 import attribute，純 Node 載不動）──
 const cls = JSON.parse(readFileSync('src/map/b1-classification.json', 'utf8'))
@@ -231,6 +232,30 @@ if (staffHouses.length && staffRoster) {
   if (ignored.length)
     add('info', '工作人員登記了身障需求（無障礙位不開放工作人員）',
       '該註記不會生效——無障礙位保留給住戶中行動不便者。若確有需求，請循個案由管委會決定。', ignored)
+}
+
+// 3.7) 物業已指派的重機雙位：必須**實體相鄰**（同排橫連或同列直連）
+// 辦法肆五要求「相鄰之兩個機車位」。引擎配位會自動驗，但**物業在維護頁手動指派、
+// 或 CSV 直接帶車位編號的不會經過引擎** → 這裡補驗，否則車主到現場才發現兩格根本不相連。
+{
+  const bad = []
+  for (const h of all) for (const c of h.cars) {
+    if (c.車種 !== '重機' || !c.車位編號) continue
+    const ids = c.車位編號.split('、').map((x) => x.trim()).filter(Boolean)
+    if (ids.length !== 2) {
+      // 單格只在「無障礙位」時合法（該型較寬，2026-08-24 決）
+      const only = motorById.get(ids[0])
+      if (ids.length === 1 && only?.type === '無障礙') continue
+      bad.push(`${h.戶號} ${c.車號} → ${c.車位編號}（${ids.length} 格，重機應為相鄰兩格或單格無障礙）`)
+      continue
+    }
+    if (!(ADJ[ids[0]] || []).includes(ids[1]))
+      bad.push(`${h.戶號} ${c.車號} → ${ids[0]}、${ids[1]}（編號相連但**實體不相鄰**，隔走道/跨排/轉角）`)
+  }
+  if (bad.length)
+    add('warn', '重機已指派車位不是相鄰兩格',
+      '辦法肆五要求「相鄰之兩個機車位」。實體相鄰＝同排橫連或同列直連、中間不夾其他格；' +
+      '編號連號不等於實體相鄰（真實地圖 654 對連號中有 71 對其實隔著走道）。請物業改派。', bad)
 }
 
 // 4) 車號跨戶重複

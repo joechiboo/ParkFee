@@ -27,6 +27,7 @@ import { mulberry32, hashSeed, seededShuffle } from './rng.js'
 import { KIND } from '../map/seat-id.js'
 import { motorSeats } from '../map/seats.js'
 import towerPriority from '../map/tower-priority.json'
+import seatAdjacency from '../map/seat-adjacency.json'
 
 export const VIA = {
   ACCESSIBLE: '無障礙',
@@ -73,9 +74,16 @@ export const REASON = {
 
 // 車種 → 可停型別（志願篩選用）。重機取相鄰兩格（HEAVY_PAIR_TYPES）或單格無障礙、不走此表。
 const COMPAT = { general: ['大', '小'], small: ['小'] }
-// 重機「相鄰兩格」的配對候選＝一般機車位。**無障礙位不列入配對**：該型車位較寬，
-// 一台重機停一格即足（2026-08-24 使用者確認）→ 走單格路徑，避免一台重機吃掉兩格無障礙位。
+// 重機「相鄰兩格」的配對候選＝一般機車位（大／小不限，可一大一小或兩小——辦法肆五）。
+// **無障礙位不列入配對**：該型車位較寬，一台重機停一格即足（2026-08-24 使用者確認）
+// → 走單格路徑，避免一台重機吃掉兩格無障礙位。
 const HEAVY_PAIR_TYPES = new Set(['大', '小'])
+
+// 相鄰＝**實體相鄰**（同排橫連或同列直連、中間不夾其他格），不是編號連號。
+// 654 對編號連號裡有 71 對其實隔著走道、轉角或跨排（最遠的 276-277 相距 667 單位，
+// 橫跨整個地下室）——照編號配，重機車主會拿到兩個停不了的格子。
+// 資料由 scripts/build-seat-adjacency.mjs 依座標產生；底圖或分類更動後需重跑。
+const REAL_ADJ = seatAdjacency.adj || {}
 
 function toEntry(r, index) {
   return {
@@ -148,7 +156,11 @@ export function distribute({
   runAt = null,
   // 電腦選位候選序：戶號 → 依優先度排好的車位 id 陣列。預設＝本棟靠電梯（tower-priority.json）。可注入供測試。
   computerPickOrder = null,
+  // 車位實體相鄰表 { 車位id: [鄰格id…] }。預設讀 seat-adjacency.json（由座標產生）。
+  // 測試用合成車位（id 與真實地圖撞號但幾何無關）時注入自己的，否則會被真實幾何否決。
+  adjacency = null,
 }) {
+  const ADJ = adjacency ?? REAL_ADJ
   const rng = mulberry32(hashSeed(seed))
   const pool = makePool(seats)
   // 只處理機車列。自行車走另一支引擎（distribute-bikes.js）—— 若不篩掉，toEntry 會把
@@ -209,20 +221,33 @@ export function distribute({
     const wishedAccessible = takeSingle(wishList) // ①
     if (wishedAccessible) return wishedAccessible
 
-    const availNums = usable // ②
+    // ② 相鄰兩格：**實體相鄰**，不是編號連號（見 ADJ 註解）。
+    //    同一格可能有多個鄰居（一排的左右、一列的上下）→ 取編號較小者為夥伴，維持結果可重現。
+    const availIds = usable
       .filter((s) => HEAVY_PAIR_TYPES.has(s.type))
-      .map((s) => +s.id)
-      .sort((a, b) => a - b)
-    const avail = new Set(availNums)
-    const pairAt = (n) => (avail.has(n) && avail.has(n + 1) ? [n, n + 1] : null)
-    const pairOf = (n) => pairAt(n) || (avail.has(n - 1) && avail.has(n) ? [n - 1, n] : null)
-    for (const w of wishList) {
-      const p = pairOf(+w)
-      if (p) return p.map((x) => pool.take(String(x)))
+      .map((s) => String(s.id))
+      .sort((a, b) => +a - +b)
+    const avail = new Set(availIds)
+    // 一格可能左右/上下都有鄰居 → 優先取**編號較大**者，讓指定的格當起點（3 → 3、4 而非 2、3）；
+    // 沒有較大的才回頭取較小的。固定規則＝結果可重現。
+    const partnerOf = (id) => {
+      const ns = (ADJ[String(id)] || [])
+        .filter((n) => avail.has(n) && n !== String(id))
+        .sort((a, b) => +a - +b)
+      return ns.find((n) => +n > +id) ?? ns[ns.length - 1] ?? null
     }
-    for (const n of availNums) {
-      const p = pairAt(n)
-      if (p) return p.map((x) => pool.take(String(x)))
+    const pairFrom = (id) => {
+      if (!avail.has(String(id))) return null
+      const p = partnerOf(id)
+      return p ? [String(id), p].sort((a, b) => +a - +b) : null
+    }
+    for (const w of wishList) {
+      const p = pairFrom(w) // 志願指名的格 + 其可用鄰格
+      if (p) return p.map((x) => pool.take(x))
+    }
+    for (const id of availIds) {
+      const p = pairFrom(id) // 全場最低號可湊對者
+      if (p) return p.map((x) => pool.take(x))
     }
 
     return takeSingle([...accessibleById.keys()]) // ③
