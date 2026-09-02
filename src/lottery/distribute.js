@@ -218,11 +218,7 @@ export function distribute({
       return null
     }
 
-    const wishedAccessible = takeSingle(wishList) // ①
-    if (wishedAccessible) return wishedAccessible
-
-    // ② 相鄰兩格：**實體相鄰**，不是編號連號（見 ADJ 註解）。
-    //    同一格可能有多個鄰居（一排的左右、一列的上下）→ 取編號較小者為夥伴，維持結果可重現。
+    // 相鄰兩格：**實體相鄰**（見 ADJ 註解），不是編號連號。
     const availIds = usable
       .filter((s) => HEAVY_PAIR_TYPES.has(s.type))
       .map((s) => String(s.id))
@@ -241,12 +237,22 @@ export function distribute({
       const p = partnerOf(id)
       return p ? [String(id), p].sort((a, b) => +a - +b) : null
     }
+
+    // ① **依志願序**逐一嘗試，先中者勝：該志願是無障礙位→取單格（該型較寬，一台重機停一格即足，
+    //    2026-08-24 決）；是一般位→取它＋可用鄰格。
+    //    ⚠️ 2026-09-02 手動實測修正：原本先掃「志願中有沒有無障礙位」再看配對，
+    //    導致排第 5 的無障礙位贏過排第 1 的大位（實例：志願 207、262、190、189、197 → 配到 197），
+    //    違反志願序語意。無障礙是**可選的取位方式**，不是優先權。
     for (const w of wishList) {
-      const p = pairFrom(w) // 志願指名的格 + 其可用鄰格
+      const acc = accessibleById.get(String(w))
+      if (acc) return [pool.take(acc.id)]
+      const p = pairFrom(w)
       if (p) return p.map((x) => pool.take(x))
     }
+
+    // ② 志願全落空 → 全場最低號可湊對者
     for (const id of availIds) {
-      const p = pairFrom(id) // 全場最低號可湊對者
+      const p = pairFrom(id)
       if (p) return p.map((x) => pool.take(x))
     }
 
