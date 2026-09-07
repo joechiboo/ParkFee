@@ -97,7 +97,7 @@ export const bylawCurrent = {
 
 export const bylawDraft = {
   title: "停車場管理辦法修訂草案（條文對照）",
-  updatedAt: "2026-08-24",
+  updatedAt: "2026-09-07",
   html: `<blockquote><p>修訂程序：辦法玖「經管委會決議通過後施行之，修正時亦同」→ <strong>例會決議即可生效</strong>；僅換位收費（第 6 條）屬新收費項，例會決議實施＋<strong>下次區權會追認</strong>。⚠️ <strong>自行車位 164 個維持原狀、不修</strong>：641–655 開放停自行車係「現況機車位充足」之管理措施（Q12），非法定車位數變更。機車位大/小分項則待核對後修正（第 1 條）。</p></blockquote>
 <h2>修訂對照表</h2>
 <h3>1. 參二（四）（五） 大／小機車位數量（Q11：現場清點落差）</h3>
@@ -112,9 +112,11 @@ export const bylawDraft = {
 <div class="tbl"><table><thead><tr><th></th><th>條文</th></tr></thead><tbody><tr><td>現行</td><td>（二）社會住宅承租戶單獨辦理。</td></tr><tr><td>修訂</td><td>（二）社會住宅承租戶單獨辦理，<strong>限承租公益設施機車位</strong>（編號如參二所列）；公益設施機車位<strong>不開放一般住戶承租</strong>。</td></tr><tr><td>說明</td><td>公益位用途查明＝保留社會住宅住戶使用</td></tr></tbody></table></div>
 <h3>6. 伍二 增訂（十三） 換位（Q14；區權會追認）</h3>
 <div class="tbl"><table><thead><tr><th></th><th>條文</th></tr></thead><tbody><tr><td>現行</td><td>（無）</td></tr><tr><td>修訂</td><td>（十三）承租戶於完成繳費簽約後，得向管理中心申請<strong>換位至無人承租之車位</strong>，<strong>每次</strong>應繳納作業費<strong>新臺幣壹佰元整</strong>，並開立流水號收據存入社區專戶；<strong>申請過於頻繁致影響管理作業者，管理中心得不予受理</strong>。</td></tr><tr><td>說明</td><td><strong>不設次數上限</strong>（原案「一戶一次」不採），改以「每次收費＋管理中心得拒絕頻繁申請」達成決議之「不可太頻繁」。例會決議通過即實施，列入下次區權會追認；物業於維護頁人工辦理</td></tr></tbody></table></div>
-<h3>7. 伍二（十二） 工作人員（Q15：免費）</h3>
+<h3>7. 伍二（十二） 工作人員 — ❌ 2026-09-03 例會撤回</h3>
+<blockquote><p>例會否決免費案，改為付費比照住戶（每月 100、預繳一年、可退費）＝現行「以相同條件使用」已涵蓋，<strong>條文不動</strong>。下表為原提案，留存備查。</p></blockquote>
 <div class="tbl"><table><thead><tr><th></th><th>條文</th></tr></thead><tbody><tr><td>現行</td><td>（十二）停車資格程序完結後如有剩餘車位，社區工作人員得以相同條件使用；惟應簽立承諾書…</td></tr><tr><td>修訂</td><td>（十二）停車資格程序完結後如有剩餘車位，社區工作人員得申請使用，<strong>免收維護管理費</strong>；惟應簽立承諾書…（其餘文字不變）</td></tr><tr><td>說明</td><td>「相同條件」費用疑義以決議定為免收</td></tr></tbody></table></div>
-<h3>8. 費用名稱統一為「維護清潔費」（法源：財務辦法）</h3>
+<h3>8. 費用名稱統一為「維護清潔費」 — ❌ 2026-09-03 例會撤回</h3>
+<blockquote><p>提案人誤會，現行「維護管理費」不改；伍二（六）、柒二及附件一相關修正全部撤回。下表為原提案，留存備查。</p></blockquote>
 <div class="tbl"><table><thead><tr><th></th><th>條文</th></tr></thead><tbody><tr><td>現行</td><td>伍二（六）「一次性繳納一年<strong>維護管理費</strong>」；柒二「停車<strong>維護管理費</strong>繳費標準」；<br>【附件一】五「<strong>承租金額</strong>：每一機車停車位每月新臺幣 100 元…一次繳清<strong>租金</strong>」。</td></tr><tr><td>修訂</td><td>上開「維護管理費」「承租金額」「租金」一律修正為「<strong>維護清潔費</strong>」。</td></tr><tr><td>說明</td><td>① 辦法柒一本文即為「汽（機）車車位<strong>維護清潔費</strong>」，內部用語不一；<br>② 財務管理辦法柒二（二）入帳科目為「停車位<strong>清潔費</strong>收入」、壹拾二（一）4「所有公共設施出租，<strong>均以清潔費名義作收入</strong>」→ 統一名稱與財務辦法及實際入帳一致，避免以「租金」名義收費衍生課稅疑義。<br>③ 僅為名稱統一，<strong>金額與繳納方式均不變</strong>。</td></tr></tbody></table></div>
 <h3>9. 肆十五 機車位得停放自行車之授權（Q12）</h3>
 <div class="tbl"><table><thead><tr><th></th><th>條文</th></tr></thead><tbody><tr><td>現行</td><td>十五、機車請放置於機車停車位；自行車請放置於自行車停車位，機車區不得放置自行車，自行車區不得放置機車。</td></tr><tr><td>修訂</td><td>十五、機車請放置於機車停車位；自行車請放置於自行車停車位，機車區不得放置自行車，自行車區不得放置機車；<strong>但機車停車位總數供給有餘裕時，得經管委會決議指定部分機車停車位開放停放自行車</strong>。</td></tr><tr><td>說明</td><td>本條本文<strong>全面禁止</strong>機車區停放自行車，管委會遇自行車位不足時無從因應（8/16「641–655 開放停自行車」之決議即與本文抵觸，現況亦有住戶停放）→ 增列但書補上法源。<br>但書設兩道限制，避免變成無限度挪用收費車位：①<strong>以機車位總數供給有餘裕為前提</strong>（有無餘裕由管委會依當年登記情形認定）②<strong>限指定部分區域</strong>，非全面開放。<br>開放之車位編號屬管理措施、<strong>不入條文</strong>，日後增減免修辦法。⚠️ 641–655 是否開放另由例會決議（20 第 1 題）；<strong>縱使收回不開放，本但書仍建議保留</strong>作為日後彈性</td></tr></tbody></table></div>
@@ -128,6 +130,8 @@ export const bylawDraft = {
 <div class="tbl"><table><thead><tr><th></th><th>條文</th></tr></thead><tbody><tr><td>現行</td><td>四、本社區機車停車位承租期限：自 ＿＿＿＿＿ 至 ＿＿＿＿＿ 止。</td></tr><tr><td>修訂</td><td>四、本社區機車停車位承租期限：自民國 <strong>＿＿＿</strong> 年<strong>一月一日</strong>起至<strong>同年十二月三十一日</strong>止。</td></tr><tr><td>說明</td><td>承租期間業經 2026-08-16 決議採<strong>曆年制</strong>（Q4），惟本附件契約範本之起訖欄位<strong>兩端全空</strong>，每年簽約須逐份手寫起訖日，易漏填、誤寫或各份不一致 → 依決議把<strong>月日固定寫死、僅留年度空格</strong>。<br>如此每年簽約<strong>只需填一個年度數字</strong>，月日不可能寫錯；且因年度由簽約時填入，<strong>不因簽約時點而異</strong>（候補者於次年 1 月遞補簽約時，仍填當年度，不會誤指下一年）。<br>不採「自次年一月一日起」之相對寫法：契約一旦脫離簽署情境，「次年」相對於何時並不明確，1 月遞補簽署者尤易誤解為再下一年。<br>年度不入條文 → <strong>日後年年適用、免再修正本辦法</strong>。退費仍依【附件一】六按剩餘月份計算，基準與曆年一致。</td></tr></tbody></table></div>
 <h3>14. 【附件二】三（六）誤植更正、四 使用期限比照附件一</h3>
 <div class="tbl"><table><thead><tr><th></th><th>條文</th></tr></thead><tbody><tr><td>現行</td><td>三（六）<strong>機車停車位</strong>限樂菲莊園社區住戶（或承租戶）…<br>四、本社區自行車停車位使用期限：自 ＿＿＿＿＿ 至 ＿＿＿＿＿ 止。</td></tr><tr><td>修訂</td><td>三（六）「機車停車位」修正為「<strong>自行車停車位</strong>」。<br>四、本社區自行車停車位使用期限：自民國 <strong>＿＿＿</strong> 年<strong>一月一日</strong>起至<strong>同年十二月三十一日</strong>止。</td></tr><tr><td>說明</td><td>①三（六）係自機車合約（附件一）轉抄未改之<strong>明顯誤植</strong>，趁本次更正。<br>②四、比照第 13 條附件一之處理：月日固定、僅留年度空格——自行車與機車同梯辦理、同採曆年，兩份文件應一致。<br>③<strong>表單欄位</strong>：原比照附件一列「車號」欄，惟自行車無車牌（系統以戶號綁定）→ 改為「<strong>自行車特徵</strong>」（廠牌、顏色）；並於簽章欄增列「<strong>已領取識別貼紙 ＿ 張</strong>」，發放時當場簽收、省一份簽收單。</td></tr></tbody></table></div>
+<h3>15. 伍二（六）、【附件一】標題 「承租合約書」正名為「使用承諾書」（2026-09-03 例會新增）</h3>
+<div class="tbl"><table><thead><tr><th></th><th>條文</th></tr></thead><tbody><tr><td>現行</td><td>伍二（六）「至管理中心簽署機車停車位<strong>承租合約書</strong>」；【附件一】機車停車位<strong>承租合約書</strong></td></tr><tr><td>修訂</td><td>「承租合約書」改為「<strong>使用承諾書</strong>」（兩處）</td></tr><tr><td>說明</td><td>與附件二「自行車停車位使用承諾書」、伍二（十二）工作人員「承諾書」用語一致，並淡化租賃色彩。名稱二擇一（使用承諾書／使用合約書）由主委定，本文先採前者。</td></tr></tbody></table></div>
 <hr>
 <blockquote><p>延伸（未納入本案，供委員參考）：辦法及附件一多處使用「承租／出租／退租」等租賃用語，如管委會認為有必要一併正名為「使用／申請／終止使用」，範圍較大，建議另案處理。</p></blockquote>
 <hr>`,
