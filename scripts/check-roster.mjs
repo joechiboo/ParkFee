@@ -54,7 +54,7 @@ async function fetchLocked() {
 }
 
 // ── 工作人員名單（可選）──
-// 線上表單開放芳鄰自行勾選「工作人員」（免收費用）→ 系統無從驗證身分，
+// 線上表單開放芳鄰自行勾選「工作人員」（配位排住戶之後）→ 系統無從驗證身分，
 // 故比對名單，**名單外者標記交物業確認**（不自動剔除：可能是新進同仁或名單未更新）。
 //
 // 來源順序：① Supabase public.staff_roster（需 service_role，換機器免帶檔）
@@ -198,7 +198,7 @@ if (staffHouses.length && staffRoster) {
   if (unknown.length)
     add('warn', '登記為工作人員但不在員工名單中',
       '線上表單可自行勾選、系統無從驗證 → 請物業逐筆確認是否確為社區工作人員（可能是新進同仁或名單未更新）。' +
-      '工作人員免收費用、配位排住戶之後。',
+      '工作人員配位排住戶之後，費用比照住戶（2026-09-03 例會否決免費案）。',
       unknown.map((h) => `${h.戶號}（${h.cars.map((c) => c.車號).join('、')}）`))
 } else if (staffHouses.length && !staffRoster) {
   add('info', '有工作人員登記，但找不到員工名單可比對',

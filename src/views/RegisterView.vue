@@ -21,7 +21,7 @@ const form = reactive({
   戶號: '',
   電話: '',
   社宅: false, // 社會住宅住戶：選位/配位限公益位（2026-08-16 決議）
-  工作人員: false, // 社區工作人員：配位排全體住戶之後、免收費（辦法伍二（十二））
+  工作人員: false, // 社區工作人員：配位排全體住戶之後，費用比照住戶（辦法伍二（十二）；2026-09-03 例會否決免費案）
   vehicles: [blankVehicle()],
 })
 const error = ref('')
@@ -210,7 +210,8 @@ async function submit() {
       <label class="flex items-start gap-2 text-sm text-slate-700">
         <input v-model="form.工作人員" @change="onStaffToggle" type="checkbox" class="mt-0.5 h-4 w-4" />
         <span>
-          <b>社區工作人員</b> — 車位為住戶配畢後的剩餘位，住戶需要時須讓出
+          <b>社區工作人員</b> — 車位為住戶配畢後的剩餘位，住戶需要時須讓出；
+          費用比照住戶（一般 1,200 元／年），讓出或離職時按剩餘月份退費
           <span class="text-slate-500">（由物業核對身分）</span>
         </span>
       </label>

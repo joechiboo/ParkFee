@@ -33,7 +33,7 @@ export function isValidHousehold(raw) {
 // 用姓名而非流水號＝物業不必另外維護對照表（2026-08-26 決）；姓名不外洩，因公告公開版已隱藏工作人員。
 const STAFF_RE = /^員工-.+$/
 
-// 是否為工作人員之合成戶號（非住戶）。配位時排在住戶之後、免收費（辦法伍二（十二））。
+// 是否為工作人員之合成戶號（非住戶）。配位時排在住戶之後，費用比照住戶（辦法伍二（十二））。
 export function isStaffHousehold(raw) {
   return STAFF_RE.test(normalizeHousehold(raw))
 }
