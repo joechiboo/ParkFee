@@ -44,3 +44,8 @@ logs
 # 社區幫真實帳務檔（含各戶費額）
 *管理費*.csv
 public/print/archive/
+
+# 公告用 PDF 產出（docs/pdf/）— 一份 4MB 起跳，全部由 docs 原始檔重生，不進版控。
+# 產法見 docs/README.md「公告 PDF」；例外：經理提供的合併版原件重生不出來，
+# 需要時向經理索取，勿依賴本機留存。
+docs/pdf/

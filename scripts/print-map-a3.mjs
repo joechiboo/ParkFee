@@ -4,6 +4,7 @@
 // 中文用標楷體（C:\Windows\Fonts\kaiu.ttf）內嵌；離線或抓不到鎖定清單時仍出圖，只是不畫鎖定圈。
 // 用法：node scripts/print-map-a3.mjs        → public/print/b1-map-a3.pdf（全部車位）
 //       node scripts/print-map-a3.mjs --bike → public/print/b1-bike-map-a3.pdf（只印自行車位）
+//       --label「附件四」 → 標題前加標籤（併入公告文件用）；--out <路徑> → 另存他處
 //
 // --bike 的用途：自行車 164 格全擠在右下角一小塊，混在全區圖裡號碼小到看不清。
 // 只印自行車時裁切範圍自動縮到該區 → 同樣一張 A3 但放大數倍，號碼看得清楚，
@@ -117,7 +118,11 @@ if (rx1 > 825 && ry0 < 1070) {
 
 // 標題 + 產出日期
 const today = new Date().toISOString().slice(0, 10)
-const TITLE = BIKE_ONLY ? 'B1 自行車位配置圖' : 'B1 停車場車位配置圖'
+// --label「附件四」：併入公告文件時，首頁左上角需標示這是第幾份附件。
+// 本圖左上角就是標題列，故把標籤寫進標題，不另外蓋章（見 scripts/stamp-attachment.mjs）。
+const labelAt = process.argv.indexOf('--label')
+const LABEL = labelAt > 0 ? process.argv[labelAt + 1] : ''
+const TITLE = (LABEL ? LABEL + '　' : '') + (BIKE_ONLY ? 'B1 自行車位配置圖' : 'B1 停車場車位配置圖')
 page.drawText(TITLE, { x: MARGIN, y: PH - MARGIN - 16, size: 18, font: zh, color: rgb(0.08, 0.09, 0.11) })
 page.drawText(today + (locked ? '' : '（無鎖定資料）'), { x: MARGIN + zh.widthOfTextAtSize(TITLE, 18) + 14, y: PH - MARGIN - 15, size: 10, font: zh, color: rgb(0.45, 0.48, 0.55) })
 
@@ -182,9 +187,13 @@ if (locked) {
 page.drawCircle({ x: lx + 5, y: ly + 4, size: 5, borderColor: rgb(0.83, 0.66, 0.12), borderWidth: 1.6, opacity: 0 })
 page.drawText('公益位（社宅）', { x: lx + 13, y: ly, size: 10.5, font: zh, color: rgb(0.1, 0.1, 0.12) })
 
-mkdirSync('public/print', { recursive: true })
+// --out：指定輸出路徑（公告用的附件四另存一份，不動 public/print 的常態圖）
+const outAt = process.argv.indexOf('--out')
+const BASE = outAt > 0
+  ? process.argv[outAt + 1].replace(/\.pdf$/i, '')
+  : (BIKE_ONLY ? 'public/print/b1-bike-map-a3' : 'public/print/b1-map-a3')
+mkdirSync(BASE.replace(/[^/]*$/, '') || '.', { recursive: true })
 const bytes = await pdf.save()
-const BASE = BIKE_ONLY ? 'public/print/b1-bike-map-a3' : 'public/print/b1-map-a3'
 let out = BASE + '.pdf'
 try {
   writeFileSync(out, bytes)
