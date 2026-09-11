@@ -26,6 +26,7 @@ export const REGISTRATION_COLUMNS = [
   '車位志願',
   '志願落選保底',
   '社宅',
+  '工作人員',
   '來源',
 ]
 
