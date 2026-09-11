@@ -27,6 +27,7 @@ const nav = [
   { to: '/allocate', label: '配位' },
   { to: '/result', label: '結果' },
   { to: '/patrol', label: '巡邏稽核', adminOnly: true },
+  { to: '/rules', label: '住戶說明' },
   { to: '/bylaw', label: '辦法' },
 ]
 const visibleNav = computed(() => nav.filter((i) => !i.adminOnly || isAdmin(sessionHousehold.value)))

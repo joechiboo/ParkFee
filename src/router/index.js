@@ -24,6 +24,13 @@ const routes = [
   },
   { path: '/result', name: 'result', component: () => import('../views/ResultView.vue'), meta: { title: '結果' } },
   {
+    path: '/rules',
+    name: 'rules',
+    component: () => import('../views/RulesView.vue'),
+    meta: { title: '住戶說明' },
+    // 公開：住戶最常看的一頁（登記/抽籤/繳費怎麼進行），內容由 docs/01 產生。
+  },
+  {
     path: '/bylaw',
     name: 'bylaw',
     component: () => import('../views/BylawView.vue'),

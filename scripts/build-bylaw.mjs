@@ -176,6 +176,9 @@ const js = (s) => `\`${s.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$
 
 const current = convert('docs/05-停車場管理辦法.md')
 const draft = convert('docs/19-辦法修訂草案.md')
+// 住戶說明頁（/rules）＝條文的白話版。與辦法同一條產線，改決議只要改 docs/01 重跑，
+// 不會再出現「手寫靜態頁與條文各說各話」（原 public/rules.html 即因手維護而過期三個月）。
+const rules = convert('docs/01-車位使用實施細則.md')
 
 copyFileSync('docs/19-辦法修訂草案-標紅版.html', 'public/bylaw-redline.html')
 // 例會提案單一頁版也上線：委員在 LINE 收連結即可看，免傳檔
@@ -185,7 +188,8 @@ const outPath = 'src/data/bylaw-content.js'
 writeFileSync(
   outPath,
   `// ⚠️ 本檔由 scripts/build-bylaw.mjs 產生，請勿手改。
-// 條文來源：docs/05-停車場管理辦法.md（現行）、docs/19-辦法修訂草案.md（草案）。
+// 條文來源：docs/05-停車場管理辦法.md（現行）、docs/19-辦法修訂草案.md（草案）、
+//           docs/01-車位使用實施細則.md（住戶說明頁 /rules）。
 // 改完 docs 後跑 npm run build:bylaw 重生（npm run build 也會自動先跑）。
 export const bylawCurrent = {
   title: ${JSON.stringify(current.title)},
@@ -199,6 +203,12 @@ export const bylawDraft = {
   updatedAt: ${JSON.stringify(draft.updatedAt)},
   html: ${js(draft.html)},
 }
+
+export const houseRules = {
+  title: ${JSON.stringify(rules.title)},
+  updatedAt: ${JSON.stringify(rules.updatedAt)},
+  html: ${js(rules.html)},
+}
 `,
   'utf8',
 )
@@ -206,4 +216,5 @@ export const bylawDraft = {
 console.log(`✅ ${outPath}`)
 console.log(`   現行辦法 ${current.html.length} 字元（更新 ${current.updatedAt}，沿革 ${current.revisions.length} 筆）`)
 console.log(`   修訂草案 ${draft.html.length} 字元（更新 ${draft.updatedAt}）`)
+console.log(`   住戶說明 ${rules.html.length} 字元（更新 ${rules.updatedAt}）`)
 console.log('✅ public/bylaw-redline.html（全文標紅版，另開列印用）')

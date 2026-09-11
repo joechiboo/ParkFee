@@ -8,7 +8,6 @@ const router = useRouter()
 
 // 標紅全文（另開列印用）：由 build-bylaw.mjs 從 docs 複製到 public。
 const redlineUrl = `${import.meta.env.BASE_URL}bylaw-redline.html`
-const rulesUrl = `${import.meta.env.BASE_URL}rules.html`
 
 // 可下載表單：檔案放 public/forms/，Vite 原樣部署 → 網址即 BASE_URL + forms/檔名。
 // 新增表單＝把檔案丟進 public/forms/ 再往下面陣列加一列即可。
@@ -101,7 +100,7 @@ function go(key) {
     </div>
 
     <!-- 條文本文 -->
-    <article class="prose mt-6 rounded-lg border border-slate-200 bg-white p-5 sm:p-7" v-html="doc.html" />
+    <article class="doc-prose mt-6 rounded-lg border border-slate-200 bg-white p-5 sm:p-7" v-html="doc.html" />
 
     <!-- 表單下載：辦法附件的可填寫檔案 -->
     <div class="mt-6 rounded-lg border border-slate-200 bg-white p-5">
@@ -126,106 +125,8 @@ function go(key) {
 
     <p class="mt-6 text-sm text-slate-500">
       看不慣條文？
-      <a :href="rulesUrl" class="text-indigo-600 underline">住戶說明頁</a>
-      用白話整理了時序、兩條配位路徑與常見問題。
+      <RouterLink to="/rules" class="text-indigo-600 underline">住戶說明</RouterLink>
+      用白話整理了時程、配位方式、繳費與常見問題。
     </p>
   </section>
 </template>
-
-<style scoped>
-/* v-html 進來的條文沒有 Tailwind class，這裡用 :deep 統一排版（本專案沒裝 typography 外掛）。 */
-.prose :deep(h2) {
-  margin: 2rem 0 0.75rem;
-  border-left: 4px solid #0f172a;
-  padding-left: 0.6rem;
-  font-size: 1.15rem;
-  font-weight: 800;
-  line-height: 1.6;
-}
-.prose :deep(h2:first-child) {
-  margin-top: 0;
-}
-.prose :deep(h3) {
-  margin: 1.5rem 0 0.5rem;
-  font-size: 1rem;
-  font-weight: 700;
-  color: #334155;
-}
-.prose :deep(p) {
-  margin: 0.7rem 0;
-  line-height: 1.9;
-  text-align: justify;
-}
-.prose :deep(ul),
-.prose :deep(ol) {
-  margin: 0.6rem 0;
-  padding-left: 1.4rem;
-  line-height: 1.9;
-}
-.prose :deep(ul) {
-  list-style: none;
-  padding-left: 0.9rem;
-}
-.prose :deep(ol) {
-  list-style: decimal;
-}
-.prose :deep(li) {
-  margin: 0.35rem 0;
-}
-.prose :deep(li > ul) {
-  margin: 0.35rem 0 0.35rem 1.1rem;
-}
-.prose :deep(strong) {
-  font-weight: 700;
-  color: #0f172a;
-}
-.prose :deep(code) {
-  border-radius: 0.25rem;
-  background: #f1f5f9;
-  padding: 0.1rem 0.35rem;
-  font-size: 0.9em;
-}
-.prose :deep(a) {
-  color: #4f46e5;
-  text-decoration: underline;
-}
-.prose :deep(blockquote) {
-  margin: 0.8rem 0;
-  border-left: 3px solid #cbd5e1;
-  background: #f8fafc;
-  padding: 0.5rem 0.9rem;
-  color: #475569;
-  font-size: 0.93em;
-}
-.prose :deep(blockquote p) {
-  margin: 0.25rem 0;
-}
-.prose :deep(hr) {
-  margin: 2rem 0;
-  border: 0;
-  border-top: 1px solid #e2e8f0;
-}
-/* 表格較寬，手機讓它自己橫向捲，不要把整頁撐開 */
-.prose :deep(.tbl) {
-  margin: 0.9rem 0;
-  overflow-x: auto;
-}
-.prose :deep(table) {
-  min-width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-}
-.prose :deep(th),
-.prose :deep(td) {
-  border: 1px solid #e2e8f0;
-  padding: 0.45rem 0.7rem;
-  text-align: left;
-  vertical-align: top;
-  line-height: 1.7;
-}
-.prose :deep(th) {
-  background: #f8fafc;
-  font-weight: 700;
-  white-space: nowrap;
-}
-</style>

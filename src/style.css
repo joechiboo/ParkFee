@@ -19,3 +19,100 @@
     cursor: not-allowed;
   }
 }
+
+/* 文件排版 — 由 docs/*.md 轉出的 HTML（辦法 /bylaw、住戶說明 /rules）沒有 Tailwind class，
+   統一在此排版（本專案沒裝 typography 外掛）。兩頁共用，勿在各 view 內各寫一份。 */
+.doc-prose h2 {
+  margin: 2rem 0 0.75rem;
+  border-left: 4px solid #0f172a;
+  padding-left: 0.6rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.6;
+}
+.doc-prose h2:first-child {
+  margin-top: 0;
+}
+.doc-prose h3 {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #334155;
+}
+.doc-prose p {
+  margin: 0.7rem 0;
+  line-height: 1.9;
+  text-align: justify;
+}
+.doc-prose ul,
+.doc-prose ol {
+  margin: 0.6rem 0;
+  padding-left: 1.4rem;
+  line-height: 1.9;
+}
+.doc-prose ul {
+  list-style: none;
+  padding-left: 0.9rem;
+}
+.doc-prose ol {
+  list-style: decimal;
+}
+.doc-prose li {
+  margin: 0.35rem 0;
+}
+.doc-prose li > ul {
+  margin: 0.35rem 0 0.35rem 1.1rem;
+}
+.doc-prose strong {
+  font-weight: 700;
+  color: #0f172a;
+}
+.doc-prose code {
+  border-radius: 0.25rem;
+  background: #f1f5f9;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.9em;
+}
+.doc-prose a {
+  color: #4f46e5;
+  text-decoration: underline;
+}
+.doc-prose blockquote {
+  margin: 0.8rem 0;
+  border-left: 3px solid #cbd5e1;
+  background: #f8fafc;
+  padding: 0.5rem 0.9rem;
+  color: #475569;
+  font-size: 0.93em;
+}
+.doc-prose blockquote p {
+  margin: 0.25rem 0;
+}
+.doc-prose hr {
+  margin: 2rem 0;
+  border: 0;
+  border-top: 1px solid #e2e8f0;
+}
+/* 表格較寬，手機讓它自己橫向捲，不要把整頁撐開 */
+.doc-prose .tbl {
+  margin: 0.9rem 0;
+  overflow-x: auto;
+}
+.doc-prose table {
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.doc-prose th,
+.doc-prose td {
+  border: 1px solid #e2e8f0;
+  padding: 0.45rem 0.7rem;
+  text-align: left;
+  vertical-align: top;
+  line-height: 1.7;
+}
+.doc-prose th {
+  background: #f8fafc;
+  font-weight: 700;
+  white-space: nowrap;
+}
