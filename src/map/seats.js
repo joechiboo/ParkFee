@@ -7,7 +7,7 @@
 // 號碼為單一序列 1..655，實體 655 格全在（無缺號）。498（漏水）已恢復為大位，改用 locked_seat「維修」鎖定排除
 //   （與保留/動線位同一機制，物業維護頁可解鎖）。大/小/無障礙分佈仍在盤點中。
 
-import classification from './b1-classification.json'
+import classification from './b1-classification.json' with { type: 'json' }
 import { toBikeId, compareSeatId, KIND, PUBLIC_BIKE_IDS } from './seat-id.js'
 
 export const FLOOR = 'B1'

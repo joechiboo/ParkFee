@@ -26,8 +26,8 @@
 import { mulberry32, hashSeed, seededShuffle } from './rng.js'
 import { KIND } from '../map/seat-id.js'
 import { motorSeats } from '../map/seats.js'
-import towerPriority from '../map/tower-priority.json'
-import seatAdjacency from '../map/seat-adjacency.json'
+import towerPriority from '../map/tower-priority.json' with { type: 'json' }
+import seatAdjacency from '../map/seat-adjacency.json' with { type: 'json' }
 
 export const VIA = {
   ACCESSIBLE: '無障礙',
