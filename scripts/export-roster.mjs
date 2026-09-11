@@ -11,8 +11,9 @@
 //
 // CSV schema 與 registry.js 一致：戶號,車號,車種,第幾輛,身障,志願小位,登記時間,聯絡電話,車位志願,志願落選保底,來源
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
+import { readFileSync, mkdirSync, existsSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
+import { writeCsvUtf8 } from './lib/csv-out.mjs'
 
 // ── 讀 env（process.env 優先，否則解析 .env）──
 function loadEnv() {
@@ -85,7 +86,7 @@ const csv = '﻿' + [COLUMNS.join(','), ...rows.map((r) => COLUMNS.map((c) => es
 if (!existsSync('private')) mkdirSync('private')
 const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '').replace(/(\d{8})(\d{4})/, '$1-$2')
 const out = `private/roster-${stamp}.csv`
-writeFileSync(out, csv, 'utf8')
+writeCsvUtf8(out, csv)
 
 console.log(`✓ 匯出 ${rows.length} 筆車輛 / ${households.length} 戶 → ${out}`)
 console.log('  下一步：把這份 CSV 匯入 AllocateView（/allocate）跑抽籤，或交給物業。')

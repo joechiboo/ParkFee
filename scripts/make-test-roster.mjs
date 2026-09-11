@@ -11,8 +11,9 @@
 //   node scripts/make-test-roster.mjs            # 補到 400 台
 //   node scripts/make-test-roster.mjs 250        # 補到 250 台
 //   node scripts/make-test-roster.mjs 400 --no-edge   # 不加邊角案例
-import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs'
+import { mkdirSync, existsSync, readFileSync } from 'node:fs'
 import { sampleRoster } from '../src/data/sample.js'
+import { writeCsvUtf8 } from './lib/csv-out.mjs'
 
 const COLUMNS = [
   '戶號', '車號', '車種', '第幾輛', '身障', '志願小位', '登記時間',
@@ -135,7 +136,7 @@ const csv = '﻿' + [COLUMNS.join(','), ...rows.map((r) => COLUMNS.map((c) => es
 
 if (!existsSync('private')) mkdirSync('private')
 const out = `private/roster-test-${TARGET}.csv`
-writeFileSync(out, csv, 'utf8')
+writeCsvUtf8(out, csv)
 
 const houses = new Set(rows.map((r) => r.戶號)).size
 const motors = rows.filter((r) => r.車種 !== '自行車').length

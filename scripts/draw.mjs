@@ -14,13 +14,14 @@
 //
 // 名冊 CSV 欄位＝registry schema（export-roster.mjs 產出的那種）：
 //   戶號,車號,車種,第幾輛,身障,志願小位,登記時間,聯絡電話,車位志願,志願落選保底,社宅,工作人員,來源,車位編號,已繳費
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { parseCSVObjects } from '../src/data/csv.js'
 import { buildRoster } from '../src/data/registry.js'
 import { distribute } from '../src/lottery/distribute.js'
 import { distributeBikes } from '../src/lottery/distribute-bikes.js'
 import { mergedResultCSV } from '../src/export/result.js'
 import { motorSeats, bikeSeats } from '../src/map/seats.js'
+import { writeCsvUtf8 } from './lib/csv-out.mjs'
 
 function arg(name, fallback = null) {
   const i = process.argv.indexOf(`--${name}`)
@@ -123,7 +124,7 @@ if (Object.keys(reasons).length) {
 
 // ── 4. 輸出 ──
 if (outPath) {
-  writeFileSync(outPath, mergedResultCSV([motor, bikes], { 公告日 }), 'utf8')
+  writeCsvUtf8(outPath, mergedResultCSV([motor, bikes], { 公告日 }))
   const n = (motor.summary.assigned + motor.summary.落選) + (bikes.summary.assigned + bikes.summary.落選)
   console.log('')
   console.log(`已寫出 ${outPath}（${n} 列）`)
