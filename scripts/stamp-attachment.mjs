@@ -23,7 +23,7 @@ const TOP = 26 // 距上緣（pt）——四份的首行內容都在 y≥44，�
 
 // 2026-09-03 例會議題六決議所列之附件。附件四見檔頭說明。
 const DEFAULTS = [
-  ['docs/管委會例會提案單 - 停車場管理.pdf', '議題六　附件一'],
+  ['docs/pdf/20-例會提案單-A4.pdf', '議題六　附件一'], // 由 docs/20-例會提案單-A4.html 重生
   ['docs/pdf/01-車位使用實施細則_20260908.pdf', '議題六　附件二'],
   ['docs/pdf/19-辦法修訂草案-標紅版_20260908.pdf', '議題六　附件三'],
 ]
@@ -36,6 +36,7 @@ async function stamp(file, label) {
   const pdf = await PDFDocument.load(readFileSync(file))
   const keywords = pdf.getKeywords() || ''
   const stamped = keywords.includes(MARK)
+  const prevLabel = keywords.match(new RegExp(`${MARK}:(.*)`))?.[1]?.trim() || ''
   if (stamped && !FORCE) {
     console.log(`↷ ${file} 已有標籤，略過（要改字加 --force）`)
     return
@@ -45,11 +46,13 @@ async function stamp(file, label) {
   const page = pdf.getPages()[0]
   const { height } = page.getSize()
   if (stamped) {
-    // 舊標籤蓋白：標籤落在頁緣空白處，這塊白底不會吃到內容
+    // 舊標籤蓋白。寬度必須量舊標籤本身——早期寫死 220pt，把提案單置中的大標題
+    // 「管委會例會提案」整段洗成白色（標籤只到 ~105pt，標題從 ~170pt 開始），
+    // 合併版 v1.1 就是這樣出去的。要重蓋只清掉舊字佔的範圍。
     page.drawRectangle({
       x: X - 4,
       y: height - TOP - SIZE - 4,
-      width: 220,
+      width: font.widthOfTextAtSize(prevLabel || label, SIZE) + 8,
       height: SIZE + 10,
       color: rgb(1, 1, 1),
     })

@@ -61,6 +61,13 @@
 > 2026-09 例會公告＝經理的會議紀錄本文 ＋ 議題六附件一（提案單）／二（實施細則）／三（標紅版）／四（B1 配置圖）。
 > ⚠️ 經理提供的合併版原件（本文那幾頁）**我們重生不出來**，需要時向經理索取。
 
+合併版沿革：v1.0 經理原版 → v1.1 換上蓋標籤的附件（**漏了附件一**）→ **v1.2 只給附件一～四**（22 頁，
+不含本文）——主委尚未審完本文，經理要附件單獨一份自行併。合併後務必逐份確認四個標籤都在：
+
+```
+node --input-type=module -e "import * as m from 'mupdf';import {readFileSync} from 'node:fs';const d=m.Document.openDocument(readFileSync('<檔案>'),'application/pdf');for(let p=0;p<d.countPages();p++){const t=JSON.parse(d.loadPage(p).toStructuredText().asJSON()).blocks.flatMap(b=>(b.lines||[]).map(l=>l.text)).join(' ');const k=t.match(/議題六\s*附件[一二三四]/);if(k)console.log(p+1,k[0])}"
+```
+
 ## 📦 根目錄（非 docs/）
 
 | 文件 | 內容 |
