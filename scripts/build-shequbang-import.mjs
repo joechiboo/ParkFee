@@ -180,6 +180,11 @@ export function buildStandaloneRows(byHousehold, addrIdx, opts = {}) {
   }
 }
 
+// 今天 → 'YYYY/M/D'（社區幫日期格式，不補零）。立帳通知日期預設用這個。
+export function todayStr(now = new Date()) {
+  return `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`
+}
+
 // 公告日 + N 日 → 'YYYY/M/D'（社區幫日期格式，不補零）。
 export function addDays(公告日, n) {
   const d = new Date(`${公告日}T00:00:00`)
@@ -221,8 +226,9 @@ if (isMain) {
   --mode merge        併入物業月結檔的「機車清潔費」欄，其餘欄照抄、列數不變
 
 獨立帳單選項：
-  --announce <YYYY-MM-DD>  公告日（＝抽籤日隔日），據以算立帳日與繳費期限
+  --announce <YYYY-MM-DD>  公告日（＝抽籤日隔日），據以算繳費期限
   --due-days <N>           繳費期限＝公告日 + N 日（預設 10，對齊辦法伍二（六）「逾 10 日視同放棄」）
+  --bill-date <YYYY/M/D>   立帳通知日期（預設＝匯出當日；社區幫的立帳日是建帳那天）
   --category <字串>        收費類別（預設「<民國年>年度機車位清潔費」，例 116年度機車位清潔費）
   --items <字串>           細項(列舉參考欄位)，預設沿用物業檔的固定字串
 
@@ -260,25 +266,32 @@ if (isMain) {
   } else {
     const announce = arg('announce', '')
     const dueDays = Number(arg('due-days', '10'))
-    if (!announce) problems.push('獨立帳單模式需要 --announce <公告日 YYYY-MM-DD> 才能算立帳日與繳費期限')
+    if (!announce) problems.push('獨立帳單模式需要 --announce <公告日 YYYY-MM-DD> 才能算繳費期限')
     // 使用期間為公告次年的曆年（12/1 抽的是次年車位）→ 年度＝公告年 + 1。
     // 收費類別預設用**民國年**：與登記表「116 年度」、物業檔名「…115年05月管理費」一致，住戶對得起來。
     // ⚠️ 社區幫「收費類別」欄現有值是西元（「2026年05月管理費」），若其匯入驗證卡格式，
     //    改用 --category "2027年度機車位清潔費" 即可，見 §4 待確認。
     const 西元年度 = announce ? new Date(`${announce}T00:00:00`).getFullYear() + 1 : ''
     const 民國年度 = 西元年度 ? 西元年度 - 1911 : ''
+    // 立帳通知日期＝**匯出當日**（2026-09-17 實測修正）。社區幫的「立帳」是帳單建立那天，
+    // 與抽籤公告日無關——公告後可能隔幾天才產檔上傳，用公告日會讓帳單顯示的立帳日早於實際建帳日。
+    const 立帳日 = arg('bill-date') || todayStr()
     const opts = {
       收費類別: arg('category', 民國年度 ? `${民國年度}年度機車位清潔費` : ''),
-      立帳通知日期: announce ? addDays(announce, 0) : '',
+      立帳通知日期: 立帳日,
       繳費期限: announce ? addDays(announce, dueDays) : '',
       備註: '',
     }
     const items = arg('items')
     if (items) opts.細項 = items
+    // 立帳日晚於繳費期限＝帳單一建立就已逾期，必定是參數給錯。
+    const d = (v) => new Date(String(v).split('/').join('-') + 'T00:00:00')
+    if (opts.繳費期限 && d(opts.立帳通知日期) > d(opts.繳費期限))
+      problems.push(`立帳日 ${opts.立帳通知日期} 晚於繳費期限 ${opts.繳費期限} —— 帳單一建立就逾期，請確認 --announce／--bill-date`)
     ;({ rows, report } = buildStandaloneRows(byHousehold, addressIndex(feeRows), opts))
     console.log('=== 社區幫匯入檔產製（standalone：獨立機車位帳單）===')
     console.log(`收費類別          ${opts.收費類別}`)
-    console.log(`立帳通知日期      ${opts.立帳通知日期}`)
+    console.log(`立帳通知日期      ${opts.立帳通知日期}（${arg('bill-date') ? '--bill-date 指定' : '匯出當日'}）`)
     console.log(`繳費期限          ${opts.繳費期限}（公告日 +${dueDays} 日）`)
     console.log(`出帳戶數          ${pad(report.出帳戶數)}`)
   }

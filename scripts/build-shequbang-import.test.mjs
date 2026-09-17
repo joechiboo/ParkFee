@@ -8,6 +8,7 @@ import {
   addressIndex,
   buildStandaloneRows,
   addDays,
+  todayStr,
 } from './build-shequbang-import.mjs'
 import { encodeBig5, decodeBig5 } from './lib/big5.mjs'
 
@@ -203,6 +204,13 @@ describe('獨立帳單模式', () => {
       '#A1-375-3',
       '#H6-293-5',
     ])
+  })
+
+  it('todayStr 產生社區幫日期格式（不補零）', () => {
+    // 立帳通知日期＝匯出當日（2026-09-17 實測修正）：社區幫的「立帳」是帳單建立那天，
+    // 與抽籤公告日無關 —— 公告後可能隔幾天才產檔上傳。
+    expect(todayStr(new Date('2026-09-17T10:30:00'))).toBe('2026/9/17')
+    expect(todayStr(new Date('2026-12-05T00:00:00'))).toBe('2026/12/5')
   })
 
   it('addDays 產生社區幫日期格式（不補零）', () => {
