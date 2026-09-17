@@ -9,6 +9,7 @@ import {
   buildStandaloneRows,
   addDays,
   todayStr,
+  normalizeDate,
 } from './build-shequbang-import.mjs'
 import { encodeBig5, decodeBig5 } from './lib/big5.mjs'
 
@@ -211,6 +212,17 @@ describe('獨立帳單模式', () => {
     // 與抽籤公告日無關 —— 公告後可能隔幾天才產檔上傳。
     expect(todayStr(new Date('2026-09-17T10:30:00'))).toBe('2026/9/17')
     expect(todayStr(new Date('2026-12-05T00:00:00'))).toBe('2026/12/5')
+  })
+
+  it('normalizeDate 接受常見寫法，無效者回空字串', () => {
+    expect(normalizeDate('2026-12-31')).toBe('2026/12/31')
+    expect(normalizeDate('2026/12/31')).toBe('2026/12/31')
+    expect(normalizeDate('2026/1/5')).toBe('2026/1/5')
+    expect(normalizeDate('2026-01-05')).toBe('2026/1/5') // 補零會被去掉，對齊社區幫格式
+    expect(normalizeDate('2026/13/1')).toBe('') // 月份越界
+    expect(normalizeDate('12/31')).toBe('')
+    expect(normalizeDate('')).toBe('')
+    expect(normalizeDate(null)).toBe('')
   })
 
   it('addDays 產生社區幫日期格式（不補零）', () => {

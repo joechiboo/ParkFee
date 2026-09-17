@@ -185,6 +185,16 @@ export function todayStr(now = new Date()) {
   return `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`
 }
 
+// 任意常見寫法 → 'YYYY/M/D'（社區幫日期格式，不補零）。接受 2026-12-31／2026/12/31／2026/1/5。
+export function normalizeDate(v) {
+  const p = String(v ?? '').trim().split(/[-/]/)
+  if (p.length !== 3) return ''
+  const [y, m, d] = p.map(Number)
+  if (![y, m, d].every(Number.isInteger)) return ''
+  if (y < 2000 || y > 2100 || m < 1 || m > 12 || d < 1 || d > 31) return ''
+  return `${y}/${m}/${d}`
+}
+
 // 公告日 + N 日 → 'YYYY/M/D'（社區幫日期格式，不補零）。
 export function addDays(公告日, n) {
   const d = new Date(`${公告日}T00:00:00`)
@@ -227,6 +237,7 @@ if (isMain) {
 
 獨立帳單選項：
   --announce <YYYY-MM-DD>  公告日（＝抽籤日隔日），據以算繳費期限
+  --due <YYYY-MM-DD>       繳費期限（絕對日期，優先於 --due-days）
   --due-days <N>           繳費期限＝公告日 + N 日（預設 10，對齊辦法伍二（六）「逾 10 日視同放棄」）
   --bill-date <YYYY/M/D>   立帳通知日期（預設＝匯出當日；社區幫的立帳日是建帳那天）
   --category <字串>        收費類別（預設「<民國年>年度機車位清潔費」，例 116年度機車位清潔費）
@@ -266,6 +277,12 @@ if (isMain) {
   } else {
     const announce = arg('announce', '')
     const dueDays = Number(arg('due-days', '10'))
+    // 繳費期限：--due 給絕對日期優先，否則公告日 + --due-days。
+    // 放棄線（辦法伍二（六）逾公告後 10 日）固定算出來，供對照——帳單期限可較寬，
+    // 但那代表「資格已失效、帳單仍未到期」，屬管委會決定的作業取捨，故只提示不阻擋。
+    const dueAbs = arg('due') ? normalizeDate(arg('due')) : ''
+    if (arg('due') && !dueAbs) problems.push(`--due 日期格式看不懂：${arg('due')}（要 2026-12-31 或 2026/12/31）`)
+    const 放棄線 = announce ? addDays(announce, 10) : ''
     if (!announce) problems.push('獨立帳單模式需要 --announce <公告日 YYYY-MM-DD> 才能算繳費期限')
     // 使用期間為公告次年的曆年（12/1 抽的是次年車位）→ 年度＝公告年 + 1。
     // 收費類別預設用**民國年**：與登記表「116 年度」、物業檔名「…115年05月管理費」一致，住戶對得起來。
@@ -279,7 +296,7 @@ if (isMain) {
     const opts = {
       收費類別: arg('category', 民國年度 ? `${民國年度}年度機車位清潔費` : ''),
       立帳通知日期: 立帳日,
-      繳費期限: announce ? addDays(announce, dueDays) : '',
+      繳費期限: dueAbs || (announce ? addDays(announce, dueDays) : ''),
       備註: '',
     }
     const items = arg('items')
@@ -292,7 +309,9 @@ if (isMain) {
     console.log('=== 社區幫匯入檔產製（standalone：獨立機車位帳單）===')
     console.log(`收費類別          ${opts.收費類別}`)
     console.log(`立帳通知日期      ${opts.立帳通知日期}（${arg('bill-date') ? '--bill-date 指定' : '匯出當日'}）`)
-    console.log(`繳費期限          ${opts.繳費期限}（公告日 +${dueDays} 日）`)
+    console.log(`繳費期限          ${opts.繳費期限}${dueAbs ? '（--due 指定）' : `（公告日 +${dueDays} 日）`}`)
+    if (放棄線 && opts.繳費期限 !== 放棄線)
+      console.log(`                  ⚠ 辦法放棄線為 ${放棄線}（公告 + 10 日，伍二（六））——帳單期限與之不同`)
     console.log(`出帳戶數          ${pad(report.出帳戶數)}`)
   }
 
