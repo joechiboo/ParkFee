@@ -38,5 +38,11 @@ create index if not exists audit_log_action_idx on public.audit_log (action, at 
 -- （Edge Function 內部）寫得進去、讀得出來。稽核紀錄不該讓前端碰。
 alter table public.audit_log enable row level security;
 
+-- ⚠️ **必要**：此專案新表不會自動 GRANT（見 0007_keepalive.sql 同註），漏掉的話
+--    Edge Function 以 service_role 也寫不進去 → 因 audit() 刻意不拋錯而「靜默失敗」：
+--    表在、RLS 對，但一筆紀錄都不會有。2026-09-18 首次驗證時就是漏了這行。
+grant all on public.audit_log to service_role;
+grant usage, select on all sequences in schema public to service_role;
+
 comment on table public.audit_log is
   '稽核流水帳：動到錢或個資的管理員動作。僅 service_role 可存取；detail 不得含個資。';
