@@ -13,7 +13,7 @@
 //   真正要聯絡住戶的場合（如物業催繳）才帶 `含電話: true` 明確索取。
 //   如此即使管理員密碼外流，預設洩漏面不含全社區約 400 筆電話。
 //   ⚠️ 身障／社宅旗標屬敏感類別但**配位必需**（決定輪次與可用車位），無法省略。
-import { corsHeaders, json, adminClient, verifyAdmin } from '../_shared/http.ts'
+import { corsHeaders, json, adminClient, verifyAdmin, audit } from '../_shared/http.ts'
 
 const yn = (b: unknown) => (b ? 'Y' : 'N')
 
@@ -60,6 +60,12 @@ Deno.serve(async (req) => {
         車位編號: v.車位編號 ?? '', // 物業抽籤前已指派者；重機為兩位頓號分隔
         已繳費: yn(v.已繳費),
       }
+    })
+
+    // 稽核：撈全名冊＝一次取走全社區資料，最該留痕。只記筆數，不記內容。
+    await audit(db, 'roster.list', {
+      body,
+      detail: { 戶數: new Set(rows.map((r) => r.戶號)).size, 台數: rows.length, 含電話 },
     })
 
     return json({

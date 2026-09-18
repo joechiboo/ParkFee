@@ -85,3 +85,29 @@ export async function fetchHousehold(db: SupabaseClient, hid: string) {
     vehicles: vehicles ?? [],
   }
 }
+
+// ── 稽核流水帳（見 migrations/0013_audit_log.sql）────────────────────────────
+// 記「誰、對誰、做了什麼、成不成功」。**detail 不得含個資**——只放筆數等摘要，
+// 寫進名冊內容等於在 DB 裡再複製一份個資。
+//
+// 永不拋錯：稽核失敗不該讓使用者的操作跟著失敗（記錄是輔助，不是主流程）。
+// 寫不進去時只在平台 log 留一筆，方便事後發現稽核斷掉。
+export async function audit(
+  db: SupabaseClient,
+  action: string,
+  opts: { body?: { password?: string; 戶號?: string }; target?: string; ok?: boolean; detail?: Record<string, unknown> } = {},
+): Promise<void> {
+  try {
+    // 單一共用密碼追不到人；管理員戶號＋車牌這種才記得出是誰。
+    const actor = opts.body?.password ? 'password' : normalizeHousehold(opts.body?.戶號) || '?'
+    await db.from('audit_log').insert({
+      action,
+      actor,
+      target: String(opts.target ?? '-'),
+      ok: opts.ok !== false,
+      detail: opts.detail ?? {},
+    })
+  } catch (e) {
+    console.error('audit failed:', action, e)
+  }
+}

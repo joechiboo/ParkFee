@@ -6,7 +6,7 @@
 //   list   → 回傳目前鎖定清單 + 各位指派（管理員專屬讀，含個資）。
 //   assign → 鎖定該位；若帶車號則把該車指派到此位（寫 vehicle）。
 //   unlock → 解鎖該位；若帶車號則清掉該車的指派。
-import { corsHeaders, json, adminClient, verifyAdmin } from '../_shared/http.ts'
+import { corsHeaders, json, adminClient, verifyAdmin, audit } from '../_shared/http.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -96,6 +96,12 @@ Deno.serve(async (req) => {
           .eq('車號', plate)
         if (vErr) return json({ error: vErr.message }, 400)
       }
+      // 稽核：指派同時會寫入繳費狀態 → 住戶日後爭執「我明明繳了」時可回溯。
+      await audit(db, 'seat.assign', {
+        body,
+        target: String(seat),
+        detail: { 車號: plate || '-', 車位類型: body.車位類型 || '-', 已繳費: !!body.已繳費, 強制: !!body.強制 },
+      })
       return json({ ok: true })
     }
 
@@ -108,6 +114,8 @@ Deno.serve(async (req) => {
           .update({ 車位編號: null, 車位類型: null, 配位狀態: null, 已繳費: false, 簽約期限: null })
           .eq('車號', plate)
       }
+      // 稽核：解除會一併清掉繳費狀態 → 誤解或爭議時要查得出是誰、何時解的。
+      await audit(db, 'seat.unlock', { body, target: String(seat), detail: { 車號: plate || '-' } })
       return json({ ok: true })
     }
 

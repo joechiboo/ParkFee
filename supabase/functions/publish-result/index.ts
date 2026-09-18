@@ -4,7 +4,7 @@
 // 先清空所有 vehicle 的結果欄，再依 rows 寫入 → 重新發佈會覆蓋舊結果。
 // ⚠️ updated 用 .select() 取「實際更新到的列」＝真實命中數（避免 .eq() 配 0 列仍算成功的虛報）；
 //    車號不在 vehicle 者列入 notFound，讓物業知道哪些沒寫進（多半是匯入了非本 DB 的名冊）。
-import { corsHeaders, json, adminClient, verifyAdmin } from '../_shared/http.ts'
+import { corsHeaders, json, adminClient, verifyAdmin, audit } from '../_shared/http.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -43,6 +43,12 @@ Deno.serve(async (req) => {
       if (!error && data && data.length) updated.push(plate)
       else notFound.push(plate)
     }
+
+    // 稽核：發佈一出就定生死（住戶據此繳費），要能證明何時、發了幾筆、有幾筆對不上車號。
+    await audit(db, 'result.publish', {
+      body,
+      detail: { 送出: rows.length, 寫入: updated.length, 查無車號: notFound.length },
+    })
 
     return json({ updated: updated.length, notFound })
   } catch (e) {
