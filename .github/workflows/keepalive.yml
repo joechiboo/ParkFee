@@ -2,6 +2,9 @@
 # ⚠️ 教訓（2026-08-10）：純 REST 讀取「不算活動」——每 3 天讀一筆照樣被暫停。
 # 改為每日呼叫 Edge Function `ping`（service_role 寫 keepalive 心跳表）＝真實 DB 寫入活動。
 # 手動測試：Actions 頁面 → Supabase keep-alive → Run workflow。
+# 順帶偵測「稽核斷線」：ping 會寫一筆 system.ping 稽核再讀回來（end-to-end），
+# 回傳 auditOk。false ＝ audit_log 寫不進去 —— 而 audit() 刻意不拋錯，
+# 平時完全無聲（2026-09-18 漏 grant 那次就是人工才發現的）。
 name: Supabase keep-alive
 
 on:
