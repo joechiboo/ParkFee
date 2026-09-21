@@ -35,7 +35,11 @@
 
 | 文件 | 內容 |
 |---|---|
-| [01-車位使用實施細則](01-車位使用實施細則.md) | 住戶公告版（白話作業說明） |
+| [01-車位使用實施細則](01-車位使用實施細則.md) | 住戶公告版（白話作業說明）＝**母本**，28 只做入口不複製規則 |
+| [assets/qr-登記網址](assets/) | 線上登記入口 QR（`.svg` 向量給印刷放大、`.png` 1024px 給 LINE／投影片／Word）。網址＝`https://joechiboo.github.io/ParkFee/#/`，**`#/` 不可省**（hash 路由，少了會落在空白頁）|
+| [30-抽籤現場Rundown-A4](30-抽籤現場Rundown-A4.html) | **主持人手持稿**（12/1 當天）：開場前檢查、三位住戶決定種子碼的話術與三個防爭議要點、逐區講解、存證三件套、出錯應變。瀏覽器開啟 Ctrl+P 直接印。完整版見 [14](14-抽籤作業手冊.md) |
+| [31-登記QR海報-A4](31-登記QR海報-A4.html) | **佈告欄／電梯張貼用**：大張登記 QR＋網址＋三步驟＋「不會用手機請洽管理中心」。QR 為向量，放大不糊 |
+| [28-住戶簡易說明-A4](28-住戶簡易說明-A4.html) | **一張 A4 懶人包**：共同時程＋三條路（A 不會用系統→櫃台代填／B 這次修了哪些條文／C 線上四步驟＋QR）。電梯・佈告欄張貼，亦可直接當例會報告材料 |
 | [04-紙本登記表](04-紙本登記表.md) | 紙本登記表規格（另有 `.doc` Word 版可印） |
 | [14-抽籤作業手冊](14-抽籤作業手冊.md) | 一年一次抽籤怎麼跑（runbook，含機器需求、export-roster → 匯入 AllocateView） |
 
@@ -52,6 +56,7 @@
 | 產出 | 來源 | 指令 |
 |---|---|---|
 | 實施細則、標紅版、會議紀錄 | `docs/01`、`docs/19-…-標紅版.html`、`docs/會議紀錄.md` | `node scripts/build-docs-pdf.mjs`（Edge 無頭列印） |
+| 住戶簡易說明（一張 A4） | `docs/28-…A4.html` | `node scripts/build-docs-pdf.mjs docs/28-住戶簡易說明-A4.html`　⚠️ Edge 寫檔慢半拍：改完馬上讀 PDF 可能是上一版，**重跑一次再看頁數** |
 | B1 車位配置圖 A3 | `b1-classification.json` ＋ live 鎖定 | `node scripts/print-map-a3.mjs [--label 文字] [--out 路徑]` |
 | 附件標籤（首頁左上角） | — | `node scripts/stamp-attachment.mjs [--force]` |
 | 合併成一份公告 | 上列各檔 | `node scripts/merge-pdfs.mjs <輸出> <來源.pdf[:頁範圍]> …` |

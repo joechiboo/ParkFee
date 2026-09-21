@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>抽籤現場 Rundown — 12/1 主持用</title>
+<style>
+  @page{size:A4;margin:12mm 11mm}
+  *{box-sizing:border-box}
+  body{font-family:"Microsoft JhengHei",sans-serif;color:#111;margin:0;background:#fff;font-size:12.5px;line-height:1.5}
+  .page{max-width:790px;margin:0 auto;padding:10px 14px}
+  h1{font-size:21px;text-align:center;margin:0 0 2px;letter-spacing:2px}
+  .sub{text-align:center;font-size:12px;color:#555;margin:0 0 10px}
+  h2{font-size:14.5px;margin:12px 0 5px;padding:4px 9px;background:#1d5fa8;color:#fff;border-radius:4px}
+  h2.warn{background:#c1121f}
+  ol{margin:4px 0 0;padding-left:1.5em}
+  ol>li{margin:0 0 5px}
+  .say{background:#fff8e1;border-left:4px solid #c8940a;padding:5px 9px;margin:4px 0;font-size:12.5px}
+  .say b{color:#8a6100}
+  .note{background:#f5f7fa;border-left:3px solid #999;padding:4px 9px;margin:4px 0;font-size:11.5px;color:#333}
+  .grid{display:flex;gap:8px;margin:5px 0}
+  .grid>div{flex:1;border:1px solid #bbb;border-radius:5px;padding:5px 8px;font-size:11.5px}
+  .grid b{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;margin:5px 0;font-size:11.5px}
+  th,td{border:1px solid #999;padding:3px 6px;text-align:left}
+  th{background:#eef2f7}
+  .chk{list-style:none;padding-left:0;margin:4px 0}
+  .chk li{margin:0 0 3px;padding-left:1.4em;text-indent:-1.4em}
+  .chk li::before{content:"☐ ";font-size:13px}
+  .foot{margin-top:10px;border-top:1px solid #ccc;padding-top:5px;font-size:11px;color:#666;text-align:center}
+  code{background:#f0f0f0;padding:0 3px;border-radius:2px;font-family:Consolas,monospace}
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>抽籤現場 Rundown</h1>
+<p class="sub">12/1 公開抽籤 · 主持人手持稿 · 完整版見 docs/14-抽籤作業手冊</p>
+
+<h2>① 開場前 30 分（逐項打勾）</h2>
+<ul class="chk">
+  <li>投影可用、字夠大（瀏覽器 Ctrl+ 放大到後排看得清）</li>
+  <li>網路可連；<b>備案</b>：手機熱點</li>
+  <li>已登入 <b>admin</b>（右上角顯示管理入口）</li>
+  <li>名冊 CSV 已下載並<b>匯入完成</b> → 配位頁頂端顯示「✓ 已載入…」<b>且戶數對得上</b></li>
+  <li>白板／麥克風可用；準備紙筆抄種子碼</li>
+</ul>
+<div class="note">⚠️ 頂端若仍顯示「範例 demo（277 戶樣本）」＝<b>名冊沒匯進去</b>，先處理再開始。</div>
+
+<h2>② 現場照跑</h2>
+<ol>
+  <li><b>開場一句</b>：本抽籤採「填志願＋統一分發」，電腦以<b>公開種子</b>抽順序號，<b>同種子可重跑驗算</b>，全程留紀錄供監察。</li>
+
+  <li><b>先用範例 demo 示範 30 秒</b>（用假資料，不影響正式流程）：<br>
+    隨口一個種子跑一次 → <b>同種子再跑一次，結果一模一樣</b> → 換個種子，結果整個不同。</li>
+
+  <li><b>取種子碼：請三位住戶各說一個數字（1–99）</b>
+    <div class="say"><b>照唸：</b>「等一下請三位住戶各說一個 1 到 99 的數字，我會<b>由左到右、用連字號</b>串起來寫在白板上，例如 <code>7-23-58</code>。<b>說出來就定案，不能更改。</b>」</div>
+    <div class="grid">
+      <div><b>順序有差</b>7-23-58 ≠ 58-23-7</div>
+      <div><b>格式有差</b>7-23-58 ≠ 72358 ≠ 7、23、58</div>
+      <div><b>說出口不得反悔</b>否則等同讓人先試一個看看</div>
+    </div>
+    <div class="note"><b>為什麼這樣做</b>（值得花一分鐘講）：沒有任何人能單獨決定結果——第一位說數字時不知道後兩位會說什麼，即使想動手腳也算不出要說什麼才有利，<b>連主持人也一樣</b>。<br>
+    <b>挑人</b>：找<b>有登記車位的住戶</b>、最好不同棟；<b>別找委員</b>（利害關係人最容易被質疑）。</div>
+  </li>
+
+  <li><b>當眾寫上白板 → 一字不差填進「亂數種子」欄</b><br>
+    <span style="color:#c1121f">填完請一位住戶<b>核對白板與螢幕一致</b></span>——打錯一個字結果就完全不同，而且事後看不出來。</li>
+
+  <li>按 <b>執行抽籤</b>。</li>
+
+  <li><b>逐區講解螢幕</b>：摘要（已配／落選／剩餘）→ 配位結果表（依順序號）→ 展開<b>各輪抽出序</b>。
+    <table>
+      <tr><th style="width:22%">區塊</th><th>怎麼說</th></tr>
+      <tr><td>配位結果</td><td>依順序號分發「志願中仍剩的最高志願」</td></tr>
+      <tr><td><b>免抽已定</b></td><td>志願小位／無障礙／物業已指派——<b>依規則直接確定，不參與抽籤</b></td></tr>
+      <tr><td>自行車</td><td>不排志願、直接抽車位號碼、免費</td></tr>
+      <tr><td>落選名單</td><td>交物業第二階段（保底就近補／候補）</td></tr>
+    </table>
+  </li>
+
+  <li><b>宣布落選名單</b> → 說明後續由物業處理。</li>
+
+  <li><b>存證</b>：填公告日 → <b>⬇ 下載配位結果 CSV</b>（順手截圖摘要）。</li>
+
+  <li><b>📢 發佈結果</b> → 住戶登入 <code>/me</code> 看自己的位。</li>
+</ol>
+
+<h2 class="warn">③ 收場前必做：存證三件套</h2>
+<div class="grid">
+  <div><b>① 名冊 CSV</b>當次匯入的那一份</div>
+  <div><b>② 種子碼</b>白板上那一串</div>
+  <div><b>③ 執行時間</b>畫面上的抽籤紀錄</div>
+</div>
+<div class="note">三者齊備，任何人日後都能重跑驗證。<b>缺一個就重現不出來</b>，事後有爭議將無法自證。</div>
+
+<h2>④ 出錯應變（現場別慌）</h2>
+<table>
+  <tr><th style="width:30%">狀況</th><th>怎麼辦</th></tr>
+  <tr><td>種子唸錯／想換</td><td>按 <b>🎲 重抽（新種子）</b>；舊種子紀錄仍在、透明可查</td></tr>
+  <tr><td>頂端顯示「範例 demo」</td><td>沒匯入成功 → 進階重匯 CSV，回配位頁確認變「✓ 已載入」</td></tr>
+  <tr><td>發佈失敗</td><td>多半沒登入 admin 或沒網路 → <b>先下載 CSV 保住結果</b>，網路好了事後再發佈</td></tr>
+  <tr><td>筆電／瀏覽器當掉</td><td>重開 → <b>輸入同一種子</b>即可重現同結果（固定種子＝現場保險）</td></tr>
+  <tr><td>發佈了才發現要重來</td><td>進階「清除配位結果」→ 重跑 → 重新發佈</td></tr>
+</table>
+
+<p class="foot">樂菲莊園社區 · 機車車位管理工具 —— 完整手冊與備案路徑見 docs/14-抽籤作業手冊</p>
+
+</div>
+</body>
+</html>
