@@ -111,5 +111,14 @@ for (const f of files) {
     `--print-to-pdf=${pdf}`, 'file:///' + src.replace(/\\/g, '/'),
   ], { stdio: 'ignore', timeout: 60000 })
   if (tmp && existsSync(tmp)) rmSync(tmp)
+  // ⚠️ 必須檢查檔案真的產出：Edge 無頭模式失敗時**不報錯、直接靜默退出**
+  // （2026-09-24 Edge 更新後即如此），不檢查會印 ✅ 卻沒有檔案。
+  if (!existsSync(pdf)) {
+    console.error('❌', pdf)
+    console.error('   Edge 無頭列印沒有產出檔案（靜默失敗）。')
+    console.error('   替代做法：瀏覽器開啟該 HTML → Ctrl+P → 目的地「另存為 PDF」。')
+    process.exitCode = 1
+    continue
+  }
   console.log('✅', pdf)
 }
