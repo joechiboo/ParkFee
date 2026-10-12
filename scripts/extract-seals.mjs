@@ -4,6 +4,8 @@
 //    若進版控或放上網站，任何人都能下載拿去偽造公告。程式碼本身不含印章、可公開。
 //
 // 用法：node scripts/extract-seals.mjs <公告.pdf> [--debug]
+//   例：node scripts/extract-seals.mjs private/notices/公告_115100101_關閉社區報修.pdf
+//   社區公告原檔（含印章）統一放 private/notices/，檔名＝「公告_<文號>_<主旨>.pdf」。
 //   公告版面固定（2026-10 兩份公告比對一致）：頁尾左側紅章、右側藍色公告章。
 //   座標以「頁寬／頁高」比例描述，掃描稍有偏移也框得到；框內再自動修邊到墨跡範圍。
 import * as mupdf from 'mupdf'
