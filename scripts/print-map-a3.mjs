@@ -61,9 +61,6 @@ const catOf = (s) => s.cat
 
 // --bike：只印自行車位。裁切範圍由「要印的車位」決定 → 自動放大到該區。
 const BIKE_ONLY = process.argv.includes('--bike')
-// 2026-10 主委要求：圓圈**不填色**（省墨、印出可書寫）。改以「外框顏色」區分大／小等車種、
-// 編號改黑字（白字在空心圓上看不見）。--filled 可切回舊的實心樣式。
-const FILLED = process.argv.includes('--filled')
 const PRINT_CATS = BIKE_ONLY ? new Set(['bike']) : new Set(Object.keys(CAT))
 const willPrint = (s) => catOf(s) in CAT && PRINT_CATS.has(catOf(s))
 
@@ -152,28 +149,29 @@ const counts = {}
 let lockedDrawn = 0
 const printable = cls.seats.filter(willPrint) // noise/excl／非本版車種 不印
 
+// 2026-10 主委要求：**鎖定格**圓內留白、不填車種色——鎖定格不開放承租，大／小之分對它無意義，
+// 留白一眼可辨「這格不能選」。編號改黑字（白字在白底上看不見）。其餘車位維持實心填色＋白字。
+const isLocked = (s) => !!locked && locked.has(lockKeyOf(s)) && catOf(s) !== 'car'
+
 for (const s of printable) {
   const cat = catOf(s)
   counts[cat] = (counts[cat] || 0) + 1
-  if (FILLED) page.drawCircle({ x: toX(s.x), y: toY(s.y), size: r, color: CAT[cat].color, opacity: 0.9 })
-  else page.drawCircle({ x: toX(s.x), y: toY(s.y), size: r, color: rgb(1, 1, 1), borderColor: CAT[cat].color, borderWidth: 1.1 })
+  const fill = isLocked(s) ? rgb(1, 1, 1) : CAT[cat].color
+  page.drawCircle({ x: toX(s.x), y: toY(s.y), size: r, color: fill, opacity: isLocked(s) ? 1 : 0.9 })
 }
 
 const fs = Math.max(2.8, r * 0.92)
-// 空心樣式下車種外框已占圓周，公益／鎖定外圈要再往外推，兩圈才分得開
-const RING = FILLED ? 0.6 : 1.5
-const NUM_COLOR = FILLED ? rgb(1, 1, 1) : rgb(0.08, 0.08, 0.1)
 for (const s of printable) {
-  const cat = catOf(s)
   const cx = toX(s.x), cy = toY(s.y)
   if (isPublicSeat(s)) // 公益位：金色粗框（機車 20 格來自盤點檔、自行車 5 格來自辦法清單）
-    page.drawCircle({ x: cx, y: cy, size: r + RING, borderColor: rgb(0.83, 0.66, 0.12), borderWidth: 1.4, opacity: 0 })
-  if (locked && locked.has(lockKeyOf(s)) && cat !== 'car') {
-    page.drawCircle({ x: cx, y: cy, size: r + RING + 0.1, borderColor: rgb(0.1, 0.1, 0.12), borderWidth: 1.6, opacity: 0 })
+    page.drawCircle({ x: cx, y: cy, size: r + 0.6, borderColor: rgb(0.83, 0.66, 0.12), borderWidth: 1.4, opacity: 0 })
+  if (isLocked(s)) {
+    page.drawCircle({ x: cx, y: cy, size: r + 0.7, borderColor: rgb(0.1, 0.1, 0.12), borderWidth: 1.6, opacity: 0 })
     lockedDrawn++
   }
   const w = num.widthOfTextAtSize(String(s.id), fs)
-  page.drawText(String(s.id), { x: cx - w / 2, y: cy - fs * 0.36, size: fs, font: num, color: NUM_COLOR })
+  const numColor = isLocked(s) ? rgb(0.08, 0.08, 0.1) : rgb(1, 1, 1)
+  page.drawText(String(s.id), { x: cx - w / 2, y: cy - fs * 0.36, size: fs, font: num, color: numColor })
 }
 
 // 圖例（標題列右側一排）
@@ -182,8 +180,7 @@ const ly = PH - MARGIN - 14
 for (const key of ['motor', 'small', 'access', 'bike']) {
   if (!PRINT_CATS.has(key)) continue
   const c = CAT[key]
-  if (FILLED) page.drawCircle({ x: lx + 5, y: ly + 4, size: 5, color: c.color, opacity: 0.9 })
-  else page.drawCircle({ x: lx + 5, y: ly + 4, size: 5, borderColor: c.color, borderWidth: 1.6, opacity: 0 })
+  page.drawCircle({ x: lx + 5, y: ly + 4, size: 5, color: c.color, opacity: 0.9 })
   const label = `${c.name} ${counts[key] || 0}`
   page.drawText(label, { x: lx + 13, y: ly, size: 10.5, font: zh, color: rgb(0.1, 0.1, 0.12) })
   lx += 13 + zh.widthOfTextAtSize(label, 10.5) + 18
