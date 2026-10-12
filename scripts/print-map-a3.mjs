@@ -10,6 +10,7 @@
 // 只印自行車時裁切範圍自動縮到該區 → 同樣一張 A3 但放大數倍，號碼看得清楚，
 // 可直接拿去現場對號、貼識別證、或當公告附圖。
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { resolve as resolvePath, sep as pathSep } from 'node:path'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
 import { toBikeId, PUBLIC_BIKE_IDS } from '../src/map/seat-id.js'
@@ -60,6 +61,9 @@ const catOf = (s) => s.cat
 
 // --bike：只印自行車位。裁切範圍由「要印的車位」決定 → 自動放大到該區。
 const BIKE_ONLY = process.argv.includes('--bike')
+// 2026-10 主委要求：圓圈**不填色**（省墨、印出可書寫）。改以「外框顏色」區分大／小等車種、
+// 編號改黑字（白字在空心圓上看不見）。--filled 可切回舊的實心樣式。
+const FILLED = process.argv.includes('--filled')
 const PRINT_CATS = BIKE_ONLY ? new Set(['bike']) : new Set(Object.keys(CAT))
 const willPrint = (s) => catOf(s) in CAT && PRINT_CATS.has(catOf(s))
 
@@ -151,21 +155,25 @@ const printable = cls.seats.filter(willPrint) // noise/excl／非本版車種 �
 for (const s of printable) {
   const cat = catOf(s)
   counts[cat] = (counts[cat] || 0) + 1
-  page.drawCircle({ x: toX(s.x), y: toY(s.y), size: r, color: CAT[cat].color, opacity: 0.9 })
+  if (FILLED) page.drawCircle({ x: toX(s.x), y: toY(s.y), size: r, color: CAT[cat].color, opacity: 0.9 })
+  else page.drawCircle({ x: toX(s.x), y: toY(s.y), size: r, color: rgb(1, 1, 1), borderColor: CAT[cat].color, borderWidth: 1.1 })
 }
 
 const fs = Math.max(2.8, r * 0.92)
+// 空心樣式下車種外框已占圓周，公益／鎖定外圈要再往外推，兩圈才分得開
+const RING = FILLED ? 0.6 : 1.5
+const NUM_COLOR = FILLED ? rgb(1, 1, 1) : rgb(0.08, 0.08, 0.1)
 for (const s of printable) {
   const cat = catOf(s)
   const cx = toX(s.x), cy = toY(s.y)
   if (isPublicSeat(s)) // 公益位：金色粗框（機車 20 格來自盤點檔、自行車 5 格來自辦法清單）
-    page.drawCircle({ x: cx, y: cy, size: r + 0.6, borderColor: rgb(0.83, 0.66, 0.12), borderWidth: 1.4, opacity: 0 })
+    page.drawCircle({ x: cx, y: cy, size: r + RING, borderColor: rgb(0.83, 0.66, 0.12), borderWidth: 1.4, opacity: 0 })
   if (locked && locked.has(lockKeyOf(s)) && cat !== 'car') {
-    page.drawCircle({ x: cx, y: cy, size: r + 0.7, borderColor: rgb(0.1, 0.1, 0.12), borderWidth: 1.6, opacity: 0 })
+    page.drawCircle({ x: cx, y: cy, size: r + RING + 0.1, borderColor: rgb(0.1, 0.1, 0.12), borderWidth: 1.6, opacity: 0 })
     lockedDrawn++
   }
   const w = num.widthOfTextAtSize(String(s.id), fs)
-  page.drawText(String(s.id), { x: cx - w / 2, y: cy - fs * 0.36, size: fs, font: num, color: rgb(1, 1, 1) })
+  page.drawText(String(s.id), { x: cx - w / 2, y: cy - fs * 0.36, size: fs, font: num, color: NUM_COLOR })
 }
 
 // 圖例（標題列右側一排）
@@ -174,7 +182,8 @@ const ly = PH - MARGIN - 14
 for (const key of ['motor', 'small', 'access', 'bike']) {
   if (!PRINT_CATS.has(key)) continue
   const c = CAT[key]
-  page.drawCircle({ x: lx + 5, y: ly + 4, size: 5, color: c.color, opacity: 0.9 })
+  if (FILLED) page.drawCircle({ x: lx + 5, y: ly + 4, size: 5, color: c.color, opacity: 0.9 })
+  else page.drawCircle({ x: lx + 5, y: ly + 4, size: 5, borderColor: c.color, borderWidth: 1.6, opacity: 0 })
   const label = `${c.name} ${counts[key] || 0}`
   page.drawText(label, { x: lx + 13, y: ly, size: 10.5, font: zh, color: rgb(0.1, 0.1, 0.12) })
   lx += 13 + zh.widthOfTextAtSize(label, 10.5) + 18
@@ -186,6 +195,55 @@ if (locked) {
 }
 page.drawCircle({ x: lx + 5, y: ly + 4, size: 5, borderColor: rgb(0.83, 0.66, 0.12), borderWidth: 1.6, opacity: 0 })
 page.drawText('公益位（社宅）', { x: lx + 13, y: ly, size: 10.5, font: zh, color: rgb(0.1, 0.1, 0.12) })
+
+// ── 公告用印（2026-10 主委要求）──────────────────────────────────────────────
+// 依社區公告頁尾格式：[紅色方章] 樂菲莊園管理委員會／電話 [藍色公告章]，置於右上角空白處
+// （建築線外的台電區已白幕遮掉、該區無車位）。
+//   --seal image：直接嵌入電子章（印章圖檔取自 private/seals/，由 extract-seals.mjs 產生）
+//   --seal blank：只印文字、兩側留白，印出後人工蓋章
+// ⚠️ 本 repo 公開：電子章版**禁止輸出到 public/**（會隨網站部署，任何人可下載印章偽造公告）。
+const sealAt = process.argv.indexOf('--seal')
+const SEAL = sealAt > 0 ? process.argv[sealAt + 1] : ''
+if (SEAL && !['image', 'blank'].includes(SEAL)) throw new Error('--seal 只接受 image 或 blank')
+if (SEAL) {
+  const outPath = process.argv.indexOf('--out') > 0 ? process.argv[process.argv.indexOf('--out') + 1] : 'public/print/b1-map-a3'
+  // 以絕對路徑比對，不靠字串樣式（相對路徑、./public、大小寫磁碟代號都擋得到）
+  const abs = resolvePath(outPath).toLowerCase()
+  const pubDir = resolvePath('public').toLowerCase() + pathSep
+  if (SEAL === 'image' && abs.startsWith(pubDir))
+    throw new Error('電子章版不得輸出到 public/（會上網站）。請用 --out 指到 docs/pdf/ 或 private/')
+
+  const ORG = '樂菲莊園管理委員會', TEL = '電話 02-2218-6136'
+  const SZ_ORG = 17, SZ_TEL = 11.5
+  const RED = 74 // 紅章邊長 pt（約 2.6cm）
+  const BLUE_H = 66
+  const GAP = 14
+  const textW = Math.max(zh.widthOfTextAtSize(ORG, SZ_ORG), zh.widthOfTextAtSize(TEL, SZ_TEL))
+
+  let blueImg = null, redImg = null, blueW = Math.round(BLUE_H * 1.45)
+  if (SEAL === 'image') {
+    try {
+      redImg = await pdf.embedPng(readFileSync('private/seals/seal-committee.png'))
+      blueImg = await pdf.embedPng(readFileSync('private/seals/seal-notice.png'))
+    } catch {
+      throw new Error('找不到 private/seals/ 印章圖檔 → 先跑 node scripts/extract-seals.mjs <公告.pdf>')
+    }
+    blueW = BLUE_H * (blueImg.width / blueImg.height)
+  }
+
+  const right = PW - MARGIN
+  const top = PH - MARGIN - TITLE_H - 6
+  const midY = top - RED / 2
+  const xBlue = right - blueW
+  const xText = xBlue - GAP - textW
+  const xRed = xText - GAP - RED
+
+  if (redImg) page.drawImage(redImg, { x: xRed, y: midY - RED / 2, width: RED, height: RED })
+  if (blueImg) page.drawImage(blueImg, { x: xBlue, y: midY - BLUE_H / 2, width: blueW, height: BLUE_H })
+  const ink = rgb(0.1, 0.1, 0.12)
+  page.drawText(ORG, { x: xText + (textW - zh.widthOfTextAtSize(ORG, SZ_ORG)) / 2, y: midY + 3, size: SZ_ORG, font: zh, color: ink })
+  page.drawText(TEL, { x: xText + (textW - zh.widthOfTextAtSize(TEL, SZ_TEL)) / 2, y: midY - 16, size: SZ_TEL, font: zh, color: ink })
+}
 
 // --out：指定輸出路徑（公告用的附件四另存一份，不動 public/print 的常態圖）
 const outAt = process.argv.indexOf('--out')
