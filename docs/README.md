@@ -58,9 +58,32 @@
 |---|---|---|
 | 實施細則、標紅版、會議紀錄 | `docs/01`、`docs/19-…-標紅版.html`、`docs/會議紀錄.md` | `node scripts/build-docs-pdf.mjs`（Edge 無頭列印） |
 | 住戶簡易說明（一張 A4） | `docs/28-…A4.html` | `node scripts/build-docs-pdf.mjs docs/28-住戶簡易說明-A4.html`　⚠️ Edge 寫檔慢半拍：改完馬上讀 PDF 可能是上一版，**重跑一次再看頁數** |
-| B1 車位配置圖 A3 | `b1-classification.json` ＋ live 鎖定 | `node scripts/print-map-a3.mjs [--label 文字] [--out 路徑]` |
+| B1 車位配置圖 | `b1-classification.json` ＋ live 鎖定 | `node scripts/print-map-a3.mjs [--paper A4\|A3\|A2\|A1\|A0] [--seal image\|blank] [--label 文字] [--out 路徑]` |
 | 附件標籤（首頁左上角） | — | `node scripts/stamp-attachment.mjs [--force]` |
 | 合併成一份公告 | 上列各檔 | `node scripts/merge-pdfs.mjs <輸出> <來源.pdf[:頁範圍]> …` |
+
+**B1 車位配置圖（2026-10-13 依主委修改稿定版）**：標題、直式圖例（種類／數量 席／備註）、管委會名稱電話
+都在右上空白處；**不開放車位、社宅車位（含自行車 114–118）畫空心黑字**，其餘實心白字。
+- `--paper`：圖面與文字隨紙張放大；**印章固定實際尺寸**（紅章 28mm、公告章 45.5×31mm），A0 海報上不會出現巨大印章。
+  A0 上號碼字高約 3.7mm（A3 僅 1.3mm），**要讓住戶在牆上找車位請印 A0**；底圖為點陣，A0 約 107dpi，遠看無妨。
+- `--seal image`：嵌電子章；`blank`：章位留白供人工蓋；不加＝只印管委會名稱電話（**A3／A0 張貼版使用者定不帶章**）。
+- 列印或交輸出店務必說明「**實際大小／100%**」，選「符合頁面」會讓印章跟著縮放。
+
+### 🔒 含印章／內部資料一律放 `private/`（不進版控）
+
+本 repo **公開**：高解析度的管委會印章若進版控或放上網站，任何人都能下載偽造公告。
+
+| 位置 | 內容 |
+|---|---|
+| `private/notices/` | 社區公告原檔（含印章），檔名 `公告_<文號>_<主旨>.pdf`；剪章來源 |
+| `private/seals/` | 剪下的兩顆章（去背 PNG），由 `node scripts/extract-seals.mjs <公告.pdf>` 產生 |
+| `private/reference/` | 主委／經理提供的參考檔（規約對照表範本、B1 圖修改稿） |
+| `docs/pdf/9月例會送出版/` | 9 月例會實際寄出的檔案（與 docs/pdf 內同內容，保留寄出時檔名） |
+
+- `print-map-a3.mjs --seal image` 輸出到 `public/` 會**直接報錯**（public/ 隨網站部署）。
+- 根目錄只擋 `*.pdf`——**jpg／docx 等放根目錄仍會被 `git add -A` 收進去**，收到檔案請直接放進 `private/`。
+- `build-docs-pdf.mjs` 走 Edge 無頭列印，**2026-09 起時好時壞**（Edge 更新後會靜默失敗），已改成沒產出就報錯；
+  失敗時改用瀏覽器開 HTML → Ctrl+P → 另存 PDF。
 
 **附件編號帶「議題六」前綴**（例：`議題六　附件四`）：管理辦法本身就有【附件一】～【附件四】（承諾書、自行車承諾書、e-Tag 申請書、違規勸導單），且都在標紅版裡一起公告，不加前綴會出現兩個「附件四」。
 
