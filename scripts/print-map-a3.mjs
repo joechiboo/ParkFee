@@ -5,6 +5,10 @@
 // 用法：node scripts/print-map-a3.mjs        → public/print/b1-map-a3.pdf（全部車位）
 //       node scripts/print-map-a3.mjs --bike → public/print/b1-bike-map-a3.pdf（只印自行車位）
 //       --label「附件四」 → 標題前加標籤（併入公告文件用）；--out <路徑> → 另存他處
+//       --paper A4|A3|A2|A1|A0（預設 A3）→ 圖面與文字隨紙張放大，印章維持實際尺寸
+//       --seal image｜blank → 加電子章／留白蓋章（不加＝只印管委會名稱電話，一般張貼用）
+//         ⚠️ 電子章版禁止輸出到 public/（repo 公開，印章會被下載偽造），程式會直接擋
+//       列印務必選「實際大小／100%」，勿選「符合頁面大小」——否則印章會跟著縮放
 //
 // --bike 的用途：自行車 164 格全擠在右下角一小塊，混在全區圖裡號碼小到看不清。
 // 只印自行車時裁切範圍自動縮到該區 → 同樣一張 A3 但放大數倍，號碼看得清楚，
@@ -75,12 +79,23 @@ const ry0 = Math.max(0, Math.min(...drawn.map((s) => s.y)) - PAD)
 const ry1 = Math.min(dispH, Math.max(...drawn.map((s) => s.y)) + PAD)
 const rw = rx1 - rx0, rh = ry1 - ry0
 
-const MARGIN = 20
-const TITLE_H = 34
-// A3 直式/橫式挑縮放較大者
+// ── 紙張大小（2026-10）：--paper A4|A3|A2|A1|A0，預設 A3 ──
+// 圖面、標題、圖例隨紙張等比放大（K＝短邊相對 A3 的倍率）；**印章不放大**，一律用實際尺寸
+// （見 SEAL_PX_PER_PT）——否則 A2 海報上會出現巨大印章，一看就不像真的蓋上去。
+const PAPERS = { A4: [595.28, 841.89], A3: [841.89, 1190.55], A2: [1190.55, 1683.78], A1: [1683.78, 2383.94], A0: [2383.94, 3370.39] }
+const paperAt = process.argv.indexOf('--paper')
+const PAPER = (paperAt > 0 ? process.argv[paperAt + 1] : 'A3').toUpperCase()
+if (!PAPERS[PAPER]) throw new Error('--paper 只接受 ' + Object.keys(PAPERS).join('、'))
+const [SHORT, LONG] = PAPERS[PAPER]
+const K = SHORT / PAPERS.A3[0]
+const MARGIN = 20 * K
+// 2026-10 版面依主委修改稿：標題、圖例移到右上空白處，頂端不再保留標題列 → 圖面可再放大。
+// （--bike 自行車版已不維護，沿用舊的頂端標題列）
+const TITLE_H = BIKE_ONLY ? 34 * K : 0
+// 直式/橫式挑縮放較大者
 const fit = ([w, h]) => Math.min((w - MARGIN * 2) / rw, (h - MARGIN * 2 - TITLE_H) / rh)
-const LAND = [1190.55, 841.89], PORT = [841.89, 1190.55]
-const A3 = fit(LAND) >= fit(PORT) ? LAND : PORT
+const LAND = [LONG, SHORT], PORT = [SHORT, LONG]
+const SIZE = fit(LAND) >= fit(PORT) ? LAND : PORT
 
 const pdf = await PDFDocument.create()
 pdf.registerFontkit(fontkit)
@@ -88,8 +103,8 @@ const zh = await pdf.embedFont(readFileSync('C:/Windows/Fonts/kaiu.ttf'), { subs
 const num = await pdf.embedFont(StandardFonts.Helvetica)
 const img = await pdf.embedPng(readFileSync('public/demo/b1.png'))
 
-const [PW, PH] = A3
-const page = pdf.addPage(A3)
+const [PW, PH] = SIZE
+const page = pdf.addPage(SIZE)
 const aw = PW - MARGIN * 2
 const ah = PH - MARGIN * 2 - TITLE_H
 const scale = Math.min(aw / rw, ah / rh)
@@ -123,9 +138,11 @@ const today = new Date().toISOString().slice(0, 10)
 // 本圖左上角就是標題列，故把標籤寫進標題，不另外蓋章（見 scripts/stamp-attachment.mjs）。
 const labelAt = process.argv.indexOf('--label')
 const LABEL = labelAt > 0 ? process.argv[labelAt + 1] : ''
-const TITLE = (LABEL ? LABEL + '　' : '') + (BIKE_ONLY ? 'B1 自行車位配置圖' : 'B1 停車場車位配置圖')
-page.drawText(TITLE, { x: MARGIN, y: PH - MARGIN - 16, size: 18, font: zh, color: rgb(0.08, 0.09, 0.11) })
-page.drawText(today + (locked ? '' : '（無鎖定資料）'), { x: MARGIN + zh.widthOfTextAtSize(TITLE, 18) + 14, y: PH - MARGIN - 15, size: 10, font: zh, color: rgb(0.45, 0.48, 0.55) })
+if (BIKE_ONLY) {
+  const t = (LABEL ? LABEL + '　' : '') + 'B1 自行車位配置圖'
+  page.drawText(t, { x: MARGIN, y: PH - MARGIN - 16 * K, size: 18 * K, font: zh, color: rgb(0.08, 0.09, 0.11) })
+  page.drawText(today, { x: MARGIN + zh.widthOfTextAtSize(t, 18 * K) + 14 * K, y: PH - MARGIN - 15 * K, size: 10 * K, font: zh, color: rgb(0.45, 0.48, 0.55) })
+}
 
 // 車位圓點。全區圖維持 7（既有版面，勿動）；自行車版裁切範圍小、放大倍率高，
 // 沿用 7 會讓圓點直徑超過車位間距（自行車格間距僅約 8.5 單位）而糊成一條 →
@@ -174,50 +191,79 @@ for (const s of printable) {
   page.drawText(String(s.id), { x: cx - w / 2, y: cy - fs * 0.36, size: fs, font: num, color: numColor })
 }
 
-// 圖例（標題列右側一排）
-let lx = MARGIN + zh.widthOfTextAtSize(TITLE, 18) + 100
-const ly = PH - MARGIN - 14
-for (const key of ['motor', 'small', 'access', 'bike']) {
-  if (!PRINT_CATS.has(key)) continue
-  const c = CAT[key]
-  page.drawCircle({ x: lx + 5, y: ly + 4, size: 5, color: c.color, opacity: 0.9 })
-  const label = `${c.name} ${counts[key] || 0}`
-  page.drawText(label, { x: lx + 13, y: ly, size: 10.5, font: zh, color: rgb(0.1, 0.1, 0.12) })
-  lx += 13 + zh.widthOfTextAtSize(label, 10.5) + 18
-}
-if (locked) {
-  page.drawCircle({ x: lx + 5, y: ly + 4, size: 5, borderColor: rgb(0.1, 0.1, 0.12), borderWidth: 1.6, opacity: 0 })
-  page.drawText(`鎖定保留 ${lockedDrawn}`, { x: lx + 13, y: ly, size: 10.5, font: zh, color: rgb(0.1, 0.1, 0.12) })
-  lx += 13 + zh.widthOfTextAtSize(`鎖定保留 ${lockedDrawn}`, 10.5) + 18
-}
-page.drawCircle({ x: lx + 5, y: ly + 4, size: 5, borderColor: rgb(0.83, 0.66, 0.12), borderWidth: 1.6, opacity: 0 })
-page.drawText('公益位（社宅）', { x: lx + 13, y: ly, size: 10.5, font: zh, color: rgb(0.1, 0.1, 0.12) })
-
-// ── 公告用印（2026-10 主委要求）──────────────────────────────────────────────
-// 依社區公告頁尾格式：[紅色方章] 樂菲莊園管理委員會／電話 [藍色公告章]，置於右上角空白處
-// （建築線外的台電區已白幕遮掉、該區無車位）。
+// ── 公告用印參數 ──────────────────────────────────────────────────────────────
 //   --seal image：直接嵌入電子章（印章圖檔取自 private/seals/，由 extract-seals.mjs 產生）
-//   --seal blank：只印文字、兩側留白，印出後人工蓋章
+//   --seal blank：印章位置留白，印出後人工蓋章
+//   未指定：只印管委會名稱與電話（一般張貼／網站用）
 // ⚠️ 本 repo 公開：電子章版**禁止輸出到 public/**（會隨網站部署，任何人可下載印章偽造公告）。
 const sealAt = process.argv.indexOf('--seal')
 const SEAL = sealAt > 0 ? process.argv[sealAt + 1] : ''
 if (SEAL && !['image', 'blank'].includes(SEAL)) throw new Error('--seal 只接受 image 或 blank')
-if (SEAL) {
+if (SEAL === 'image') {
   const outPath = process.argv.indexOf('--out') > 0 ? process.argv[process.argv.indexOf('--out') + 1] : 'public/print/b1-map-a3'
   // 以絕對路徑比對，不靠字串樣式（相對路徑、./public、大小寫磁碟代號都擋得到）
-  const abs = resolvePath(outPath).toLowerCase()
-  const pubDir = resolvePath('public').toLowerCase() + pathSep
-  if (SEAL === 'image' && abs.startsWith(pubDir))
+  if (resolvePath(outPath).toLowerCase().startsWith(resolvePath('public').toLowerCase() + pathSep))
     throw new Error('電子章版不得輸出到 public/（會上網站）。請用 --out 指到 docs/pdf/ 或 private/')
+}
 
-  const ORG = '樂菲莊園管理委員會', TEL = '電話 02-2218-6136'
-  const SZ_ORG = 17, SZ_TEL = 11.5
-  const RED = 74 // 紅章邊長 pt（約 2.6cm）
-  const BLUE_H = 66
-  const GAP = 14
-  const textW = Math.max(zh.widthOfTextAtSize(ORG, SZ_ORG), zh.widthOfTextAtSize(TEL, SZ_TEL))
+// ── 右上資訊區（2026-10 依主委修改稿）：標題 → 圖例（種類／數量／備註）→ 管委會＋印章 ──
+// 位置＝建築線外台電區（已白幕遮掉、無車位）。標題與圖例隨紙張放大（×K）；印章用實際尺寸。
+if (!BIKE_ONLY) {
+  const ink = rgb(0.1, 0.1, 0.12)
+  const L = toX(Math.max(825, rx0)) + 10 * K
+  const R = PW - MARGIN
+  const BOTTOM = toY(1070)
+  const C = (L + R) / 2
+  let y = PH - MARGIN
 
-  let blueImg = null, redImg = null, blueW = Math.round(BLUE_H * 1.45)
+  // 標題（過長則自動縮字，確保塞得進空白區）
+  const TITLE_TXT = (LABEL ? LABEL + '　' : '') + '樂菲莊園 B1 停車場機車及腳踏車車位配置圖'
+  const tSize = Math.min(24 * K, (R - L) / zh.widthOfTextAtSize(TITLE_TXT, 1))
+  y -= tSize
+  page.drawText(TITLE_TXT, { x: C - zh.widthOfTextAtSize(TITLE_TXT, tSize) / 2, y, size: tSize, font: zh, color: rgb(0.08, 0.09, 0.11) })
+  y -= 16 * K
+
+  // 圖例：畫法與圖上一致（實心＝車種；白底黑框＝不開放；白底金框＝社宅）
+  // 數量一律取自實際畫出的格數，不手填——圖例與圖面才不會對不上。
+  const pubCount = printable.filter(isPublicSeat).length
+  const rows = [
+    { kind: 'fill', color: CAT.motor.color, label: '大車位', n: counts.motor || 0 },
+    { kind: 'fill', color: CAT.small.color, label: '小車位', n: counts.small || 0 },
+    { kind: 'fill', color: CAT.bike.color, label: '腳踏車位', n: counts.bike || 0 },
+    { kind: 'fill', color: CAT.access.color, label: '無障礙車位', n: counts.access || 0 },
+    ...(locked ? [{ kind: 'locked', label: '不開放車位', n: lockedDrawn, note: '（不選擇）' }] : []),
+    { kind: 'public', label: '社宅車位', n: pubCount, note: '（不選擇）' },
+  ]
+  const LS = 15 * K, RH = 24 * K, ICON = 7.5 * K, GAP = 14 * K
+  const wOf = (t) => zh.widthOfTextAtSize(t, LS)
+  const labelW = Math.max(...rows.map((x) => wOf(x.label)))
+  const numW = Math.max(...rows.map((x) => wOf(`${x.n} 席`)))
+  const noteW = Math.max(0, ...rows.map((x) => (x.note ? wOf(x.note) : 0)))
+  const tableW = ICON * 2 + GAP + labelW + GAP + numW + GAP * 0.5 + noteW
+  const x0 = C - tableW / 2
+  for (const row of rows) {
+    y -= RH
+    const cy = y + LS * 0.36
+    const ix = x0 + ICON
+    if (row.kind === 'fill') page.drawCircle({ x: ix, y: cy, size: ICON, color: row.color, opacity: 0.9 })
+    else if (row.kind === 'locked')
+      page.drawCircle({ x: ix, y: cy, size: ICON, color: rgb(1, 1, 1), borderColor: rgb(0.1, 0.1, 0.12), borderWidth: 1.8 * K })
+    else page.drawCircle({ x: ix, y: cy, size: ICON, color: rgb(1, 1, 1), borderColor: rgb(0.83, 0.66, 0.12), borderWidth: 2 * K })
+    const xl = x0 + ICON * 2 + GAP
+    page.drawText(row.label, { x: xl, y, size: LS, font: zh, color: ink })
+    const nTxt = `${row.n} 席`
+    page.drawText(nTxt, { x: xl + labelW + GAP + numW - wOf(nTxt), y, size: LS, font: zh, color: ink }) // 數量靠右對齊
+    if (row.note) page.drawText(row.note, { x: xl + labelW + GAP + numW + GAP * 0.5, y, size: LS, font: zh, color: ink })
+  }
+  y -= 26 * K
+
+  // 管委會＋印章：依社區公告頁尾格式 [紅色方章] 樂菲莊園管理委員會／電話 [藍色公告章]
+  // 印章用**實際尺寸**：剪章時以每 pt 6 像素擷取（須與 extract-seals.mjs 的 SCALE 一致），
+  // 圖檔像素 ÷ 6 ＝ 公告上的原始大小（紅章約 28mm 見方、公告章約 45.5×31mm），不隨 K 放大。
+  const SEAL_PX_PER_PT = 6
+  const MM = 72 / 25.4
+  let redImg = null, blueImg = null
+  let redW = 28 * MM, redH = 28 * MM, blueW = 45.5 * MM, blueH = 31 * MM // 留白版用的章位大小
   if (SEAL === 'image') {
     try {
       redImg = await pdf.embedPng(readFileSync('private/seals/seal-committee.png'))
@@ -225,21 +271,29 @@ if (SEAL) {
     } catch {
       throw new Error('找不到 private/seals/ 印章圖檔 → 先跑 node scripts/extract-seals.mjs <公告.pdf>')
     }
-    blueW = BLUE_H * (blueImg.width / blueImg.height)
+    redW = redImg.width / SEAL_PX_PER_PT; redH = redImg.height / SEAL_PX_PER_PT
+    blueW = blueImg.width / SEAL_PX_PER_PT; blueH = blueImg.height / SEAL_PX_PER_PT
   }
+  const ORG = '樂菲莊園管理委員會', TEL = '電話 02-2218-6136'
+  const SZ_ORG = 17 * K, SZ_TEL = 12 * K
+  const textW = Math.max(zh.widthOfTextAtSize(ORG, SZ_ORG), zh.widthOfTextAtSize(TEL, SZ_TEL))
+  const SG = 12 * K
+  const withSeal = SEAL === 'image' || SEAL === 'blank'
+  const blockH = withSeal ? Math.max(redH, blueH, SZ_ORG + SZ_TEL + 10 * K) : SZ_ORG + SZ_TEL + 10 * K
+  const midY = y - blockH / 2
+  const blockW = withSeal ? redW + SG + textW + SG + blueW : textW
+  const xRed = C - blockW / 2
+  const xText = withSeal ? xRed + redW + SG : C - textW / 2
+  const xBlue = xText + textW + SG
+  if (redImg) page.drawImage(redImg, { x: xRed, y: midY - redH / 2, width: redW, height: redH })
+  if (blueImg) page.drawImage(blueImg, { x: xBlue, y: midY - blueH / 2, width: blueW, height: blueH })
+  page.drawText(ORG, { x: xText + (textW - zh.widthOfTextAtSize(ORG, SZ_ORG)) / 2, y: midY + 2 * K, size: SZ_ORG, font: zh, color: ink })
+  page.drawText(TEL, { x: xText + (textW - zh.widthOfTextAtSize(TEL, SZ_TEL)) / 2, y: midY - SZ_TEL - 4 * K, size: SZ_TEL, font: zh, color: ink })
+  y = midY - blockH / 2
 
-  const right = PW - MARGIN
-  const top = PH - MARGIN - TITLE_H - 6
-  const midY = top - RED / 2
-  const xBlue = right - blueW
-  const xText = xBlue - GAP - textW
-  const xRed = xText - GAP - RED
-
-  if (redImg) page.drawImage(redImg, { x: xRed, y: midY - RED / 2, width: RED, height: RED })
-  if (blueImg) page.drawImage(blueImg, { x: xBlue, y: midY - BLUE_H / 2, width: blueW, height: BLUE_H })
-  const ink = rgb(0.1, 0.1, 0.12)
-  page.drawText(ORG, { x: xText + (textW - zh.widthOfTextAtSize(ORG, SZ_ORG)) / 2, y: midY + 3, size: SZ_ORG, font: zh, color: ink })
-  page.drawText(TEL, { x: xText + (textW - zh.widthOfTextAtSize(TEL, SZ_TEL)) / 2, y: midY - 16, size: SZ_TEL, font: zh, color: ink })
+  // 資訊區超出空白區（壓到車位）時要叫出來，不能默默疊圖
+  if (y < BOTTOM) console.warn(`⚠️ 右上資訊區超出空白區 ${(BOTTOM - y).toFixed(0)}pt，可能壓到圖面——請縮小字級或改紙張方向`)
+  if (L + 1 > C - Math.max(tableW, blockW) / 2) console.warn('⚠️ 右上資訊區寬度超出空白區，可能壓到圖面')
 }
 
 // --out：指定輸出路徑（公告用的附件四另存一份，不動 public/print 的常態圖）
@@ -260,5 +314,5 @@ try {
 }
 const pub = printable.filter(isPublicSeat)
 const pubBike = pub.filter((s) => s.cat === 'bike').length
-console.log('wrote ' + out + ' —', PW > PH ? 'A3 橫式' : 'A3 直式', JSON.stringify(counts),
+console.log('wrote ' + out + ' —', PAPER + (PW > PH ? ' 橫式' : ' 直式'), JSON.stringify(counts),
   'locked:', locked ? lockedDrawn : 'n/a', `public: ${pub.length}（機車 ${pub.length - pubBike}＋自行車 ${pubBike}）`)
