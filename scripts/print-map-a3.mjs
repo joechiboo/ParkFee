@@ -216,23 +216,22 @@ if (SEAL === 'image') {
 }
 
 // ── 右上資訊區（2026-10 依主委修改稿）：標題 → 圖例（種類／數量／備註）→ 管委會＋印章 ──
-// 位置＝建築線外台電區（已白幕遮掉、無車位）。標題與圖例隨紙張放大（×K）；印章用實際尺寸。
+// 位置＝建築線外台電區（已白幕遮掉、無車位）。
+// **字級自動撐滿空白區**（2026-10-14 經理要求「底下不要留白太多」）：整塊依空白區實際高度
+// 等比放大（倍率 F 以二分搜尋求最大值），換紙張也自動撐滿、不必手調。
+//   · 標題另受寬度限制（最長，先撞到左右邊）；圖例與管委會可再放大以填滿高度
+//   · 印章不參與放大，一律實際尺寸
 if (!BIKE_ONLY) {
   const ink = rgb(0.1, 0.1, 0.12)
   const L = toX(Math.max(825, rx0)) + 10 * K
   const R = PW - MARGIN
+  const TOP = PH - MARGIN
   const BOTTOM = toY(1070)
   const C = (L + R) / 2
-  let y = PH - MARGIN
+  const availW = R - L, availH = TOP - BOTTOM
+  const FILL = 0.95 // 撐滿空白區高度的比例（留一點底邊）
 
-  // 標題（過長則自動縮字，確保塞得進空白區）
   const TITLE_TXT = (LABEL ? LABEL + '　' : '') + '樂菲莊園 B1 停車場機車及腳踏車車位配置圖'
-  const tSize = Math.min(24 * K, (R - L) / zh.widthOfTextAtSize(TITLE_TXT, 1))
-  y -= tSize
-  page.drawText(TITLE_TXT, { x: C - zh.widthOfTextAtSize(TITLE_TXT, tSize) / 2, y, size: tSize, font: zh, color: rgb(0.08, 0.09, 0.11) })
-  y -= 16 * K
-
-  // 圖例：畫法與圖上一致（實心＝車種；白底黑框＝不開放；白底金框＝社宅）
   // 數量一律取自實際畫出的格數，不手填——圖例與圖面才不會對不上。
   const pubCount = printable.filter(isPublicSeat).length
   const rows = [
@@ -243,36 +242,13 @@ if (!BIKE_ONLY) {
     ...(locked ? [{ kind: 'locked', label: '不開放車位', n: lockedDrawn, note: '（不選擇）' }] : []),
     { kind: 'public', label: '社宅車位', n: pubCount, note: '（不選擇）' },
   ]
-  const LS = 15 * K, RH = 24 * K, ICON = 7.5 * K, GAP = 14 * K
-  const wOf = (t) => zh.widthOfTextAtSize(t, LS)
-  const labelW = Math.max(...rows.map((x) => wOf(x.label)))
-  const numW = Math.max(...rows.map((x) => wOf(`${x.n} 席`)))
-  const noteW = Math.max(0, ...rows.map((x) => (x.note ? wOf(x.note) : 0)))
-  const tableW = ICON * 2 + GAP + labelW + GAP + numW + GAP * 0.5 + noteW
-  const x0 = C - tableW / 2
-  for (const row of rows) {
-    y -= RH
-    const cy = y + LS * 0.36
-    const ix = x0 + ICON
-    if (row.kind === 'fill') page.drawCircle({ x: ix, y: cy, size: ICON, color: row.color, opacity: 0.9 })
-    else if (row.kind === 'locked')
-      page.drawCircle({ x: ix, y: cy, size: ICON, color: rgb(1, 1, 1), borderColor: rgb(0.1, 0.1, 0.12), borderWidth: 1.8 * K })
-    else page.drawCircle({ x: ix, y: cy, size: ICON, color: rgb(1, 1, 1), borderColor: rgb(0.83, 0.66, 0.12), borderWidth: 2 * K })
-    const xl = x0 + ICON * 2 + GAP
-    page.drawText(row.label, { x: xl, y, size: LS, font: zh, color: ink })
-    const nTxt = `${row.n} 席`
-    page.drawText(nTxt, { x: xl + labelW + GAP + numW - wOf(nTxt), y, size: LS, font: zh, color: ink }) // 數量靠右對齊
-    if (row.note) page.drawText(row.note, { x: xl + labelW + GAP + numW + GAP * 0.5, y, size: LS, font: zh, color: ink })
-  }
-  y -= 26 * K
 
-  // 管委會＋印章：依社區公告頁尾格式 [紅色方章] 樂菲莊園管理委員會／電話 [藍色公告章]
-  // 印章用**實際尺寸**：剪章時以每 pt 6 像素擷取（須與 extract-seals.mjs 的 SCALE 一致），
-  // 圖檔像素 ÷ 6 ＝ 公告上的原始大小（紅章約 28mm 見方、公告章約 45.5×31mm），不隨 K 放大。
+  // 印章：實際尺寸。剪章時以每 pt 6 像素擷取（須與 extract-seals.mjs 的 SCALE 一致），
+  // 圖檔像素 ÷ 6 ＝ 公告上的原始大小（紅章約 28mm 見方、公告章約 45.5×31mm）。
   const SEAL_PX_PER_PT = 6
   const MM = 72 / 25.4
   let redImg = null, blueImg = null
-  let redW = 28 * MM, redH = 28 * MM, blueW = 45.5 * MM, blueH = 31 * MM // 留白版用的章位大小
+  let redW = 28 * MM, redH = 28 * MM, blueW = 45.5 * MM, blueH = 31 * MM // 留白版的章位大小
   if (SEAL === 'image') {
     try {
       redImg = await pdf.embedPng(readFileSync('private/seals/seal-committee.png'))
@@ -283,26 +259,81 @@ if (!BIKE_ONLY) {
     redW = redImg.width / SEAL_PX_PER_PT; redH = redImg.height / SEAL_PX_PER_PT
     blueW = blueImg.width / SEAL_PX_PER_PT; blueH = blueImg.height / SEAL_PX_PER_PT
   }
-  const ORG = '樂菲莊園管理委員會', TEL = '電話 02-2218-6136'
-  const SZ_ORG = 17 * K, SZ_TEL = 12 * K
-  const textW = Math.max(zh.widthOfTextAtSize(ORG, SZ_ORG), zh.widthOfTextAtSize(TEL, SZ_TEL))
-  const SG = 12 * K
   const withSeal = SEAL === 'image' || SEAL === 'blank'
-  const blockH = withSeal ? Math.max(redH, blueH, SZ_ORG + SZ_TEL + 10 * K) : SZ_ORG + SZ_TEL + 10 * K
-  const midY = y - blockH / 2
-  const blockW = withSeal ? redW + SG + textW + SG + blueW : textW
-  const xRed = C - blockW / 2
-  const xText = withSeal ? xRed + redW + SG : C - textW / 2
-  const xBlue = xText + textW + SG
-  if (redImg) page.drawImage(redImg, { x: xRed, y: midY - redH / 2, width: redW, height: redH })
-  if (blueImg) page.drawImage(blueImg, { x: xBlue, y: midY - blueH / 2, width: blueW, height: blueH })
-  page.drawText(ORG, { x: xText + (textW - zh.widthOfTextAtSize(ORG, SZ_ORG)) / 2, y: midY + 2 * K, size: SZ_ORG, font: zh, color: ink })
-  page.drawText(TEL, { x: xText + (textW - zh.widthOfTextAtSize(TEL, SZ_TEL)) / 2, y: midY - SZ_TEL - 4 * K, size: SZ_TEL, font: zh, color: ink })
-  y = midY - blockH / 2
+  const ORG = '樂菲莊園管理委員會', TEL = '電話 02-2218-6136'
 
-  // 資訊區超出空白區（壓到車位）時要叫出來，不能默默疊圖
-  if (y < BOTTOM) console.warn(`⚠️ 右上資訊區超出空白區 ${(BOTTOM - y).toFixed(0)}pt，可能壓到圖面——請縮小字級或改紙張方向`)
-  if (L + 1 > C - Math.max(tableW, blockW) / 2) console.warn('⚠️ 右上資訊區寬度超出空白區，可能壓到圖面')
+  // 依倍率 F 排版；draw=false 時只量尺寸（給二分搜尋用）
+  function layout(F, draw) {
+    const s = K * F
+    let y = TOP
+    // 標題：受寬度限制，不隨 F 無限放大
+    const tSize = Math.min(24 * s, availW / zh.widthOfTextAtSize(TITLE_TXT, 1))
+    const tW = zh.widthOfTextAtSize(TITLE_TXT, tSize)
+    y -= tSize
+    if (draw) page.drawText(TITLE_TXT, { x: C - tW / 2, y, size: tSize, font: zh, color: rgb(0.08, 0.09, 0.11) })
+    y -= 18 * s
+
+    // 圖例：畫法與圖上一致（實心＝車種；白底黑框＝不開放；白底金框＝社宅）
+    const LS = 15 * s, RH = 25 * s, ICON = 7.5 * s, GAP = 14 * s
+    const wOf = (t) => zh.widthOfTextAtSize(t, LS)
+    const labelW = Math.max(...rows.map((x) => wOf(x.label)))
+    const numW = Math.max(...rows.map((x) => wOf(`${x.n} 席`)))
+    const noteW = Math.max(0, ...rows.map((x) => (x.note ? wOf(x.note) : 0)))
+    const tableW = ICON * 2 + GAP + labelW + GAP + numW + GAP * 0.5 + noteW
+    const x0 = C - tableW / 2
+    for (const row of rows) {
+      y -= RH
+      if (!draw) continue
+      const cy = y + LS * 0.36
+      const ix = x0 + ICON
+      if (row.kind === 'fill') page.drawCircle({ x: ix, y: cy, size: ICON, color: row.color, opacity: 0.9 })
+      else if (row.kind === 'locked')
+        page.drawCircle({ x: ix, y: cy, size: ICON, color: rgb(1, 1, 1), borderColor: rgb(0.1, 0.1, 0.12), borderWidth: 1.8 * s })
+      else page.drawCircle({ x: ix, y: cy, size: ICON, color: rgb(1, 1, 1), borderColor: rgb(0.83, 0.66, 0.12), borderWidth: 2 * s })
+      const xl = x0 + ICON * 2 + GAP
+      page.drawText(row.label, { x: xl, y, size: LS, font: zh, color: ink })
+      const nTxt = `${row.n} 席`
+      page.drawText(nTxt, { x: xl + labelW + GAP + numW - wOf(nTxt), y, size: LS, font: zh, color: ink }) // 數量靠右
+      if (row.note) page.drawText(row.note, { x: xl + labelW + GAP + numW + GAP * 0.5, y, size: LS, font: zh, color: ink })
+    }
+    y -= 28 * s
+
+    // 管委會＋印章：依社區公告頁尾格式 [紅色方章] 樂菲莊園管理委員會／電話 [藍色公告章]
+    const SZ_ORG = 18 * s, SZ_TEL = 13 * s
+    const textW = Math.max(zh.widthOfTextAtSize(ORG, SZ_ORG), zh.widthOfTextAtSize(TEL, SZ_TEL))
+    const SG = 12 * s
+    const textH = SZ_ORG + SZ_TEL + 10 * s
+    const blockH = withSeal ? Math.max(redH, blueH, textH) : textH
+    const blockW = withSeal ? redW + SG + textW + SG + blueW : textW
+    const midY = y - blockH / 2
+    if (draw) {
+      const xRed = C - blockW / 2
+      const xText = withSeal ? xRed + redW + SG : C - textW / 2
+      const xBlue = xText + textW + SG
+      if (redImg) page.drawImage(redImg, { x: xRed, y: midY - redH / 2, width: redW, height: redH })
+      if (blueImg) page.drawImage(blueImg, { x: xBlue, y: midY - blueH / 2, width: blueW, height: blueH })
+      page.drawText(ORG, { x: xText + (textW - zh.widthOfTextAtSize(ORG, SZ_ORG)) / 2, y: midY + 2 * s, size: SZ_ORG, font: zh, color: ink })
+      page.drawText(TEL, { x: xText + (textW - zh.widthOfTextAtSize(TEL, SZ_TEL)) / 2, y: midY - SZ_TEL - 4 * s, size: SZ_TEL, font: zh, color: ink })
+    }
+    y = midY - blockH / 2
+    // 寬度只檢查圖例與管委會區：標題已設計成撞到寬度上限即不再放大，必定 ≤ availW。
+    // 若把標題也納入，tW＝availW 時浮點誤差會變成 availW+ε，二分搜尋誤判「超寬」而提早停住
+    // （2026-10-14 實測：A3 因此只撐到 80%、A0 卻到 95%，同比例紙張結果不一致）。
+    return { used: TOP - y, width: Math.max(tableW, blockW) }
+  }
+
+  // 二分搜尋最大倍率：高度不超過 FILL × 空白區、寬度不超出空白區
+  let lo = 0.3, hi = 8
+  for (let i = 0; i < 40; i++) {
+    const m = (lo + hi) / 2
+    const r = layout(m, false)
+    if (r.used <= availH * FILL && r.width <= availW) lo = m
+    else hi = m
+  }
+  const F = lo
+  const final = layout(F, true)
+  if (final.used > availH) console.warn(`⚠️ 右上資訊區超出空白區 ${(final.used - availH).toFixed(0)}pt，可能壓到圖面`)
+  console.log(`  資訊區倍率 ${F.toFixed(2)}（填滿空白區高度 ${((final.used / availH) * 100).toFixed(0)}%）`)
 }
 
 // --out：指定輸出路徑（公告用的附件四另存一份，不動 public/print 的常態圖）
