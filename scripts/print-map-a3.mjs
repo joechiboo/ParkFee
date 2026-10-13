@@ -169,12 +169,15 @@ const printable = cls.seats.filter(willPrint) // noise/excl／非本版車種 �
 // 2026-10 主委要求：**鎖定格**圓內留白、不填車種色——鎖定格不開放承租，大／小之分對它無意義，
 // 留白一眼可辨「這格不能選」。編號改黑字（白字在白底上看不見）。其餘車位維持實心填色＋白字。
 const isLocked = (s) => !!locked && locked.has(lockKeyOf(s)) && catOf(s) !== 'car'
+// 2026-10-13 起**社宅位也空心**（含自行車公益位 114–118）：社宅位與不開放位在圖例上同屬
+// 「（不選擇）」——一般住戶都選不到，畫法一致才一眼看得出來。金框照留以區分兩者。
+const isHollow = (s) => isLocked(s) || isPublicSeat(s)
 
 for (const s of printable) {
   const cat = catOf(s)
   counts[cat] = (counts[cat] || 0) + 1
-  const fill = isLocked(s) ? rgb(1, 1, 1) : CAT[cat].color
-  page.drawCircle({ x: toX(s.x), y: toY(s.y), size: r, color: fill, opacity: isLocked(s) ? 1 : 0.9 })
+  const fill = isHollow(s) ? rgb(1, 1, 1) : CAT[cat].color
+  page.drawCircle({ x: toX(s.x), y: toY(s.y), size: r, color: fill, opacity: isHollow(s) ? 1 : 0.9 })
 }
 
 const fs = Math.max(2.8, r * 0.92)
@@ -186,8 +189,14 @@ for (const s of printable) {
     page.drawCircle({ x: cx, y: cy, size: r + 0.7, borderColor: rgb(0.1, 0.1, 0.12), borderWidth: 1.6, opacity: 0 })
     lockedDrawn++
   }
+}
+// 第三趟才寫號碼：車位間距小於圓直徑，相鄰格的金框／黑框會互相交疊。若「框＋號碼」同一趟畫，
+// 後一格的框會壓過前一格的號碼（社宅位改空心黑字後尤其明顯：自行車 114–118、機車 92–96 號碼被切）。
+// 號碼最後統一疊上，保證永遠在最上層。
+for (const s of printable) {
+  const cx = toX(s.x), cy = toY(s.y)
   const w = num.widthOfTextAtSize(String(s.id), fs)
-  const numColor = isLocked(s) ? rgb(0.08, 0.08, 0.1) : rgb(1, 1, 1)
+  const numColor = isHollow(s) ? rgb(0.08, 0.08, 0.1) : rgb(1, 1, 1)
   page.drawText(String(s.id), { x: cx - w / 2, y: cy - fs * 0.36, size: fs, font: num, color: numColor })
 }
 
