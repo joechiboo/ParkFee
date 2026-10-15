@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { distribute, VIA } from '../lottery/distribute.js'
 import { distributeBikes, BIKE_VIA } from '../lottery/distribute-bikes.js'
 import { motorSeats, bikeSeats } from '../map/seats.js'
@@ -118,6 +118,22 @@ function run() {
   }
 }
 const resultMapUrl = import.meta.env.BASE_URL + 'demo/result.html'
+
+// 戶號顯示開關（2026-10-14 經理：戶號非個資、可公開；使用者定：預設仍隱藏、可點開、重整即復原）。
+//   連動：機車各表加戶號欄、公告版 CSV 帶戶號欄、demo/result.html 點格子顯示戶號（經 localStorage 旗標）。
+const SHOW_HH_KEY = 'parkfee_show_household_v1'
+const showHousehold = ref(false)
+watch(
+  showHousehold,
+  (v) => {
+    try {
+      localStorage.setItem(SHOW_HH_KEY, v ? '1' : '0')
+    } catch {
+      /* 寫不進就算了，地圖頁維持隱藏 */
+    }
+  },
+  { immediate: true }, // 進頁即寫 0：確保地圖頁不會沿用上次殘留的「顯示」
+)
 function redraw() {
   // 重抽＝換新種子重跑（結果不同、仍可重現）。監察用：歷次種子/時間都留存於下方紀錄。
   seed.value = '重抽-' + new Date().toISOString().slice(0, 19).replace('T', ' ')
@@ -184,14 +200,19 @@ async function publishToBackend() {
   }
 }
 function downloadResultCSV(pub = true) {
-  // 公告版（預設）＝無戶號，對外公告用；完整版＝含戶號，僅物業內部（管理員鈕）。
+  // 公告版（預設）＝無戶號，對外公告用；「顯示戶號」開關打開時公告版也帶戶號欄。
+  // 完整版＝含戶號＋工作人員列，僅物業內部（管理員鈕），不受開關影響。
   if (!result.value) return
-  const csv = '﻿' + mergedResultCSV([result.value, bikeResult.value], { 公告日: announceDate.value, 公開版: pub })
+  const withHH = showHousehold.value
+  const csv =
+    '﻿' +
+    mergedResultCSV([result.value, bikeResult.value], { 公告日: announceDate.value, 公開版: pub, 含戶號: withHH })
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `配位結果-${pub ? '公告版' : '完整版含戶號'}-${new Date().toISOString().slice(0, 10)}.csv`
+  const tag = pub ? (withHH ? '公告版含戶號' : '公告版') : '完整版含戶號'
+  a.download = `配位結果-${tag}-${new Date().toISOString().slice(0, 10)}.csv`
   a.click()
   URL.revokeObjectURL(url)
 }
@@ -278,6 +299,13 @@ function downloadResultCSV(pub = true) {
         </div>
       </div>
 
+      <!-- 戶號顯示開關：預設隱藏；打開後各表加戶號欄、公告版 CSV 帶戶號、地圖頁點格子顯示戶號 -->
+      <label class="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 text-sm text-amber-900">
+        <input v-model="showHousehold" type="checkbox" class="h-4 w-4 accent-amber-600" />
+        <span class="font-medium">顯示戶號</span>
+        <span class="text-xs text-amber-800">預設隱藏；打開後各表、公告版 CSV、地圖頁都會帶戶號。重新整理即恢復隱藏。</span>
+      </label>
+
       <!-- 稽核資訊 -->
       <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
         種子 <b class="font-mono">{{ result.seed }}</b> · hash <span class="font-mono">{{ result.seedHash }}</span>
@@ -298,7 +326,7 @@ function downloadResultCSV(pub = true) {
           class="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
           @click="downloadResultCSV(true)"
         >
-          ⬇ 公告版 CSV（車號×車位，無戶號）
+          ⬇ 公告版 CSV（車號×車位{{ showHousehold ? '，含戶號' : '，無戶號' }}）
         </button>
         <button
           v-if="admin"
@@ -333,6 +361,7 @@ function downloadResultCSV(pub = true) {
               <tr>
                 <th class="px-3 py-2 text-left font-medium">順序號</th>
                 <th class="px-3 py-2 text-left font-medium">輪次</th>
+                <th v-if="showHousehold" class="px-3 py-2 text-left font-medium">戶號</th>
                 <th class="px-3 py-2 text-left font-medium">車號</th>
                 <th class="px-3 py-2 text-left font-medium">車種</th>
                 <th class="px-3 py-2 text-left font-medium">第幾輛</th>
@@ -344,6 +373,7 @@ function downloadResultCSV(pub = true) {
               <tr v-for="(a, i) in lotteryRows" :key="i" class="border-t border-slate-100">
                 <td class="px-3 py-1.5 font-semibold">{{ a.順序號 ?? '—' }}</td>
                 <td class="px-3 py-1.5">{{ a.輪次 }}</td>
+                <td v-if="showHousehold" class="px-3 py-1.5 font-mono text-xs">{{ a.戶號 }}</td>
                 <td class="px-3 py-1.5 font-mono text-xs">{{ a.車號 }}</td>
                 <td class="px-3 py-1.5">{{ a.車種 }}</td>
                 <td class="px-3 py-1.5">{{ a.第幾輛 }}</td>
@@ -365,6 +395,7 @@ function downloadResultCSV(pub = true) {
             <thead class="bg-white text-slate-500">
               <tr>
                 <th class="px-3 py-2 text-left font-medium">順序號</th>
+                <th v-if="showHousehold" class="px-3 py-2 text-left font-medium">戶號</th>
                 <th class="px-3 py-2 text-left font-medium">車號</th>
                 <th class="px-3 py-2 text-left font-medium">車種</th>
                 <th class="px-3 py-2 text-left font-medium">車位</th>
@@ -374,6 +405,7 @@ function downloadResultCSV(pub = true) {
             <tbody>
               <tr v-for="(a, i) in computerRows" :key="i" class="border-t border-sky-100">
                 <td class="px-3 py-1.5 font-semibold">{{ a.順序號 ?? '—' }}</td>
+                <td v-if="showHousehold" class="px-3 py-1.5 font-mono text-xs">{{ a.戶號 }}</td>
                 <td class="px-3 py-1.5 font-mono text-xs">{{ a.車號 }}</td>
                 <td class="px-3 py-1.5">{{ a.車種 }}</td>
                 <td class="px-3 py-1.5 font-mono">{{ displaySeatIds(a.車位編號) }}</td>
@@ -393,6 +425,7 @@ function downloadResultCSV(pub = true) {
           <table class="w-full text-sm">
             <thead class="bg-slate-50 text-slate-500">
               <tr>
+                <th v-if="showHousehold" class="px-3 py-2 text-left font-medium">戶號</th>
                 <th class="px-3 py-2 text-left font-medium">車號</th>
                 <th class="px-3 py-2 text-left font-medium">車位</th>
                 <th class="px-3 py-2 text-left font-medium">類型</th>
@@ -401,6 +434,7 @@ function downloadResultCSV(pub = true) {
             </thead>
             <tbody>
               <tr v-for="(a, i) in presetRows" :key="i" class="border-t border-slate-100">
+                <td v-if="showHousehold" class="px-3 py-1.5 font-mono text-xs">{{ a.戶號 }}</td>
                 <td class="px-3 py-1.5 font-mono text-xs">{{ a.車號 }}</td>
                 <td class="px-3 py-1.5 font-mono">{{ displaySeatIds(a.車位編號) }}</td>
                 <td class="px-3 py-1.5">{{ a.車位類型 }}</td>
@@ -502,6 +536,7 @@ function downloadResultCSV(pub = true) {
               <tr>
                 <th class="px-3 py-2 text-left font-medium">順序號</th>
                 <th class="px-3 py-2 text-left font-medium">輪次</th>
+                <th v-if="showHousehold" class="px-3 py-2 text-left font-medium">戶號</th>
                 <th class="px-3 py-2 text-left font-medium">車號</th>
                 <th class="px-3 py-2 text-left font-medium">第幾輛</th>
                 <th class="px-3 py-2 text-left font-medium">原因</th>
@@ -511,6 +546,7 @@ function downloadResultCSV(pub = true) {
               <tr v-for="(l, i) in result.落選" :key="i" class="border-t border-rose-100">
                 <td class="px-3 py-1.5 font-semibold">{{ l.順序號 ?? '免抽' }}</td>
                 <td class="px-3 py-1.5">{{ l.輪次 }}</td>
+                <td v-if="showHousehold" class="px-3 py-1.5 font-mono text-xs">{{ l.戶號 }}</td>
                 <td class="px-3 py-1.5 font-mono text-xs">{{ l.車號 }}</td>
                 <td class="px-3 py-1.5">{{ l.第幾輛 }}</td>
                 <td class="px-3 py-1.5">{{ l.原因 }}</td>

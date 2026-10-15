@@ -1,6 +1,7 @@
 // 配位結果地圖檢視 result.html：/allocate 執行抽籤後自動寫 localStorage，本頁讀出並在 B1 圖上色。
 //   顏色＝配位方式（志願分發/電腦選號/志願小位/無障礙/物業指派）；鎖定灰、公益金框、剩餘淡黃。
-//   點座位 → 右欄顯示 戶號/車號/輪次/順序號。資料只在瀏覽器 localStorage、頁面本身無個資。
+//   點座位 → 右欄顯示 車號/輪次/順序號；戶號預設不顯示，/allocate 打開「顯示戶號」開關後才顯示
+//   （旗標 localStorage parkfee_show_household_v1='1'，2026-10-14 經理口徑戶號非個資）。資料只在瀏覽器、頁面本身無個資。
 // 用法：node scripts/build-result-tool.mjs → 開 public/demo/result.html（先去 /allocate 跑一次抽籤）
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
@@ -89,7 +90,8 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
 <script>
  const SEATS=${SEATS_JSON}, DISPW=${dispW}, DISPH=${dispH};
  const LOCKED=new Set(${LOCKED_JSON});
- const KEY='parkfee_alloc_result_v1';
+ const KEY='parkfee_alloc_result_v1',HH_KEY='parkfee_show_household_v1';
+ function showHH(){try{return localStorage.getItem(HH_KEY)==='1'}catch(e){return false}}
  const NS='http://www.w3.org/2000/svg';
  const VIA_CLASS={'志願分發':'v-wish','電腦選號':'v-comp','志願小位':'v-small','無障礙':'v-acc','物業指派':'v-preset'};
  const svg=document.getElementById('svg'),stage=document.getElementById('stage'),plan=document.getElementById('plan');
@@ -119,7 +121,8 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
      g.setAttribute('class',cl);}}
  function select(id){selId=id;render();const s=byId[id];const a=assign.get(String(id));
    let h='<b>車位 '+id+'</b> <span style="color:#94a3b8">'+s.t+(s.p?'·公益':'')+(LOCKED.has(id)?'·鎖定':'')+'</span><br>';
-   if(a){h+='車號 <span style="font-family:monospace">'+(a.車號||'—')+'</span><br>'  // 戶號不顯示（公開投影防個資）
+   if(a){h+=(showHH()&&a.戶號?'戶號 <span style="font-family:monospace">'+a.戶號+'</span><br>':'')  // 預設不顯示；/allocate 開關打開才顯示
+     +'車號 <span style="font-family:monospace">'+(a.車號||'—')+'</span><br>'
      +'方式 '+a.配位方式+(a.輪次!=null?'　輪次 '+a.輪次:'')+(a.順序號!=null?'　順序號 '+a.順序號:'');}
    else if(LOCKED.has(id))h+='<span style="color:#64748b">鎖定中（維修/凍結/預留），不出租。</span>';
    else h+='<span style="color:#64748b">未配出（仍在池中）。</span>';

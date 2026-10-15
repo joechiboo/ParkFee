@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resultRows, resultCSV, signDeadline, RESULT_COLUMNS } from './result.js'
+import { resultRows, resultCSV, mergedResultCSV, signDeadline, RESULT_COLUMNS, RESULT_COLUMNS_PUBLIC, resultColumns } from './result.js'
 import { VIA, REASON } from '../lottery/distribute.js'
 
 // 手作 distribute() 結果樣本（只含 resultRows 用到的欄位），與引擎解耦。
@@ -101,5 +101,38 @@ describe('公開版隱藏工作人員（2026-08-26）', () => {
     const rows = resultRows(result)
     expect(rows).toHaveLength(3)
     expect(rows.find((r) => r.車號 === 'S-001').應繳金額).toBe(1200)
+  })
+})
+
+// 2026-10-14 經理：戶號非個資可公開；系統預設仍隱藏，抽籤頁開關打開時公告版才帶戶號。
+describe('公告版戶號開關（含戶號）', () => {
+  const result = {
+    assigned: [{ 戶號: 'A1-1', 車號: 'ABC-001', 車種: '一般', 車位編號: '10', 車位類型: '大', 配位方式: VIA.WISH }],
+    落選: [],
+  }
+
+  it('欄位選擇：公告版預設無戶號；含戶號=true 或完整版則有', () => {
+    expect(resultColumns({ 公開版: true })).toEqual(RESULT_COLUMNS_PUBLIC)
+    expect(resultColumns({ 公開版: true, 含戶號: true })).toEqual(RESULT_COLUMNS)
+    expect(resultColumns({ 公開版: false })).toEqual(RESULT_COLUMNS)
+    expect(resultColumns({ 公開版: false, 含戶號: false })).toEqual(RESULT_COLUMNS) // 完整版不受開關影響
+  })
+
+  it('CSV：公告版開關開 → 首欄為戶號且列值帶出', () => {
+    const off = resultCSV(result, { 公開版: true }).split('\n')
+    expect(off[0].startsWith('戶號')).toBe(false)
+    expect(off[1]).not.toContain('A1-1')
+
+    const on = mergedResultCSV([result, null], { 公開版: true, 含戶號: true }).split('\n')
+    expect(on[0].split(',')[0]).toBe('戶號')
+    expect(on[1].startsWith('A1-1,ABC-001')).toBe(true)
+  })
+
+  it('含戶號不影響公告版隱藏工作人員', () => {
+    const r = {
+      assigned: [{ 戶號: '員工-01', 車號: 'S-001', 車種: '一般', 車位編號: '11', 車位類型: '大', 配位方式: VIA.STAFF }],
+      落選: [],
+    }
+    expect(resultCSV(r, { 公開版: true, 含戶號: true }).split('\n')).toHaveLength(1)
   })
 })

@@ -9,8 +9,13 @@ import { displaySeatIds } from '../map/seat-id.js'
 
 // HANDOFF §8 配位結果欄位（末欄 備註 為作業輔助：配位方式／落選原因）。
 export const RESULT_COLUMNS = ['戶號', '車號', '車位編號', '車位類型', '應繳金額', '簽約期限', '狀態', '備註']
-// 公告版：戶號不公開（公告=車號↔車位對照即可，住戶認車號；戶號僅物業內部完整版）。
+// 公告版：戶號預設不公開（公告=車號↔車位對照即可，住戶認車號；戶號僅物業內部完整版）。
 export const RESULT_COLUMNS_PUBLIC = RESULT_COLUMNS.filter((c) => c !== '戶號')
+// 2026-10-14 經理口徑：戶號非個資、可公開。系統仍預設隱藏，由抽籤頁「顯示戶號」開關決定
+// 公告版要不要帶戶號（opts.含戶號）；完整版一律含戶號。
+export function resultColumns({ 公開版 = false, 含戶號 = false } = {}) {
+  return 公開版 && !含戶號 ? RESULT_COLUMNS_PUBLIC : RESULT_COLUMNS
+}
 
 // 簽約期限 = 公告日 + 5 日（辦法：公告後 5 日內簽約）。公告日為 'YYYY-MM-DD'；空/無效則回 ''。
 export function signDeadline(公告日) {
@@ -63,8 +68,9 @@ export function resultRows(result, { 公告日 = '', 公開版 = false } = {}) {
 
 // distribute() 結果 → CSV 字串（不含 BOM；下載時再加 BOM 供 Excel 正確顯示中文）。
 //   opts.公開版=true → 不含戶號（對外公告）；預設完整版（物業內部）。
+//   opts.含戶號=true → 公告版也帶戶號欄（抽籤頁開關打開時）。
 export function resultCSV(result, opts = {}) {
-  return toCSV(resultRows(result, opts), opts.公開版 ? RESULT_COLUMNS_PUBLIC : RESULT_COLUMNS)
+  return toCSV(resultRows(result, opts), resultColumns(opts))
 }
 
 // 多份結果（機車 + 自行車兩支引擎）合併成一份清單／CSV。
@@ -73,5 +79,5 @@ export function mergedResultRows(results, opts = {}) {
   return results.filter(Boolean).flatMap((r) => resultRows(r, opts))
 }
 export function mergedResultCSV(results, opts = {}) {
-  return toCSV(mergedResultRows(results, opts), opts.公開版 ? RESULT_COLUMNS_PUBLIC : RESULT_COLUMNS)
+  return toCSV(mergedResultRows(results, opts), resultColumns(opts))
 }
