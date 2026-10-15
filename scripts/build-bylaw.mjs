@@ -183,6 +183,10 @@ const rules = convert('docs/01-車位使用實施細則.md')
 copyFileSync('docs/19-辦法修訂草案-標紅版.html', 'public/bylaw-redline.html')
 // 例會提案單一頁版也上線：委員在 LINE 收連結即可看，免傳檔
 copyFileSync('docs/20-例會提案單-A4.html', 'public/agenda-a4.html')
+// 紙本登記表：/bylaw 頁的下載連結指向 public/forms/紙本登記表.doc。
+// ⚠️ 2026-10-15 發現 public/ 那份停在 8/20（無自行車區塊、無社宅欄），經理拿到的就是它——
+//    docs/forms/ 改了但沒人同步。改由本腳本每次 build 一併複製，來源唯一＝docs/forms/登記表-紙本.doc。
+copyFileSync('docs/forms/登記表-紙本.doc', 'public/forms/紙本登記表.doc')
 
 const outPath = 'src/data/bylaw-content.js'
 writeFileSync(
@@ -218,3 +222,4 @@ console.log(`   現行辦法 ${current.html.length} 字元（更新 ${current.up
 console.log(`   修訂草案 ${draft.html.length} 字元（更新 ${draft.updatedAt}）`)
 console.log(`   住戶說明 ${rules.html.length} 字元（更新 ${rules.updatedAt}）`)
 console.log('✅ public/bylaw-redline.html（全文標紅版，另開列印用）')
+console.log('✅ public/forms/紙本登記表.doc（← docs/forms/登記表-紙本.doc，同步現行版）')
