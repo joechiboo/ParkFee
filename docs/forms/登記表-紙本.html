@@ -4,93 +4,79 @@
 <meta charset="utf-8">
 <title>樂菲莊園 車位登記表（116 年度）</title>
 <style>
-  body{font-family:"標楷體","DFKai-SB","Microsoft JhengHei",serif;max-width:720px;margin:20px auto;padding:0 24px;color:#000;line-height:1.7;font-size:14px}
-  h1{font-size:19px;text-align:center;margin:0 0 2px;letter-spacing:3px}
-  .head{border:1.5px solid #000;padding:8px 12px;margin:0 0 14px;font-size:13px;text-align:center;line-height:1.6}
-  h2{font-size:15px;margin:16px 0 6px;padding:3px 9px;background:#f0f0f0;border-left:4px solid #444}
-  p{margin:5px 0}
-  .fld{margin:6px 0}
-  .ln{display:inline-block;border-bottom:1px solid #555;min-width:150px;height:1.15em;vertical-align:-3px}
-  .ln.sm{min-width:96px}
-  .ln.xs{min-width:44px}
-  .ln.lg{min-width:400px}
-  .note{font-size:12.5px;color:#333;margin:3px 0 3px 1.2em;text-indent:-1.2em;padding-left:1.2em}
-  table{width:100%;border-collapse:collapse;margin:8px 0}
-  td,th{border:1px solid #000;padding:5px 7px;font-size:13px;text-align:center}
+  @page{size:A4;margin:10mm 13mm}
+  body{font-family:"標楷體","DFKai-SB","Microsoft JhengHei",serif;max-width:720px;margin:14px auto;padding:0 20px;color:#000;line-height:1.5;font-size:13.5px}
+  h1{font-size:18px;text-align:center;margin:0 0 3px;letter-spacing:3px}
+  .head{border:1.5px solid #000;padding:4px 10px;margin:0 0 8px;font-size:12px;text-align:center;line-height:1.5}
+  h2{font-size:14px;margin:8px 0 3px;padding:2px 8px;background:#f0f0f0;border-left:4px solid #444}
+  p{margin:3px 0}
+  .fld{margin:4px 0}
+  .ln{display:inline-block;border-bottom:1px solid #555;min-width:140px;height:1.1em;vertical-align:-3px}
+  .ln.sm{min-width:84px}
+  .ln.xs{min-width:40px}
+  .ln.lg{min-width:360px}
+  .note{font-size:12px;color:#333;margin:1px 0 1px 1.2em;text-indent:-1.2em;padding-left:1.2em;line-height:1.4}
+  table{width:100%;border-collapse:collapse;margin:4px 0}
+  td,th{border:1px solid #000;padding:3px 6px;font-size:12.5px;text-align:center}
   th{background:#f5f5f5;font-weight:normal}
-  td.blank{height:26px}
-  .wish{letter-spacing:1px;font-size:14.5px;margin:8px 0 6px}
-  .chk{margin:6px 0}
-  .idbox{border:1.5px solid #000;padding:8px 12px;margin:8px 0}
-  .office{border:1px solid #000;padding:8px 12px;margin-top:16px;font-size:13px;background:#fafafa}
-  .office p{margin:6px 0}
-  @media print{body{margin:0 auto;font-size:13.5px} h2{page-break-after:avoid}
-    /* 第三項起另頁：第 1 頁＝身分/機車/自行車，第 2 頁＝志願序/確認/承諾，版面寬鬆好填 */
-    h2.brk{page-break-before:always} table,.office,.idbox{page-break-inside:avoid}}
+  td.blank{height:27px}
+  td.l{text-align:left}
+  .wish{letter-spacing:1px;font-size:13.5px;margin:4px 0}
+  .chk{margin:3px 0}
+  .idbox{border:1.5px solid #000;padding:4px 10px;margin:4px 0}
+  .office{border:1px solid #000;padding:4px 10px;margin-top:8px;font-size:12px;background:#fafafa}
+  .office p{margin:3px 0}
+  @media print{body{margin:0 auto;padding:0} h2{page-break-after:avoid} table,.office,.idbox{page-break-inside:avoid}}
 </style>
 </head>
 <body>
 
 <h1>樂菲莊園 車位登記表（116 年度）</h1>
 <div class="head">
-  登記期間：11 月 15 日 – 11 月 30 日　·　每戶限登記一次，請一次填齊<br>
-  <b>本表只做登記，不收任何費用</b>；抽中車位後再到管理中心簽約繳費。<br>
-  本表不蒐集身分證號；證件查驗於繳費簽約時辦理，出示行車執照或身分證明文件擇一即可。
+  登記期間：11 月 15 日 – 11 月 30 日　·　每戶限登記一次，請一次填齊　·　<b>本表只做登記，不收費</b><br>
+  抽中後再到管理中心簽約繳費；不蒐集身分證號，證件查驗於簽約時辦理（行車執照或身分證明文件擇一）。
 </div>
 
 <h2>申請人資料</h2>
 <div class="idbox">
-  <p class="chk"><b>身分別</b>（擇一勾選）：　□ 住　戶　　□ 社區工作人員</p>
-  <p class="fld">住戶請填　戶　號：<span class="ln"></span>　　　工作人員請填　服務單位／職務：<span class="ln"></span></p>
+  <p class="fld"><b>身分別</b>（擇一）：□ 住戶　戶號 <span class="ln sm"></span>　　□ 社區工作人員　單位／職務 <span class="ln sm"></span></p>
+  <p class="fld">□ 本戶為社會住宅承租戶（工作人員免勾）　　申請人：<span class="ln sm"></span>　聯絡電話：<span class="ln sm"></span></p>
+  <p class="fld">登記日期：<span class="ln xs"></span> 年 <span class="ln xs"></span> 月 <span class="ln xs"></span> 日　<span style="font-size:12px">（聯絡電話：只登記自行車者必填）</span></p>
 </div>
-<p class="fld">申 請 人：<span class="ln"></span>　　聯絡電話：<span class="ln"></span>　<span style="font-size:12.5px">（只登記自行車者必填）</span></p>
-<p class="fld">登記日期：<span class="ln xs"></span> 年 <span class="ln xs"></span> 月 <span class="ln xs"></span> 日</p>
-<p class="chk">□ 本戶為「社會住宅」承租戶　<span style="font-size:12.5px">（工作人員免勾）</span></p>
-<p class="note">※ 勾選社會住宅者依辦法伍二（二）限承租「公益設施車位」（機車 1–7、92–104；自行車 114–118），免填第三項車位志願序。</p>
+<p class="note">※ 社會住宅戶依辦法伍二（二）限承租「公益設施車位」（機車 1–7、92–104；自行車 114–118），免填第二項志願序。</p>
 
-<h2>一、機車（不登記機車者免填；第 1 輛必填）</h2>
+<h2>一、登記車輛（機車以 2 輛、自行車以 1 台為原則，<b>超過者另填一張</b>；不登記者該列免填）</h2>
 <table>
-  <tr><th style="width:12%">順序</th><th style="width:30%">車　號</th><th style="width:28%">車　種</th><th style="width:15%">需無障礙位</th><th style="width:15%">志願小位</th></tr>
-  <tr><td>第 1 輛</td><td class="blank"></td><td>□ 一般（250CC 以下）<br>□ 重機（250CC 以上）</td><td>□ 是　□ 否</td><td>□ 是　□ 否</td></tr>
-  <tr><td>第 2 輛</td><td class="blank"></td><td>□ 一般　□ 重機</td><td>──</td><td>□ 是　□ 否</td></tr>
-  <tr><td>第 3 輛</td><td class="blank"></td><td>□ 一般　□ 重機</td><td>──</td><td>□ 是　□ 否</td></tr>
+  <tr><th style="width:13%">車　輛</th><th style="width:30%">車號／自行車特徵</th><th style="width:27%">車　種</th><th style="width:15%">需無障礙位</th><th style="width:15%">志願小位</th></tr>
+  <tr><td>機車 第 1 輛</td><td class="blank"></td><td>□ 一般（250CC 以下）<br>□ 重機（250CC 以上）</td><td>□ 是　□ 否</td><td>□ 是　□ 否</td></tr>
+  <tr><td>機車 第 2 輛</td><td class="blank"></td><td>□ 一般　□ 重機</td><td>──</td><td>□ 是　□ 否</td></tr>
+  <tr><td>自行車</td><td class="blank"></td><td>自行車（免費，不排志願）</td><td>──</td><td>──</td></tr>
 </table>
-<p class="note">※ 重機占位：承租<b>相鄰兩格</b>機車位（不限大、小），由系統自動帶入鄰格；亦得承租無障礙機車位（該型較寬，占一格即可）。</p>
-<p class="note">※ 志願小位：自願登記一般（小）機車位者免抽籤，依登記順序選位。</p>
-<p class="note">※ 無障礙車位：限行動不便之身心障礙者優先承租，<b>不分一般戶／社會住宅戶</b>；工作人員不適用。</p>
+<p class="note">※ 重機：承租<b>相鄰兩格</b>機車位（不限大、小），由系統自動帶入鄰格；亦得承租無障礙機車位（較寬，占一格即可）。</p>
+<p class="note">※ 志願小位：自願登記一般（小）機車位者免抽籤，依登記順序選位。無障礙位：限行動不便之身心障礙者優先，<b>不分一般戶／社會住宅戶</b>；工作人員不適用。</p>
+<p class="note">※ 自行車：無車牌，填廠牌、顏色供辨識，以「戶號＋車位編號」識別，由系統隨機配位；抽中後至管理中心簽使用承諾書並領識別貼紙貼於車上。</p>
 <p class="note">※ 工作人員以申請一輛為原則；如有特殊需要請於背面說明並經管理委員會同意。</p>
 
-<h2>二、自行車（不登記者免填；與機車同梯次登記抽籤，不收費）</h2>
-<table>
-  <tr><th style="width:14%">順序</th><th>自行車特徵（廠牌、顏色，供辨識）</th></tr>
-  <tr><td>第 1 台</td><td class="blank"></td></tr>
-  <tr><td>第 2 台</td><td class="blank"></td></tr>
-</table>
-<p class="note">※ 自行車無車牌，以「戶號＋車位編號」識別，登記時不必填車號；車位不排志願，由系統隨機配位。</p>
-<p class="note">※ 抽中後須至管理中心簽署使用承諾書並領取識別貼紙，貼於車上供巡場查核。</p>
-
-<h2 class="brk">三、車位志願序（機車一般大位／重機適用）</h2>
-<p style="font-size:13px">請對照櫃台「B1 車位平面圖」，依想要的先後填車位編號（＝地面數字 1–655，例：123、87…）。本戶共用一份，與登記車輛數無關。</p>
+<h2>二、車位志願序（機車一般大位／重機適用）</h2>
+<p style="font-size:12px;margin:2px 0">請對照櫃台「B1 車位平面圖」，依想要的先後填車位編號（＝地面數字 1–655）。本戶共用一份，與登記車輛數無關。</p>
 <p class="wish">
   ①<span class="ln sm"></span>　②<span class="ln sm"></span>　③<span class="ln sm"></span>　④<span class="ln sm"></span>　⑤<span class="ln sm"></span><br>
-  ⑥<span class="ln sm"></span>　⑦<span class="ln sm"></span>　⑧<span class="ln sm"></span>　⑨<span class="ln sm"></span>　⑩<span class="ln sm"></span>　（不限個數，可續填於背面）
+  ⑥<span class="ln sm"></span>　⑦<span class="ln sm"></span>　⑧<span class="ln sm"></span>　⑨<span class="ln sm"></span>　⑩<span class="ln sm"></span>　（可續填於背面）
 </p>
 <p class="chk">□ <b>電腦選號</b>：若所填志願都被較前順序號的住戶選走，同意由電腦自動配「本棟、靠近電梯」的剩餘大位。</p>
-<p class="note">※ 不勾選＝先保留，待配位底定後可自行從剩餘車位挑選（免手續費）；配位後如需再異動屬「換位」，須繳作業費。</p>
-<p class="note">※ 多台車輪到時各自取「志願中仍剩的最高志願」，不必分車填；重機填想要的起始編號即可，系統自動配相鄰兩格。</p>
-<p class="note">※ 下列情形免填本項：志願小位、無障礙位、社會住宅戶、自行車。工作人員可填，惟<b>公益設施車位與無障礙車位不開放申請</b>，請勿填列。</p>
+<p class="note">※ 不勾選＝先保留，待配位底定後可自行從剩餘車位挑選（免手續費）；配位後再異動屬「換位」，須繳作業費。</p>
+<p class="note">※ 多台車輪到時各自取「志願中仍剩的最高志願」；重機填想要的起始編號即可，系統自動配相鄰兩格。</p>
+<p class="note">※ 免填本項：志願小位、無障礙位、社會住宅戶、自行車。工作人員可填，惟<b>公益設施車位與無障礙車位不開放申請</b>。</p>
 
-<h2>四、填表人確認</h2>
+<h2>三、填表人確認</h2>
 <p class="chk">□ 本人已詳閱並同意「社區地下室停車場管理辦法」相關規定。</p>
 <p class="chk">□ 本人了解：登記不收費；抽中後須於公告後 5 日內到管理中心簽約並一次繳一年費用（機車一般 1,200 元／重機 3,600 元／自行車免費），逾公告後 10 日未辦妥視同放棄，由候補者依序遞補。</p>
+<p class="chk">□ <b>（社區工作人員適用）</b>本人了解所申請者為<b>住戶配畢後之剩餘車位</b>，費用比照住戶；住戶申請第一個車位時須無條件讓出，讓出或離職時按剩餘月份退費，配得車位後另簽承諾書。</p>
 
-<p class="chk">□ <b>（社區工作人員適用）</b>本人了解所申請者為<b>住戶配畢後之剩餘車位</b>——若尚有住戶未配得車位則暫緩配位；<b>費用比照住戶</b>（一般 1,200 元／年），住戶申請第一個車位時須無條件讓出，<b>讓出或離職時按剩餘月份退費</b>。詳細權利義務於<b>配得車位後另簽承諾書</b>。</p>
-
-<p class="fld" style="margin-top:14px">申請人簽名／蓋章：<span class="ln lg"></span></p>
+<p class="fld" style="margin-top:8px">申請人簽名／蓋章：<span class="ln lg"></span></p>
 
 <div class="office">
-  <p><b>【以下由管理中心填寫】</b></p>
-  <p>收件時間：<span class="ln xs"></span> 年 <span class="ln xs"></span> 月 <span class="ln xs"></span> 日 <span class="ln xs"></span> 時　　收件編號：<span class="ln sm"></span></p>
+  <p><b>【以下由管理中心填寫】</b>　收件時間：<span class="ln xs"></span> 月 <span class="ln xs"></span> 日 <span class="ln xs"></span> 時　　收件編號：<span class="ln sm"></span></p>
   <p>受理人員：<span class="ln"></span>　　已登錄系統：□ 是　　登錄人員：<span class="ln"></span></p>
 </div>
 
