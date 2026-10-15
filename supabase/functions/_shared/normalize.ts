@@ -24,6 +24,8 @@ export function isValidHousehold(raw: unknown): boolean {
   if (/^[A-H](1[0-5]|[1-9])-\d{1,3}$/.test(s)) return true
   if (/^S1?-\d{1,3}$/.test(s)) return true
   if (STAFF_RE.test(s)) return true
+  // 測試棟 Z（2026-10-15，與前端 household.js 同步）：給經理／委員試玩，11/15 前須清除。
+  if (/^Z\d{1,3}$/.test(s)) return true
   return false
 }
 

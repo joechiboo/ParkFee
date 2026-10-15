@@ -26,7 +26,15 @@ export function isValidHousehold(raw) {
   if (/^S1?-\d{1,3}$/.test(s)) return true
   // 社區工作人員：員工-<姓名或編號>
   if (STAFF_RE.test(s)) return true
+  // 測試棟 Z（2026-10-15）：Z＋1–3 碼數字，如 Z99。給經理／委員試玩用，社區無 Z 棟、永不撞真實戶。
+  // ⚠️ 不是住戶！11/15 開放登記前必須清除（健檢 check-roster 會把 Z 開頭列為測試帳號殘留）。
+  if (TEST_RE.test(s)) return true
   return false
+}
+
+const TEST_RE = /^Z\d{1,3}$/
+export function isTestHousehold(raw) {
+  return TEST_RE.test(normalizeHousehold(raw))
 }
 
 // 社區工作人員的合成戶號：員工-<姓名或編號>。由櫃檯代打、僅需在社區內唯一。

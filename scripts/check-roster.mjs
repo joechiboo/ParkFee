@@ -184,7 +184,7 @@ if (disabled.length > cap.無障礙)
 
 // 3) 戶號格式
 const badHouse = all.filter(
-  (h) => !/^[A-HS]\d{1,2}-\d{1,2}$/i.test(h.戶號) && !/^員工-.+$/.test(h.戶號),
+  (h) => !/^[A-HS]\d{1,2}-\d{1,2}$/i.test(h.戶號) && !/^員工-.+$/.test(h.戶號) && !/^Z\d{1,3}$/.test(h.戶號),
 )
 if (badHouse.length)
   add('warn', '戶號格式不符', '預期如 A3-6（棟樓-戶別）。格式不符會影響去重與對帳。',
@@ -204,6 +204,19 @@ if (staffHouses.length && staffRoster) {
   add('info', '有工作人員登記，但找不到員工名單可比對',
     '請建立 private/staff-roster.txt（一行一位，可用「崗位-姓名」）後重跑，即可標出名單外的登記。',
     staffHouses.map((h) => h.戶號))
+}
+
+// 3.5) 測試帳號殘留 —— 11/15 開放登記前必須清光，否則混進真實名冊、抽籤多出幾戶、社區幫收費檔也錯。
+// 特徵清單須與 TODO「🧹 11 月抽籤前清場」的 SQL 一致（Z 棟／S1-99x／員工-測試／6 月 mock 電話）。
+{
+  const isTest = (h) =>
+    /^Z\d{1,3}$/.test(h.戶號) || /^S1-99\d$/.test(h.戶號) || /^員工-測試/.test(h.戶號) ||
+    /^09001000/.test(String(h.電話 || '').replace(/\D/g, ''))
+  const hits = all.filter(isTest).map((h) => h.戶號)
+  if (hits.length)
+    add('warn', '測試帳號殘留（開放登記前必須清除）',
+      'Z 棟（經理試玩）、S1-99x／員工-測試（複測用）、電話 09001000xx（6 月 mock）皆非真實住戶。' +
+      '留著會混進名冊 → 抽籤多出幾戶、社區幫收費檔多幾筆。清法見 TODO「🧹 11 月抽籤前清場」。', hits)
 }
 
 // 3.6) 身分衝突／不一致（同一戶掛多重身分）
