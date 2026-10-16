@@ -5,31 +5,35 @@
 <title>樂菲莊園 車位登記表（116 年度）</title>
 <style>
   @page{size:A4;margin:10mm 13mm}
-  body{font-family:"標楷體","DFKai-SB","Microsoft JhengHei",serif;max-width:720px;margin:14px auto;padding:0 20px;color:#000;line-height:1.5;font-size:13.5px}
-  h1{font-size:18px;text-align:center;margin:0 0 3px;letter-spacing:3px}
-  .head{border:1.5px solid #000;padding:4px 10px;margin:0 0 8px;font-size:12px;text-align:center;line-height:1.5}
-  h2{font-size:14px;margin:8px 0 3px;padding:2px 8px;background:#f0f0f0;border-left:4px solid #444}
+  @page WordSection1{size:21cm 29.7cm;margin:10mm 13mm 10mm 13mm}
+  div.WordSection1{page:WordSection1}
+  u{text-decoration:underline}
+  body{font-family:"標楷體","DFKai-SB","Microsoft JhengHei",serif;max-width:720px;margin:14px auto;padding:0 20px;color:#000;line-height:1.4;font-size:12.5px}
+  h1{font-size:17px;text-align:center;margin:0 0 3px;letter-spacing:3px}
+  .head{border:1.5px solid #000;padding:3px 10px;margin:0 0 6px;font-size:11.5px;text-align:center;line-height:1.5}
+  h2{font-size:13.5px;margin:6px 0 2px;padding:2px 8px;background:#f0f0f0;border-left:4px solid #444}
   p{margin:3px 0}
   .fld{margin:4px 0}
   .ln{display:inline-block;border-bottom:1px solid #555;min-width:140px;height:1.1em;vertical-align:-3px}
   .ln.sm{min-width:84px}
   .ln.xs{min-width:40px}
   .ln.lg{min-width:360px}
-  .note{font-size:12px;color:#333;margin:1px 0 1px 1.2em;text-indent:-1.2em;padding-left:1.2em;line-height:1.4}
+  .note{font-size:11px;color:#333;margin:1px 0 1px 1.2em;text-indent:-1.2em;padding-left:1.2em;line-height:1.4}
   table{width:100%;border-collapse:collapse;margin:4px 0}
-  td,th{border:1px solid #000;padding:3px 6px;font-size:12.5px;text-align:center}
+  td,th{border:1px solid #000;padding:2px 5px;font-size:12px;text-align:center}
   th{background:#f5f5f5;font-weight:normal}
-  td.blank{height:27px}
+  td.blank{height:24px}
   td.l{text-align:left}
-  .wish{letter-spacing:1px;font-size:13.5px;margin:4px 0}
+  .wish{letter-spacing:1px;font-size:13px;margin:3px 0}
   .chk{margin:3px 0}
   .idbox{border:1.5px solid #000;padding:4px 10px;margin:4px 0}
-  .office{border:1px solid #000;padding:4px 10px;margin-top:8px;font-size:12px;background:#fafafa}
+  .office{border:1px solid #000;padding:3px 10px;margin-top:6px;font-size:11.5px;background:#fafafa}
   .office p{margin:3px 0}
   @media print{body{margin:0 auto;padding:0} h2{page-break-after:avoid} table,.office,.idbox{page-break-inside:avoid}}
 </style>
 </head>
 <body>
+<div class="WordSection1">
 
 <h1>樂菲莊園 車位登記表（116 年度）</h1>
 <div class="head">
@@ -39,9 +43,9 @@
 
 <h2>申請人資料</h2>
 <div class="idbox">
-  <p class="fld"><b>身分別</b>（擇一）：□ 住戶　戶號 <span class="ln sm"></span>　　□ 社區工作人員　單位／職務 <span class="ln sm"></span></p>
-  <p class="fld">□ 本戶為社會住宅承租戶（工作人員免勾）　　申請人：<span class="ln sm"></span>　聯絡電話：<span class="ln sm"></span></p>
-  <p class="fld">登記日期：<span class="ln xs"></span> 年 <span class="ln xs"></span> 月 <span class="ln xs"></span> 日　<span style="font-size:12px">（聯絡電話：只登記自行車者必填）</span></p>
+  <p class="fld"><b>身分別</b>（擇一）：□ 住戶　戶號 <u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;　　□ 社區工作人員　單位／職務 <u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;</p>
+  <p class="fld">□ 本戶為社會住宅承租戶（工作人員免勾）　　申請人：<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;　聯絡電話：<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;</p>
+  <p class="fld">登記日期：<u>&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203; 年 <u>&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203; 月 <u>&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203; 日　<span style="font-size:12px">（聯絡電話：只登記自行車者必填）</span></p>
 </div>
 <p class="note">※ 社會住宅戶依辦法伍二（二）限承租「公益設施車位」（機車 1–7、92–104；自行車 114–118），免填第二項志願序。</p>
 
@@ -60,8 +64,8 @@
 <h2>二、車位志願序（機車一般大位／重機適用）</h2>
 <p style="font-size:12px;margin:2px 0">請對照櫃台「B1 車位平面圖」，依想要的先後填車位編號（＝地面數字 1–655）。本戶共用一份，與登記車輛數無關。</p>
 <p class="wish">
-  ①<span class="ln sm"></span>　②<span class="ln sm"></span>　③<span class="ln sm"></span>　④<span class="ln sm"></span>　⑤<span class="ln sm"></span><br>
-  ⑥<span class="ln sm"></span>　⑦<span class="ln sm"></span>　⑧<span class="ln sm"></span>　⑨<span class="ln sm"></span>　⑩<span class="ln sm"></span>　（可續填於背面）
+  ①<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;　②<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;　③<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;　④<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;　⑤<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;<br>
+  ⑥<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;　⑦<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;　⑧<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;　⑨<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;　⑩<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;　（可續填於背面）
 </p>
 <p class="chk">□ <b>電腦選號</b>：若所填志願都被較前順序號的住戶選走，同意由電腦自動配「本棟、靠近電梯」的剩餘大位。</p>
 <p class="note">※ 不勾選＝先保留，待配位底定後可自行從剩餘車位挑選（免手續費）；配位後再異動屬「換位」，須繳作業費。</p>
@@ -73,12 +77,13 @@
 <p class="chk">□ 本人了解：登記不收費；抽中後須於公告後 5 日內到管理中心簽約並一次繳一年費用（機車一般 1,200 元／重機 3,600 元／自行車免費），逾公告後 10 日未辦妥視同放棄，由候補者依序遞補。</p>
 <p class="chk">□ <b>（社區工作人員適用）</b>本人了解所申請者為<b>住戶配畢後之剩餘車位</b>，費用比照住戶；住戶申請第一個車位時須無條件讓出，讓出或離職時按剩餘月份退費，配得車位後另簽承諾書。</p>
 
-<p class="fld" style="margin-top:8px">申請人簽名／蓋章：<span class="ln lg"></span></p>
+<p class="fld" style="margin-top:8px">申請人簽名／蓋章：<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;</p>
 
 <div class="office">
-  <p><b>【以下由管理中心填寫】</b>　收件時間：<span class="ln xs"></span> 月 <span class="ln xs"></span> 日 <span class="ln xs"></span> 時　　收件編號：<span class="ln sm"></span></p>
-  <p>受理人員：<span class="ln"></span>　　已登錄系統：□ 是　　登錄人員：<span class="ln"></span></p>
+  <p><b>【以下由管理中心填寫】</b>　收件時間：<u>&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203; 月 <u>&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203; 日 <u>&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203; 時　　收件編號：<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;</p>
+  <p>受理人員：<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;　　已登錄系統：□ 是　　登錄人員：<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;</p>
 </div>
 
+</div>
 </body>
 </html>
