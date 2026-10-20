@@ -8,11 +8,20 @@
 //   <del> → 原有條文欄紅字底線、<ins> → 修正條文欄紅字底線。標紅版改了，重跑即同步。
 //   例外（OVERRIDE）見下方，各附理由。
 //
+// 同一份列資料另出兩種**直式 A4**（經理要放進會議紀錄）：
+//   docs/32-…-直式.html（轉 PDF 用）＋ docs/32-…條文對照表.docx（scripts/build-bylaw-compare-docx.py 產）
+//
 // 用法：node scripts/build-bylaw-compare.mjs
-import { readFileSync, writeFileSync } from 'node:fs'
+//       PDF：node scripts/build-docs-pdf.mjs docs/32-辦法修正草案條文對照表.html docs/32-辦法修正草案條文對照表-直式.html
+import { readFileSync, writeFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { execFileSync } from 'node:child_process'
 
 const SRC = 'docs/19-辦法修訂草案-標紅版.html'
 const OUT = 'docs/32-辦法修正草案條文對照表.html'
+const OUT_PORTRAIT = 'docs/32-辦法修正草案條文對照表-直式.html'
+const OUT_DOCX = 'docs/32-辦法修正草案條文對照表.docx'
 const html = readFileSync(SRC, 'utf8')
 
 // 標紅版開頭有「本次修正要點」摘要清單，與條文共用許多字句（如「限承租公益設施機車位」）
@@ -157,7 +166,7 @@ const OVERRIDE = {
   },
 }
 
-const rowsHtml = ROWS.map((r) => {
+const rows = ROWS.map((r) => {
   let oldH, newH, add = r.add
   if (r.override) {
     const o = OVERRIDE[r.override]
@@ -171,8 +180,9 @@ const rowsHtml = ROWS.map((r) => {
   }
   const newCell = add ? `<div class="hd r">${add}</div>${newH}` : newH
   const oldCell = add ? '' : (r.head ? `<div class="hd">${r.head}</div>` : '') + oldH
-  return `<tr><td>${newCell}</td><td>${oldCell}</td><td class="note">${r.note}</td></tr>`
-}).join('\n')
+  return { new: newCell, old: oldCell, note: r.note }
+})
+const rowsHtml = rows.map((r) => `<tr><td>${r.new}</td><td>${r.old}</td><td class="note">${r.note}</td></tr>`).join('\n')
 
 const page = `<!doctype html>
 <html lang="zh-Hant">
@@ -211,3 +221,23 @@ ${rowsHtml}
 `
 writeFileSync(OUT, page)
 console.log(`✓ ${OUT}（${ROWS.length} 列）`)
+
+// 直式：版心窄，條文兩欄各讓一點給說明欄、字級降一階
+const portrait = page
+  .replace('size:A4 landscape;margin:14mm 13mm', 'size:A4 portrait;margin:16mm 14mm')
+  .replace('font-size:13px;line-height:1.75', 'font-size:12px;line-height:1.65')
+  .replace('max-width:1080px', 'max-width:760px')
+  .replace('td.note{font-size:12.5px}', 'td.note{font-size:11.5px}')
+  .replace('h1{font-size:21px', 'h1{font-size:18px')
+  .replace('padding:6px 9px', 'padding:5px 7px')
+  .replace('<col style="width:40%"><col style="width:40%"><col style="width:20%">', '<col style="width:38%"><col style="width:38%"><col style="width:24%">')
+writeFileSync(OUT_PORTRAIT, portrait)
+console.log(`✓ ${OUT_PORTRAIT}`)
+
+const json = join(tmpdir(), 'bylaw-compare-rows.json')
+writeFileSync(json, JSON.stringify(rows))
+try {
+  execFileSync('python', ['scripts/build-bylaw-compare-docx.py', json, OUT_DOCX], { stdio: 'inherit', env: { ...process.env, PYTHONIOENCODING: 'utf-8' } })
+} finally {
+  rmSync(json, { force: true })
+}
