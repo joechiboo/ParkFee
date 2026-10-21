@@ -208,7 +208,7 @@ function decorate(s) {
           <div class="mb-1 font-medium text-slate-600">可選</div>
           <div class="flex flex-wrap gap-x-3 gap-y-1">
             <template v-if="isSocial">
-              <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(234,179,8,.6);outline:1.5px solid #a16207"></span> 公益位（社宅戶專用）</span>
+              <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(234,179,8,.6);outline:1.5px solid #a16207"></span> 公益位（社宅自行安排，不開放登記）</span>
             </template>
             <template v-else>
               <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(245,158,11,.6)"></span> 大位</span>
@@ -220,7 +220,7 @@ function decorate(s) {
           <p v-if="hasHeavy" class="mt-1 text-amber-700">重機占<b>相鄰兩格</b>（大小不限）：點一格即可，配位自動帶相鄰格。</p>
           <div class="mb-1 mt-2 font-medium text-slate-600">不可選</div>
           <div class="flex flex-wrap gap-x-3 gap-y-1">
-            <span v-if="!isSocial"><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(234,179,8,.6);outline:1.5px solid #a16207"></span> 公益（社宅戶專用）</span>
+            <span v-if="!isSocial"><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(234,179,8,.6);outline:1.5px solid #a16207"></span> 公益（社宅自行安排）</span>
             <span v-if="isStaff"><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(148,163,184,.45)"></span> 無障礙（保留給行動不便住戶）</span>
             <template v-else>
               <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(245,158,11,.6)"></span> 大位</span>

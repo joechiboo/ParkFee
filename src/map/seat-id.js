@@ -50,6 +50,13 @@ export function isBikeId(id) {
 //    列印圖等 scripts/ 也要用同一份清單，故置於無相依的本檔，由 seats.js 轉出。
 export const PUBLIC_BIKE_IDS = ['114', '115', '116', '117', '118'].map(toBikeId)
 
+// 開放停自行車的機車位（2026-09-03 例會第 8 題通過；條文依據＝辦法肆、十五但書
+// 「機車位有餘裕時，得經管委會決議開放部分停放自行車」）。
+// **刻意做成清單、不寫死在池子邏輯裡**——條文只授權「開放部分」，編號由管委會決議，明年可能換一批。
+// 兩端分流：機車端這 15 格維持 locked_seat 鎖定（鍵 '641'）；自行車端以 'B641' 進配位池，
+//   兩個鍵天然不相撞。⚠️ 顯示剝前綴後與機車同字面（641）→ 公告／匯出／人工輸入須帶車種。
+export const MOTOR_SEATS_OPEN_TO_BIKE = Array.from({ length: 15 }, (_, i) => String(641 + i))
+
 // 編號屬哪種車位。裸數字一律視為機車（既有資料語意，不可更動）。
 export function seatKind(id) {
   return isBikeId(id) ? KIND.BIKE : KIND.MOTOR

@@ -1,7 +1,7 @@
 // 登記資料健檢（防呆偵測）——11/15–30 登記期間設斷點跑、12/1 抽籤前再跑一輪總檢。
 //
 // ⚠️ 只讀不寫、只報告不修正。輸出「要人工判斷」的清單交物業處理，
-//    因為多數異常（社宅戶超額、重機吃兩格公益位）不是資料錯，是規則衝突，得由人決定。
+//    因為多數異常（身分衝突、無障礙超額、重機假相鄰）不是資料錯，是規則衝突，得由人決定。
 //
 // 用法：
 //   node scripts/check-roster.mjs                    # 自動抓 private/ 最新一份 roster-*.csv
@@ -10,7 +10,7 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseCSVObjects } from '../src/data/csv.js'
-import { PUBLIC_BIKE_IDS, toBikeId, isBikeId } from '../src/map/seat-id.js'
+import { PUBLIC_BIKE_IDS, MOTOR_SEATS_OPEN_TO_BIKE, toBikeId, isBikeId } from '../src/map/seat-id.js'
 const ADJ = JSON.parse(readFileSync('src/map/seat-adjacency.json', 'utf8')).adj
 
 // ── 車位主檔（直接讀 JSON：seats.js 走 import attribute，純 Node 載不動）──
@@ -19,7 +19,10 @@ const MOTOR_CATS = { small: '小', motor: '大', access: '無障礙' }
 const motorSeats = cls.seats
   .filter((s) => s.cat in MOTOR_CATS)
   .map((s) => ({ id: String(s.id), type: MOTOR_CATS[s.cat], public: !!s.public }))
-const bikeIds = new Set(cls.seats.filter((s) => s.cat === 'bike').map((s) => toBikeId(s.id)))
+const bikeIds = new Set([
+  ...cls.seats.filter((s) => s.cat === 'bike').map((s) => toBikeId(s.id)),
+  ...MOTOR_SEATS_OPEN_TO_BIKE.map(toBikeId), // 641–655 開放停自行車（與 seats.js bikeSeats() 同步）
+])
 const motorById = new Map(motorSeats.map((s) => [s.id, s]))
 const publicBike = new Set(PUBLIC_BIKE_IDS)
 
@@ -154,26 +157,15 @@ const cap = {
 const findings = [] // {level:'warn'|'info', title, detail, rows[]}
 const add = (level, title, detail, list = []) => findings.push({ level, title, detail, rows: list })
 
-// 1) 社宅 vs 公益位容量
+// 1) 名冊出現社宅戶 —— 2026-10-20 經理定：社宅 20 戶不參加登記抽籤、公益位由社宅單位自行安排
+//    （線上已拿掉勾選、紙本表也移除）。仍有旗標＝舊資料殘留或測試戶 → 列出交人工確認。
+//    引擎的社宅分支仍在：留著不清，該戶會被限縮到公益位、等於占走社宅單位的位子。
 const social = all.filter((h) => h.社宅)
-const socialMotor = social.flatMap((h) => h.cars.filter((c) => !isBikeCar(c)).map((c) => ({ h, c })))
-const socialHeavy = socialMotor.filter(({ c }) => c.車種 === '重機')
-const socialSeatsNeeded = socialMotor.length + socialHeavy.length // 重機吃 2 格
-const socialBike = social.flatMap((h) => h.cars.filter(isBikeCar).map((c) => ({ h, c })))
-
-if (socialSeatsNeeded > cap.公益機車)
-  add('warn', '社宅戶機車需求超過公益位',
-    `需 ${socialSeatsNeeded} 格（含重機 ${socialHeavy.length} 台各佔 2 格）＞ 可用公益位 ${cap.公益機車} 格。` +
-    `超額者會落選且無保底（社宅戶只能配公益位）→ 需決定是否納候補、或依 Q23 釋出/調整。`,
-    socialMotor.map(({ h, c }) => `${h.戶號} ${c.車號}（${c.車種}）`))
-if (socialHeavy.length)
-  add('info', '社宅戶登記重機（一台吃 2 格公益位）',
-    `共 ${socialHeavy.length} 台。公益位僅 ${cap.公益機車} 格，請確認是否允許。`,
-    socialHeavy.map(({ h, c }) => `${h.戶號} ${c.車號}`))
-if (socialBike.length > cap.公益自行車)
-  add('warn', '社宅戶自行車需求超過公益自行車位',
-    `需 ${socialBike.length} 台 ＞ 可用 ${cap.公益自行車} 格（114–118）。`,
-    socialBike.map(({ h, c }) => `${h.戶號} ${c.車號}`))
+if (social.length)
+  add('warn', '名冊出現社宅戶（社宅已改自行安排、不應登記）',
+    `共 ${social.length} 戶。社宅住戶的車位由社宅單位安排，不進本次抽籤；` +
+    `若確為社宅住戶請刪除其登記，若非社宅則請住戶重新送出登記（會自動清掉旗標）。`,
+    social.map((h) => h.戶號))
 
 // 2) 身障 vs 無障礙位
 const disabled = all.flatMap((h) => h.cars.filter((c) => c.身障 && c.第幾輛 === 1 && !isBikeCar(c)).map((c) => ({ h, c })))

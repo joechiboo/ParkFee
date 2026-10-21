@@ -10,6 +10,7 @@ import {
   DISP_H,
 } from './seats.js'
 import { TOTAL } from '../data/spaces.js'
+import { MOTOR_SEATS_OPEN_TO_BIKE } from './seat-id.js'
 
 describe('B1 車位空間資料（ground-truth，來源：seat-select-demo.html）', () => {
   it('座標系為 b1.png 顯示空間 2384×1684', () => {
@@ -42,18 +43,31 @@ describe('B1 車位空間資料（ground-truth，來源：seat-select-demo.html�
     expect(motorSeats().filter((s) => s.type === '無障礙')).toHaveLength(8)
   })
 
-  it('汽車 55、腳踏車 164，各自號碼無重複', () => {
+  it('汽車 55、自行車池 179（自行車格 164＋開放機車位 15），各自號碼無重複', () => {
     expect(carSeats()).toHaveLength(55)
-    expect(bikeSeats()).toHaveLength(164)
+    expect(bikeSeats()).toHaveLength(164 + 15)
     expect(new Set(carSeats().map((s) => s.id)).size).toBe(55)
-    expect(new Set(bikeSeats().map((s) => s.id)).size).toBe(164)
+    expect(new Set(bikeSeats().map((s) => s.id)).size).toBe(179)
+  })
+
+  it('機車位 641–655 開放停自行車：以 B641–B655 進自行車池、沿用機車座標，機車主檔不變', () => {
+    expect(MOTOR_SEATS_OPEN_TO_BIKE).toEqual(Array.from({ length: 15 }, (_, i) => String(641 + i)))
+    const borrowed = bikeSeats().filter((s) => s.fromMotor)
+    expect(borrowed.map((s) => s.id)).toEqual(MOTOR_SEATS_OPEN_TO_BIKE.map((n) => 'B' + n))
+    const motorById = new Map(motorSeats().map((s) => [s.id, s]))
+    for (const b of borrowed) {
+      const m = motorById.get(b.id.slice(1))
+      expect([b.x, b.y]).toEqual([m.x, m.y]) // 同一格實體
+    }
+    expect(motorSeats()).toHaveLength(655) // 機車端照舊（由 locked_seat 鎖住，不從主檔移除）
+    expect(borrowed.some((s) => s.public)).toBe(false)
   })
 
   it('自行車位編號已前綴正規化，與機車編號完全不相交', () => {
     const bikeIds = bikeSeats().map((s) => s.id)
     expect(bikeIds.every((id) => /^B\d{3}$/.test(id))).toBe(true)
     expect(bikeIds[0]).toBe('B001')
-    expect(bikeIds.at(-1)).toBe('B164')
+    expect(bikeIds.at(-1)).toBe('B655') // 自行車格止於 B164，其後為開放的機車位 B641–B655
 
     // 撞號防呆：盤點檔裡 164 格自行車有 155 格號碼與機車字面重複，前綴後必須 0 交集。
     const motorIds = new Set(motorSeats().map((s) => s.id))
@@ -64,7 +78,7 @@ describe('B1 車位空間資料（ground-truth，來源：seat-select-demo.html�
     const all = new Set(bikeSeats().map((s) => s.id))
     for (const id of PUBLIC_BIKE_IDS) expect(all.has(id)).toBe(true)
     expect(PUBLIC_BIKE_IDS).toEqual(['B114', 'B115', 'B116', 'B117', 'B118'])
-    expect(rentableBikeSeats()).toHaveLength(164 - 5)
+    expect(rentableBikeSeats()).toHaveLength(179 - 5)
     expect(rentableBikeSeats().some((s) => PUBLIC_BIKE_IDS.includes(s.id))).toBe(false)
   })
 

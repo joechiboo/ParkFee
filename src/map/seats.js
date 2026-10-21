@@ -8,7 +8,7 @@
 //   （與保留/動線位同一機制，物業維護頁可解鎖）。大/小/無障礙分佈仍在盤點中。
 
 import classification from './b1-classification.json' with { type: 'json' }
-import { toBikeId, compareSeatId, KIND, PUBLIC_BIKE_IDS } from './seat-id.js'
+import { toBikeId, compareSeatId, KIND, PUBLIC_BIKE_IDS, MOTOR_SEATS_OPEN_TO_BIKE } from './seat-id.js'
 
 export const FLOOR = 'B1'
 export const DISP_W = classification.meta.dispW // 2384
@@ -54,13 +54,15 @@ export function carSeats() {
 // 公益自行車位清單定義於 seat-id.js（無相依，scripts/ 也要用）；此處轉出供既有匯入點沿用。
 export { PUBLIC_BIKE_IDS } from './seat-id.js'
 
-// 自行車位 164 格。**id 在此處套上前綴正規化**（B001–B164）——盤點檔存的是地面漆的號碼
-// （1–164，與機車 1–655 有 155 個字面重複），前綴是應用層的鍵，見 seat-id.js。
-// 顯示給住戶時用 displaySeatId() 剝回地面數字。
+// 自行車位 179 格＝自行車格 164（B001–B164）＋開放停自行車的機車位 15（B641–B655）。
+// **id 在此處套上前綴正規化**——盤點檔存的是地面漆的號碼（自行車 1–164，與機車 1–655 有 155 個
+// 字面重複），前綴是應用層的鍵，見 seat-id.js。顯示給住戶時用 displaySeatId() 剝回地面數字。
+// 借用的機車格沿用機車座標，帶 fromMotor 旗標（地圖／列印可另行標示）；機車端該格仍由 locked_seat 鎖住。
 export function bikeSeats() {
   const pub = new Set(PUBLIC_BIKE_IDS)
+  const open = new Set(MOTOR_SEATS_OPEN_TO_BIKE)
   return classification.seats
-    .filter((s) => s.cat === 'bike')
+    .filter((s) => s.cat === 'bike' || (s.cat in MOTOR_CATS && open.has(String(s.id))))
     .map((s) => {
       const id = toBikeId(s.id)
       return {
@@ -71,6 +73,7 @@ export function bikeSeats() {
         type: KIND.BIKE,
         // 依辦法清單標記（非依盤點檔的 s.public，自行車那欄全空）→ 地圖/列印圖才畫得出公益標示。
         ...(pub.has(id) ? { public: true } : {}),
+        ...(s.cat !== 'bike' ? { fromMotor: true } : {}),
       }
     })
     .sort((a, b) => compareSeatId(a.id, b.id))

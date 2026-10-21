@@ -20,7 +20,6 @@ const blankVehicle = (車種 = '一般') => ({ 車號: '', 車種, 身障: false
 const form = reactive({
   戶號: '',
   電話: '',
-  社宅: false, // 社會住宅住戶：選位/配位限公益位（2026-08-16 決議）
   工作人員: false, // 社區工作人員：配位排全體住戶之後，費用比照住戶（辦法伍二（十二）；2026-09-03 例會否決免費案）
   vehicles: [blankVehicle()],
 })
@@ -37,7 +36,6 @@ onMounted(() => {
   authPlate.value = h.認證車號 || sessionPlate.value || ''
   form.戶號 = h.戶號
   form.電話 = h.電話 || ''
-  form.社宅 = !!h.社宅
   form.工作人員 = !!h.工作人員
   const vs = (h.vehicles || []).map((v) => ({
     // 自行車的車號是合成鍵、不給住戶看也不給改 → 留空，送出時後端重新產生。
@@ -109,7 +107,9 @@ async function submit() {
         ? { 車種: BIKE, 特徵: v.特徵 }
         : { 車號: v.車號, 車種: v.車種, 身障: v.身障, 志願小位: v.志願小位 },
     )
-    const payload = { 戶號: form.戶號, 電話: form.電話, 社宅: form.社宅, 工作人員: form.工作人員, vehicles }
+    // 社宅戶不經本系統登記（2026-10-20 經理定：社宅單位自行安排公益位）→ 一律送 false，
+    // 編輯時也順手清掉舊資料殘留的旗標。後端與引擎的社宅分支保留不動。
+    const payload = { 戶號: form.戶號, 電話: form.電話, 社宅: false, 工作人員: form.工作人員, vehicles }
     done.value = isEdit.value
       ? await updateHousehold({ ...payload, 認證車號: authPlate.value })
       : await register(payload)
@@ -135,7 +135,7 @@ async function submit() {
         戶號 <b>{{ done.戶號 }}</b> 已登記
         <span v-if="doneMotorCount">{{ doneMotorCount }} 台機車</span>
         <span v-if="doneMotorCount && doneBikeCount">、</span>
-        <span v-if="doneBikeCount">{{ doneBikeCount }} 台自行車</span>。<span v-if="done.社宅">（社會住宅住戶：限選公益位）</span><span v-if="done.工作人員">（社區工作人員：住戶配畢後之剩餘位）</span>
+        <span v-if="doneBikeCount">{{ doneBikeCount }} 台自行車</span>。<span v-if="done.工作人員">（社區工作人員：住戶配畢後之剩餘位）</span>
       </p>
       <p v-if="doneHasMotor" class="mt-2 text-sm text-emerald-800">
         之後可用 <b>戶號 ＋ 任一車號</b> 登入查看登記內容與抽籤結果。
@@ -202,10 +202,9 @@ async function submit() {
         </label>
       </div>
 
-      <label class="flex items-start gap-2 text-sm text-slate-700">
-        <input v-model="form.社宅" type="checkbox" class="mt-0.5 h-4 w-4" />
-        <span><b>社會住宅住戶</b> — 車位為公益位專區（選位時僅能選公益位；由物業核對身分）</span>
-      </label>
+      <p class="text-sm text-slate-500">
+        社會住宅住戶免登記：公益位（機車 20 格、自行車 114–118）由社宅單位自行安排。
+      </p>
 
       <label class="flex items-start gap-2 text-sm text-slate-700">
         <input v-model="form.工作人員" @change="onStaffToggle" type="checkbox" class="mt-0.5 h-4 w-4" />

@@ -146,7 +146,7 @@ describe('與機車名冊混用', () => {
 })
 
 describe('全量真實池', () => {
-  it('164 格全滿時，655 戶登記 → 164 中籤、491 候補', () => {
+  it('179 格全滿時（自行車格 164＋開放機車位 641–655），655 戶登記 → 179 中籤、476 候補', () => {
     const regs = Array.from({ length: 655 }, (_, i) => bike(`A1-${i + 1}`))
     const r = distributeBikes({
       registrations: regs,
@@ -154,9 +154,10 @@ describe('全量真實池', () => {
       seed: '2026',
       socialHousingPublicOnly: false,
     })
-    expect(r.assigned).toHaveLength(164)
-    expect(r.落選).toHaveLength(655 - 164)
-    expect(new Set(r.assigned.map((x) => x.車位編號)).size).toBe(164) // 無重複配位
+    expect(r.assigned).toHaveLength(179)
+    expect(r.落選).toHaveLength(655 - 179)
+    expect(new Set(r.assigned.map((x) => x.車位編號)).size).toBe(179) // 無重複配位
+    expect(r.assigned.filter((x) => /^B6[45]\d$/.test(x.車位編號))).toHaveLength(15) // 借用的機車格確實配得出去
   })
 })
 
