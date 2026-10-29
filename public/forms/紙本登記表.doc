@@ -51,13 +51,13 @@
 
 <h2>一、登記車輛（每張機車 2 輛、自行車 1 台，<b>多的另填一張</b>）</h2>
 <table>
-  <tr><th style="width:11%">車　輛</th><th>車號／自行車特徵</th><th style="width:26%">車　種</th><th style="width:15%">需無障礙位</th><th style="width:15%">志願小位</th></tr>
-  <tr><td>機車 1</td><td class="blank"></td><td>□ 一般（250CC 以下）<br>□ 重機（250CC 以上）</td><td>□是 □否</td><td>□是 □否</td></tr>
-  <tr><td>機車 2</td><td class="blank"></td><td>□ 一般　□ 重機</td><td>──</td><td>□是 □否</td></tr>
+  <tr><th style="width:11%">車　輛</th><th>車號／自行車特徵</th><th style="width:24%">車　種</th><th style="width:13%">需無障礙位</th><th style="width:23%">志願小位（限機車 1）</th></tr>
+  <tr><td>機車 1</td><td class="blank"></td><td>□ 一般（250CC 以下）<br>□ 重機（250CC 以上）</td><td>□是 □否</td><td>□是→小位號<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;</td></tr>
+  <tr><td>機車 2</td><td class="blank"></td><td>□ 一般　□ 重機</td><td>──</td><td>──</td></tr>
   <tr><td>自行車</td><td class="blank"></td><td>自行車（免費）</td><td>──</td><td>──</td></tr>
 </table>
 <p class="note">※ 重機：占<b>相鄰兩格</b>（不限大小，系統自動帶鄰格）或無障礙位一格。工作人員以一輛為原則。</p>
-<p class="note">※ 志願小位：免抽籤，依登記順序選位。無障礙位：身障者優先，工作人員不適用。</p>
+<p class="note">※ 志願小位：限第 1 輛一般機車，免抽籤、依登記順序<b>當場選定</b>小位號碼（對照平面圖填入，櫃台核對未被登記）。無障礙位：身障者優先，工作人員不適用。</p>
 <p class="note">※ 自行車：填廠牌、顏色供辨識，系統隨機配位；抽中後至管理中心簽使用承諾書、領識別貼紙。</p>
 
 <h2>二、車位志願序（機車一般大位／重機適用）</h2>
@@ -79,6 +79,7 @@
 
 <div class="office">
   <p><b>【以下由管理中心填寫】</b>　收件時間：<u>&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203; 月 <u>&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203; 日 <u>&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203; 時　　收件編號：<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;</p>
+  <p>志願小位核對：□ 號碼未被登記，已登入小位名冊　核對人員：<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;</p>
   <p>受理人員：<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;　　已登錄系統：□ 是　　登錄人員：<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&#8203;</p>
 </div>
 
