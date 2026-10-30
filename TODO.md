@@ -8,8 +8,8 @@
 ## 📋 2026-10-30 會後需求（使用者口述；程式已改、資料操作與部署待做）
 
 - [x] **志願小位線上選定＝當場鎖格** ✅ 2026-10-30：新 Edge Function `claim-seat`（op claim／release；鎖＝`locked_seat` 主鍵互斥 23505、同時寫 `vehicle.車位編號/配位狀態=志願小位`；擁有權驗證同 save-wishes；伺服器端小位清單 `_shared/seat-types.ts` 由 `scripts/build-seat-types-shared.mjs` 產、有一致性測試）。`SelectView` 加「志願小位」模式（第 1 輛一般機車、非社宅／工作人員；點一格 → 選定並鎖定；未繳費可換格／放棄；已鎖＝綠）。`distribute.js` R1 **拿掉志願小位自動配位分支**（只認 preset 的 車位編號）。`MeView` 狀態色改依「有位／已繳」判。
-  > ⬜ **部署**：`npx supabase login` 後 `npx supabase functions deploy claim-seat`（本機 CLI 2.122 未登入，token 不在 .env）。部署後打真 API 驗負面路徑：非第一輛、重機、大位編號、重複選同格（第二人 409 taken）、時窗外。
-  > ⬜ **時窗**：函式預設 `2026-11-15..2026-11-30`（台北時間，含兩端）。**11/15 前要測**得 `npx supabase secrets set CLAIM_WINDOW=2026-10-01..2026-12-31`，上線前 `secrets unset CLAIM_WINDOW`。
+  > ✅ **部署** 2026-10-30 晚：`npx supabase login`（PowerShell 要用 `npx.cmd`）後 `functions deploy claim-seat` 成功。真 API 已驗 15 條：正常 claim／第二人同格 409 taken／公益小位・大位・已鎖無障礙 400／重機・工作人員・錯車號 403／無 op・無持有 release 400／換格釋放舊格／同格冪等／release 清欄＋解鎖；locked_seat 與 audit_log（seat.claim／seat.release）皆正確。⚠️ **「時窗外」路徑未實打**（改 secret 被權限擋），邏輯僅日期字串比對。
+  > ⚠️ **時窗 secret 目前是 `CLAIM_WINDOW=2026-10-01..2026-12-31`（已設、現在就能選）**：函式預設 `2026-11-15..2026-11-30`。**11/15 前**要 `npx supabase secrets unset CLAIM_WINDOW` 讓正式時窗生效，否則 12/1 後仍可線上選位。
   > ⬜ **11/15 前清測試資料**：Z 棟／測試戶線上選定的小位要 release（維護頁解鎖該格＋清車）；併入既有「清場檢查點」。
   > ⚠️ `set-locked`（維護頁批次鎖定）是整批取代：管理員頁面若沒 refresh 就送出，可能把住戶剛鎖的格洗掉。批次鎖定前先重新整理；或日後把 set-locked 改成 add/remove。
 - [x] **重機限相鄰兩個大位、不開放無障礙位、排一般機車之後才抽** ✅ 2026-10-30：`HEAVY_PAIR_TYPES={大}`、`takeHeavy` 拿掉無障礙單格路徑、R0 排除重機、R1/R2+ 排除重機、新增獨立「重機」輪（R2+ 之後、電腦選位之前；依第幾輛分組、順序號接續）；`SelectView` 重機戶不再可點無障礙；`check-roster` 3.7 改驗兩格皆大位；docs/01、AllocateView 說明同步。測試 232 綠。
