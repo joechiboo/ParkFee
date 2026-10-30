@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>機車／自行車車位抽籤辦法說明表（116 年度）橫式</title>
+<style>
+  /* 橫式：A4 橫向排版，等比放大即為 A0 海報（與車位位置圖海報同向）。流程圖仍為由上而下。 */
+  @page{size:A4 landscape;margin:12mm 13mm}
+  *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{font-family:"Microsoft JhengHei","PingFang TC",sans-serif;color:#111;margin:0;background:#fff;font-size:13px;line-height:1.55}
+  .page{width:1000px;margin:0 auto}
+
+  .head{display:flex;align-items:flex-end;gap:22px;margin-bottom:6px}
+  .head .big{font-family:"DFKai-SB","標楷體",serif;font-size:38px;color:#c00;letter-spacing:.5em;font-weight:bold;line-height:1.1}
+  .head .meta{font-size:12px;line-height:1.5;letter-spacing:.05em;white-space:nowrap}
+  .head .meta .blank{display:inline-block;min-width:3em;border-bottom:1px solid #333;height:1em;vertical-align:-2px}
+  .head .subj{margin-left:auto;text-align:right;font-size:15px;line-height:1.4}
+  .head .subj b{color:#c00;font-size:20px}
+  .head .subj .sub{display:block;font-size:13px;color:#333}
+
+  .body{display:flex;gap:12px;align-items:stretch}
+  .sheet{display:grid;grid-template-columns:30px 284px 1fr;grid-template-rows:198px 155px 151px 86px;border:1px solid #777;flex:1}
+  .ph{background:#1d5fa8;color:#fff;writing-mode:vertical-rl;text-orientation:upright;letter-spacing:3px;font-size:14px;font-weight:bold;
+      display:flex;align-items:center;justify-content:center;border-bottom:1px solid #fff}
+  .ph:last-of-type{border-bottom:0}
+  .ph .n{font-family:Arial,sans-serif;font-size:13px;letter-spacing:0;margin-bottom:6px}
+  .flow{grid-column:2;grid-row:1/5;background:#fbfcfe;border-right:1px solid #777}
+  .flow svg{display:block;width:100%;height:100%}
+  .desc{padding:8px 12px 6px;font-size:13px;line-height:1.5;border-bottom:1px solid #777;overflow:hidden}
+  .desc:last-child{border-bottom:0}
+  .desc p{margin:0 0 3px}
+  .desc b{color:#1d5fa8}
+  .desc ol{margin:0;padding-left:1.5em}
+  .desc li{margin:0 0 2px}
+  .warn{color:#c1121f;font-weight:bold}
+
+  /* 右側欄：登記 QR（海報上要大）＋ 管委會署名／章位 */
+  .aside{width:200px;display:flex;flex-direction:column;align-items:center;justify-content:space-between}
+  .qrbox{width:100%;text-align:center;padding:10px 8px 8px;border:2px solid #1d5fa8;border-radius:10px}
+  .qrbox svg{width:150px;height:150px;display:block;margin:0 auto 6px}
+  .qrbox .q1{font-size:17px;font-weight:bold;color:#1d5fa8;line-height:1.3}
+  .qrbox .q2{font-size:10.5px;font-family:Consolas,monospace;color:#333;line-height:1.3;margin-top:4px}
+  .sign{width:100%;text-align:center}
+  .seal{width:84px;height:76px;margin:0 auto}
+  .seal.blue{width:130px;height:76px}
+  .org .n{font-size:19px;letter-spacing:.1em;font-weight:bold;margin:6px 0 0}
+  .org .p{font-size:13.5px;letter-spacing:.05em;margin-bottom:6px}
+
+  .basis{font-size:11.5px;color:#666;margin:5px 0 0}
+  @media print{body{margin:0} .page{width:auto}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="head">
+  <div class="big">公告</div>
+  <div class="meta">
+    中華民國 115 年 <span class="blank"></span> 月 <span class="blank"></span> 日　樂菲（管）字第：<span class="blank" style="min-width:7em"></span> 號<br>
+    公告期間：<span class="blank"></span> 月 <span class="blank"></span> 日至 11 月 30 日
+  </div>
+  <div class="subj">主旨：<b>116 年度機車／自行車車位抽籤辦法說明表</b><span class="sub">登記期間 115/11/15 – 11/30</span></div>
+</div>
+
+<div class="body">
+  <div class="sheet">
+    <div class="ph"><span class="n">1</span>登記</div>
+    <div class="flow">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 330 685" font-family="Microsoft JhengHei, PingFang TC, sans-serif" font-size="12">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#333"/>
+    </marker>
+  </defs>
+  <!-- 階段分界（對齊右側列高 230/180/175/100） -->
+  <g stroke="#999" stroke-dasharray="3 3">
+    <line x1="0" y1="230" x2="330" y2="230"/>
+    <line x1="0" y1="410" x2="330" y2="410"/>
+    <line x1="0" y1="585" x2="330" y2="585"/>
+  </g>
+
+  <!-- 流程線（由上而下；分支向右；回流以箭頭標示） -->
+  <g stroke="#333" stroke-width="1.5" fill="none" marker-end="url(#ah)">
+    <line x1="112" y1="38" x2="112" y2="52"/>
+    <line x1="112" y1="102" x2="112" y2="116"/>
+    <line x1="186" y1="150" x2="208" y2="150"/>
+    <line x1="112" y1="184" x2="112" y2="252"/>
+    <line x1="112" y1="296" x2="112" y2="312"/>
+    <path d="M174 342 H200 V274 H187"/>
+    <line x1="112" y1="372" x2="112" y2="430"/>
+    <line x1="112" y1="474" x2="112" y2="490"/>
+    <line x1="174" y1="516" x2="208" y2="516"/>
+    <line x1="112" y1="542" x2="112" y2="601"/>
+    <line x1="112" y1="641" x2="112" y2="653"/>
+  </g>
+  <!-- 免抽籤匯流線（無箭頭，匯入主線） -->
+  <path d="M267 176 V408 H112" stroke="#333" stroke-width="1.5" fill="none"/>
+  <circle cx="112" cy="408" r="2.6" fill="#333"/>
+
+  <!-- 是／否 -->
+  <g font-size="11.5" fill="#c1121f" font-weight="bold">
+    <text x="190" y="145">是</text>
+    <text x="118" y="198">否</text>
+    <text x="178" y="337">否</text>
+    <text x="118" y="388">是</text>
+    <text x="178" y="511">否</text>
+    <text x="118" y="559">是</text>
+  </g>
+  <text x="204" y="302" font-size="10" fill="#555">第二輪</text>
+  <text x="204" y="314" font-size="10" fill="#555">12/15 公告</text>
+  <text x="272" y="250" font-size="10" fill="#555" transform="rotate(90 272 250)">免抽籤，直接簽約繳費</text>
+
+  <!-- 開始 -->
+  <rect x="67" y="10" width="90" height="28" rx="14" fill="#fff" stroke="#333" stroke-width="1.5"/>
+  <text x="112" y="28.5" text-anchor="middle" font-size="12.5" font-weight="bold">開始</text>
+
+  <!-- 線上登記 -->
+  <rect x="37" y="52" width="150" height="50" rx="3" fill="#1d5fa8"/>
+  <text x="112" y="70" text-anchor="middle" fill="#fff" font-size="13.5" font-weight="bold">線上登記</text>
+  <text x="112" y="84" text-anchor="middle" fill="#fff" font-size="10">115/11/15 – 11/30・掃 QR</text>
+  <text x="112" y="97" text-anchor="middle" fill="#fff" font-size="9.5">長者可由櫃台協助</text>
+
+  <!-- 判斷：志願選小車位？ -->
+  <path d="M112 116 L186 150 L112 184 L38 150 Z" fill="#fff" stroke="#1d5fa8" stroke-width="1.6"/>
+  <text x="112" y="148" text-anchor="middle" font-size="12" font-weight="bold">志願選小車位？</text>
+  <text x="112" y="163" text-anchor="middle" font-size="9" fill="#555">限每戶第一部機車</text>
+
+  <!-- 是：直接選定小車位 -->
+  <rect x="208" y="124" width="118" height="52" rx="3" fill="#fff" stroke="#1d5fa8" stroke-width="1.6"/>
+  <text x="267" y="141" text-anchor="middle" font-size="10.5" font-weight="bold">登記時直接選定小車位</text>
+  <text x="267" y="155" text-anchor="middle" font-size="10">依登記順序，免抽籤</text>
+  <text x="267" y="169" text-anchor="middle" font-size="10">號碼已被選者請改選</text>
+
+  <!-- 電腦抽籤 -->
+  <rect x="37" y="252" width="150" height="44" rx="3" fill="#1d5fa8"/>
+  <text x="112" y="271" text-anchor="middle" fill="#fff" font-size="13.5" font-weight="bold">電腦抽籤</text>
+  <text x="112" y="287" text-anchor="middle" fill="#fff" font-size="10">第一輪 12/1 公告</text>
+
+  <!-- 判斷：配到車位？ -->
+  <path d="M112 312 L174 342 L112 372 L50 342 Z" fill="#fff" stroke="#1d5fa8" stroke-width="1.6"/>
+  <text x="112" y="346" text-anchor="middle" font-size="12" font-weight="bold">配到車位？</text>
+
+  <!-- 簽約繳費 -->
+  <rect x="37" y="430" width="150" height="44" rx="3" fill="#1d5fa8"/>
+  <text x="112" y="449" text-anchor="middle" fill="#fff" font-size="13.5" font-weight="bold">簽約・繳費</text>
+  <text x="112" y="465" text-anchor="middle" fill="#fff" font-size="10">截止 12/10・12/25</text>
+
+  <!-- 判斷：期限內完成？ -->
+  <path d="M112 490 L174 516 L112 542 L50 516 Z" fill="#fff" stroke="#1d5fa8" stroke-width="1.6"/>
+  <text x="112" y="520" text-anchor="middle" font-size="12" font-weight="bold">期限內完成？</text>
+
+  <!-- 否：視同放棄 -->
+  <rect x="208" y="502" width="118" height="28" rx="14" fill="#fff" stroke="#c1121f" stroke-width="1.5"/>
+  <text x="267" y="520.5" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#c1121f">視同放棄・禁止使用</text>
+
+  <!-- 使用車位 -->
+  <rect x="37" y="601" width="150" height="40" rx="3" fill="#1d5fa8"/>
+  <text x="112" y="619" text-anchor="middle" fill="#fff" font-size="13.5" font-weight="bold">使用車位</text>
+  <text x="112" y="634" text-anchor="middle" fill="#fff" font-size="10">116/1/1 – 12/31</text>
+
+  <!-- 結束 -->
+  <rect x="67" y="653" width="90" height="26" rx="13" fill="#fff" stroke="#333" stroke-width="1.5"/>
+  <text x="112" y="670.5" text-anchor="middle" font-size="12.5" font-weight="bold">結束</text>
+</svg>
+    </div>
+    <div class="desc">
+      <p><b>期間：</b>115/11/15 – 11/30（每戶限一次）</p>
+    <p><b>登記內容：</b>戶別、申請人、車號、志願車位</p>
+    <p><b>登記方式：</b>線上登記（手機掃描本頁右下角 QR code）；長者可至管理中心由櫃台協助。</p>
+    <ol>
+      <li><b>志願選小車位</b>（限每戶第一部機車）：登記時直接選定想要的小車位，<b>依登記順序、免抽籤</b>；該號碼已被選者請改選其他。</li>
+      <li><b>無障礙機車位</b>（8 格）：限<b>持身心障礙證明且行動不便</b>之住戶勾選，簽約時出示證明；重機不適用。</li>
+      <li class="warn">社會住宅戶不參與登記抽籤。</li>
+    </ol>
+    </div>
+
+    <div class="ph"><span class="n">2</span>抽籤</div>
+    <div class="desc">
+      <p><b>抽籤方式：</b>電腦抽籤</p>
+    <p><b>第一輪</b>（每戶第一部機車）<br>抽籤並公告 <b>115/12/1</b></p>
+    <p><b>第二輪</b>（第一輪未配到車位者）<br>抽籤並公告 <b>115/12/15</b></p>
+    </div>
+
+    <div class="ph"><span class="n">3</span>簽約繳費</div>
+    <div class="desc">
+      <p>由管理中心製發繳費單，以繳管理費方式繳納，<b>一次繳一年</b>清潔費：一般機車 <b>1,200 元</b>、紅黃牌重機 <b>3,600 元</b>、自行車 <b>免費</b>。</p>
+    <p><b>簽約繳費截止：</b>第一輪 <b>115/12/10</b>、第二輪 <b>115/12/25</b></p>
+    <p>繳費後，已登錄的 eTag 可繼續使用；沒有 eTag 者須購買並登錄後使用。</p>
+    </div>
+
+    <div class="ph"><span class="n">4</span>使用</div>
+    <div class="desc">
+      <p><b>使用期間：</b>116/1/1 – 116/12/31</p>
+    <p class="warn">116/1/1 起，未簽約繳費者禁止使用停車位。</p>
+    </div>
+  </div>
+
+  <div class="aside">
+    <div class="qrbox">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h29v29H0z"/><path stroke="#000000" d="M0 0.5h7m1 0h1m1 0h1m8 0h2m1 0h7M0 1.5h1m5 0h1m1 0h3m2 0h2m1 0h3m1 0h1m1 0h1m5 0h1M0 2.5h1m1 0h3m1 0h1m2 0h2m2 0h3m2 0h2m2 0h1m1 0h3m1 0h1M0 3.5h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m3 0h1m1 0h1m2 0h1m1 0h3m1 0h1M0 4.5h1m1 0h3m1 0h1m2 0h2m1 0h4m1 0h1m1 0h1m2 0h1m1 0h3m1 0h1M0 5.5h1m5 0h1m2 0h1m1 0h1m2 0h1m2 0h1m1 0h1m2 0h1m5 0h1M0 6.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M8 7.5h2m1 0h2m3 0h2M0 8.5h1m1 0h2m1 0h3m4 0h2m2 0h2m1 0h2m1 0h1m2 0h1m1 0h2M0 9.5h1m3 0h1m3 0h1m1 0h1m1 0h2m2 0h9m3 0h1M0 10.5h1m2 0h1m2 0h1m1 0h1m2 0h1m1 0h1m2 0h1m1 0h1m3 0h1m1 0h1m1 0h2M1 11.5h1m5 0h1m1 0h2m8 0h1m2 0h1m5 0h1M3 12.5h1m1 0h2m1 0h2m1 0h1m2 0h2m1 0h1m1 0h1m5 0h2M2 13.5h1m1 0h1m3 0h1m5 0h3m2 0h1m2 0h1m3 0h3M4 14.5h3m5 0h2m2 0h1m2 0h2m2 0h1m2 0h3M0 15.5h2m1 0h1m1 0h1m1 0h3m4 0h1m1 0h1m2 0h2m2 0h2m2 0h1M1 16.5h1m3 0h2m2 0h4m1 0h1m3 0h1m1 0h2m1 0h3m1 0h1M3 17.5h3m2 0h2m2 0h1m1 0h1m2 0h1m2 0h1m2 0h1m1 0h3M0 18.5h1m1 0h3m1 0h1m1 0h1m2 0h1m1 0h5m3 0h1m1 0h1m2 0h1M4 19.5h1m2 0h1m3 0h1m1 0h3m1 0h3m2 0h1m1 0h1m1 0h1M1 20.5h3m2 0h1m3 0h1m2 0h5m2 0h7M8 21.5h1m1 0h1m5 0h3m1 0h1m3 0h5M0 22.5h7m1 0h2m2 0h1m1 0h1m3 0h3m1 0h1m1 0h2m1 0h1M0 23.5h1m5 0h1m1 0h1m1 0h7m1 0h3m3 0h2M0 24.5h1m1 0h3m1 0h1m2 0h4m2 0h2m3 0h5m1 0h1M0 25.5h1m1 0h3m1 0h1m1 0h1m4 0h1m1 0h5m1 0h1m1 0h3m2 0h1M0 26.5h1m1 0h3m1 0h1m1 0h1m1 0h1m3 0h1m5 0h1m2 0h1m2 0h1m1 0h1M0 27.5h1m5 0h1m5 0h2m1 0h1m2 0h1m1 0h1m1 0h1m2 0h1m1 0h1M0 28.5h7m1 0h1m4 0h1m4 0h7m2 0h1"/></svg>
+      <div class="q1">手機掃描・線上登記</div>
+      <div class="q2">joechiboo.github.io/ParkFee/#/</div>
+    </div>
+    <div class="sign">
+      <div class="seal"></div>
+      <div class="org">
+        <div class="n">樂菲莊園管理委員會</div>
+        <div class="p">電話 02-2218-6136</div>
+      </div>
+      <div class="seal blue"></div>
+    </div>
+  </div>
+</div>
+
+<p class="basis">依「社區地下室停車場管理辦法」及 115/10/29 臨時管理委員會決議辦理。</p>
+
+</div>
+</body>
+</html>

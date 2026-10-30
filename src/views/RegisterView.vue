@@ -102,10 +102,11 @@ async function submit() {
   submitting.value = true
   try {
     // 自行車：車號交給後端產生合成鍵；身障／志願小位 無意義，清乾淨再送。
+    // 重機：10/29 臨時會後不開放無障礙位（限相鄰兩個大位），勾選框不顯示、送出也不帶。
     const vehicles = form.vehicles.map((v) =>
       isBike(v)
         ? { 車種: BIKE, 特徵: v.特徵 }
-        : { 車號: v.車號, 車種: v.車種, 身障: v.身障, 志願小位: v.志願小位 },
+        : { 車號: v.車號, 車種: v.車種, 身障: v.車種 !== '重機' && v.身障, 志願小位: v.志願小位 },
     )
     // 社宅戶不經本系統登記（2026-10-20 經理定：社宅單位自行安排公益位）→ 一律送 false，
     // 編輯時也順手清掉舊資料殘留的旗標。後端與引擎的社宅分支保留不動。
@@ -260,8 +261,9 @@ async function submit() {
             自行車不用填車號、也不用排志願序 — 12/1 直接抽車位號碼。
           </p>
           <div v-else class="mt-2 flex flex-wrap gap-x-5 gap-y-2">
-            <label class="flex items-center gap-2 py-1 text-sm text-slate-700">
-              <input v-model="v.身障" type="checkbox" class="h-4 w-4" /> 身障（無障礙優先）
+            <label v-if="v.車種 !== '重機'" class="flex items-center gap-2 py-1 text-sm text-slate-700">
+              <input v-model="v.身障" type="checkbox" class="h-4 w-4" /> 需無障礙位
+              <span class="text-xs text-slate-500">（限持身心障礙證明且行動不便者，簽約時出示）</span>
             </label>
             <label class="flex items-center gap-2 py-1 text-sm text-slate-700">
               <input v-model="v.志願小位" type="checkbox" class="h-4 w-4" /> 志願小位（免抽依序選）
