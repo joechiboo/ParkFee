@@ -1,7 +1,7 @@
 # 對照表 Word 版（直式 A4）——由 build-bylaw-compare.mjs 呼叫，不單獨維護內容。
 #
 # 輸入：node 端吐出的列 JSON（每列 new/old/note 三格，HTML 片段只含
-#       <u class="r">紅字底線</u>、<br>、<div class="hd[ r]">條名</div> 三種標記）
+#       <u class="r">紅字底線</u>（class 帶 v2 ＝ 10/29 臨時管委會調整處，加黃色螢光）、<br>、<div class="hd[ r]">條名</div> 三種標記）
 # 輸出：.docx（表頭跨頁重複、列不跨頁拆開、紅字底線保留，給經理貼進會議紀錄）
 #
 # 用法：python scripts/build-bylaw-compare-docx.py <rows.json> <out.docx>
@@ -12,7 +12,7 @@ import sys
 from docx import Document
 from docx.enum.section import WD_ORIENT
 from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_COLOR_INDEX
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
@@ -38,24 +38,26 @@ def fill(cell, frag, size):
         p = cell.paragraphs[0] if i == 0 else cell.add_paragraph()
         p.paragraph_format.space_after = Pt(0)
         p.paragraph_format.line_spacing = 1.15
-        for red, text in _segments(line):
+        for red, v2, text in _segments(line):
             run = p.add_run(text)
             set_font(run, size)
             if red:
                 run.font.color.rgb = RED
                 run.font.underline = True
+            if v2:
+                run.font.highlight_color = WD_COLOR_INDEX.YELLOW
 
 
 def _segments(line):
     out, pos = [], 0
-    for m in re.finditer(r'<u class="r">(.*?)</u>', line):
+    for m in re.finditer(r'<u class="r( v2)?">(.*?)</u>', line):
         if m.start() > pos:
-            out.append((False, line[pos:m.start()]))
-        out.append((True, m[1]))
+            out.append((False, False, line[pos:m.start()]))
+        out.append((True, bool(m[1]), m[2]))
         pos = m.end()
     if pos < len(line):
-        out.append((False, line[pos:]))
-    return [(r, re.sub(r'<[^>]+>', '', t)) for r, t in out if t]
+        out.append((False, False, line[pos:]))
+    return [(r, v, re.sub(r'<[^>]+>', '', t)) for r, v, t in out if t]
 
 
 def row_opts(row, header=False):
