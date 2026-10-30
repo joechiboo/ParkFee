@@ -265,8 +265,8 @@ async function submit() {
               <input v-model="v.身障" type="checkbox" class="h-4 w-4" /> 需無障礙位
               <span class="text-xs text-slate-500">（限持身心障礙證明且行動不便者，簽約時出示）</span>
             </label>
-            <label class="flex items-center gap-2 py-1 text-sm text-slate-700">
-              <input v-model="v.志願小位" type="checkbox" class="h-4 w-4" /> 志願小位（免抽依序選）
+            <label v-if="v.車種 === '一般' && form.vehicles.findIndex((x) => !isBike(x)) === i" class="flex items-center gap-2 py-1 text-sm text-slate-700">
+              <input v-model="v.志願小位" type="checkbox" class="h-4 w-4" /> 志願小位（限第 1 輛：登記後到選位頁<b>直接選定一格</b>，免抽籤、先選先得）
             </label>
           </div>
         </div>

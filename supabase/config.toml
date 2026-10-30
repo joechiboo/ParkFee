@@ -11,3 +11,6 @@ verify_jwt = true
 
 [functions.update-household]
 verify_jwt = true
+
+[functions.claim-seat]
+verify_jwt = true

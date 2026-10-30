@@ -9,6 +9,7 @@
 
 import { normalizeTWPlate } from '../data/plate.js'
 import { normalizeHousehold } from '../data/household.js'
+import { loadOccupied, saveOccupied } from './occupied.js'
 
 const KEY = 'parkfee_reg_v1'
 
@@ -167,6 +168,40 @@ export function saveWishes({ 戶號, 車位志願, 志願落選保底 }) {
     }
   }
   db.households[hid] = { ...db.households[hid], 車位志願: wishes, 志願落選保底: !!志願落選保底 }
+  save(db)
+  return getHousehold(hid)
+}
+
+// 住戶線上志願小位（單機版）：鎖定走 occupied.js 本機快取（與 locked.js 同一份），規則比照 claim-seat。
+export function claimSeat({ op, 戶號, 車位編號 }) {
+  const hid = normHouse(戶號)
+  const db = load()
+  const h = db.households[hid]
+  if (!h) throw new RegistrationError(`戶號 ${hid} 尚未登記`)
+  if (h.工作人員) throw new RegistrationError('社區工作人員不適用志願小位')
+  const first = Object.values(db.vehicles).find((v) => v.戶號 === hid && v.第幾輛 === 1 && v.車種 !== '自行車')
+  if (!first) throw new RegistrationError('查無第一輛機車登記')
+  if (first.車種 !== '一般') throw new RegistrationError('志願小位限一般機車（重機不適用）')
+  const held = first.配位狀態 === '志願小位' && first.車位編號 ? String(first.車位編號) : null
+  const locked = new Set(loadOccupied().map(String))
+  if (op === 'release') {
+    if (!held) throw new RegistrationError('目前沒有選定中的志願小位')
+    if (first.已繳費) throw new RegistrationError('已完成繳費的車位不能線上取消，請洽管理中心')
+    locked.delete(held)
+    Object.assign(first, { 車位編號: null, 車位類型: null, 配位狀態: null, 已繳費: false, 簽約期限: null })
+  } else {
+    const seat = String(車位編號 ?? '').trim()
+    if (!seat) throw new RegistrationError('請先在地圖上點一個小位')
+    if (first.車位編號 && !held) throw new RegistrationError(`第一輛已有車位 ${first.車位編號}，如需變更請洽管理中心`)
+    if (held && first.已繳費) throw new RegistrationError('已完成繳費的車位不能線上變更，請洽管理中心')
+    if (held !== seat) {
+      if (locked.has(seat)) throw new RegistrationError(`車位 ${seat} 剛被其他住戶選走了，請改選其他小位`)
+      locked.add(seat)
+      if (held) locked.delete(held)
+      Object.assign(first, { 車位編號: seat, 車位類型: '小', 配位狀態: '志願小位', 志願小位: true, 已繳費: false })
+    }
+  }
+  saveOccupied([...locked])
   save(db)
   return getHousehold(hid)
 }

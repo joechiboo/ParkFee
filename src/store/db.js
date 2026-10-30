@@ -48,6 +48,11 @@ export async function updateHousehold(input) {
 export async function saveWishes(input) {
   return (await backend()).saveWishes(input)
 }
+// 住戶線上志願小位：op 'claim' 選定並鎖定一個一般小位／'release' 放棄（限第一輛一般機車、未繳費）。
+// 認證車號＝登入車號。回傳最新整戶資料。
+export async function claimSeat(input) {
+  return (await backend()).claimSeat(input)
+}
 // 物業發佈配位結果（回填 vehicle）。需管理員密碼。
 export async function publishResult(input) {
   return (await backend()).publishResult(input)

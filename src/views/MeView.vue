@@ -99,8 +99,11 @@ function logout() {
                 <td class="px-3 py-2 font-mono">{{ displaySeatIds(v.車位編號) || '—' }}<span v-if="v.車位類型" class="text-xs text-slate-400">（{{ v.車位類型 }}）</span></td>
                 <td class="px-3 py-2 text-sm">
                   <template v-if="v.配位狀態">
-                    <span :class="v.配位狀態 === '分配' ? 'font-medium text-emerald-700' : 'text-rose-600'">{{ v.配位狀態 }}</span>
-                    <span v-if="v.配位狀態 === '分配'" class="text-slate-500">· {{ feeFor(v.車種) }} 元 · 簽約 {{ v.簽約期限 || '公告後5日內' }}</span>
+                    <!-- 有車位＝已配/已選定（綠：已繳；琥珀：待繳）；有狀態沒車位＝落選/候補（紅） -->
+                    <span :class="v.車位編號 ? (v.已繳費 ? 'font-medium text-emerald-700' : 'font-medium text-amber-700') : 'text-rose-600'">{{ v.配位狀態 }}</span>
+                    <span v-if="v.車位編號 && v.已繳費" class="text-slate-500">· 已繳費</span>
+                    <span v-else-if="v.配位狀態 === '志願小位'" class="text-slate-500">· {{ feeFor(v.車種) }} 元 · 請至管理中心繳費確認</span>
+                    <span v-else-if="v.車位編號" class="text-slate-500">· {{ feeFor(v.車種) }} 元 · 簽約 {{ v.簽約期限 || '公告後10日內' }}</span>
                   </template>
                   <span v-else class="text-slate-400">未公布</span>
                 </td>

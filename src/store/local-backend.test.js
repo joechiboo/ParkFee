@@ -8,7 +8,7 @@ globalThis.localStorage = {
   removeItem: (k) => mem.delete(k),
 }
 
-const { register, login, getHousehold, updateHousehold, _reset, RegistrationError } = await import('./local-backend.js')
+const { register, login, getHousehold, updateHousehold, claimSeat, _reset, RegistrationError } = await import('./local-backend.js')
 
 describe('登記儲存層 localStorage 後端（登記即註冊 / 戶號+車號登入）', () => {
   beforeEach(() => _reset())
@@ -80,5 +80,46 @@ describe('登記儲存層 localStorage 後端（登記即註冊 / 戶號+車號�
 
   it('編輯：未登記的戶不能編輯', () => {
     expect(() => updateHousehold({ 戶號: 'NOPE-1', vehicles: [{ 車號: 'Z1' }] })).toThrow(RegistrationError)
+  })
+})
+
+describe('志願小位線上選定（claimSeat，單機版；規則比照 claim-seat Edge Function）', () => {
+  beforeEach(() => {
+    _reset()
+    localStorage.removeItem('parkfee:occupied')
+  })
+
+  it('第一輛一般機車選定小位 → 寫車位編號/狀態志願小位，且該格進鎖定清單', () => {
+    register({ 戶號: 'A1-1', vehicles: [{ 車號: 'AAA1' }] })
+    const h = claimSeat({ op: 'claim', 戶號: 'A1-1', 車位編號: '8' })
+    expect(h.vehicles[0]).toMatchObject({ 車位編號: '8', 車位類型: '小', 配位狀態: '志願小位', 志願小位: true, 已繳費: false })
+    expect(JSON.parse(localStorage.getItem('parkfee:occupied'))).toContain('8')
+  })
+
+  it('同一格第二戶來選 → 被擋（先到先得）', () => {
+    register({ 戶號: 'A1-1', vehicles: [{ 車號: 'AAA1' }] })
+    register({ 戶號: 'A1-2', vehicles: [{ 車號: 'BBB2' }] })
+    claimSeat({ op: 'claim', 戶號: 'A1-1', 車位編號: '8' })
+    expect(() => claimSeat({ op: 'claim', 戶號: 'A1-2', 車位編號: '8' })).toThrow(/選走/)
+  })
+
+  it('未繳費前可換格：舊格釋放、新格鎖定；放棄則全部清掉', () => {
+    register({ 戶號: 'A1-1', vehicles: [{ 車號: 'AAA1' }] })
+    claimSeat({ op: 'claim', 戶號: 'A1-1', 車位編號: '8' })
+    let h = claimSeat({ op: 'claim', 戶號: 'A1-1', 車位編號: '9' })
+    expect(h.vehicles[0].車位編號).toBe('9')
+    let locked = JSON.parse(localStorage.getItem('parkfee:occupied'))
+    expect(locked).toContain('9')
+    expect(locked).not.toContain('8')
+    h = claimSeat({ op: 'release', 戶號: 'A1-1' })
+    expect(h.vehicles[0].車位編號).toBeNull()
+    expect(h.vehicles[0].配位狀態).toBeNull()
+    expect(JSON.parse(localStorage.getItem('parkfee:occupied'))).not.toContain('9')
+  })
+
+  it('重機第一輛、沒登記機車的戶 → 不適用', () => {
+    register({ 戶號: 'A1-1', vehicles: [{ 車號: 'HVY1', 車種: '重機' }] })
+    expect(() => claimSeat({ op: 'claim', 戶號: 'A1-1', 車位編號: '8' })).toThrow(/重機/)
+    expect(() => claimSeat({ op: 'claim', 戶號: 'Z9', 車位編號: '8' })).toThrow(/尚未登記/)
   })
 })

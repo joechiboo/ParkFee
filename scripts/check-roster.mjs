@@ -248,18 +248,21 @@ if (staffHouses.length && staffRoster) {
     if (c.車種 !== '重機' || !c.車位編號) continue
     const ids = c.車位編號.split('、').map((x) => x.trim()).filter(Boolean)
     if (ids.length !== 2) {
-      // 單格只在「無障礙位」時合法（該型較寬，2026-08-24 決）
-      const only = motorById.get(ids[0])
-      if (ids.length === 1 && only?.type === '無障礙') continue
-      bad.push(`${h.戶號} ${c.車號} → ${c.車位編號}（${ids.length} 格，重機應為相鄰兩格或單格無障礙）`)
+      // 2026-10-29 臨時管委會：重機限相鄰兩個大位，不再開放無障礙單格
+      bad.push(`${h.戶號} ${c.車號} → ${c.車位編號}（${ids.length} 格，重機應為相鄰兩個大位）`)
+      continue
+    }
+    const notBig = ids.filter((id) => motorById.get(id)?.type !== '大')
+    if (notBig.length) {
+      bad.push(`${h.戶號} ${c.車號} → ${c.車位編號}（${notBig.join('、')} 不是大位；10/29 起重機限兩個大位）`)
       continue
     }
     if (!(ADJ[ids[0]] || []).includes(ids[1]))
       bad.push(`${h.戶號} ${c.車號} → ${ids[0]}、${ids[1]}（編號相連但**實體不相鄰**，隔走道/跨排/轉角）`)
   }
   if (bad.length)
-    add('warn', '重機已指派車位不是相鄰兩格',
-      '辦法肆五要求「相鄰之兩個機車位」。實體相鄰＝同排橫連或同列直連、中間不夾其他格；' +
+    add('warn', '重機已指派車位不是相鄰兩個大位',
+      '辦法肆五（10/29 修）要求「相鄰之兩個大機車位」。實體相鄰＝同排橫連或同列直連、中間不夾其他格；' +
       '編號連號不等於實體相鄰（真實地圖 654 對連號中有 71 對其實隔著走道）。請物業改派。', bad)
 }
 

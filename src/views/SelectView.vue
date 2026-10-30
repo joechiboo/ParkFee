@@ -3,12 +3,13 @@ import { ref, computed, watch, onMounted } from 'vue'
 import SeatMap from '../components/SeatMap.vue'
 import { motorSeats } from '../map/seats.js'
 import { sessionHousehold, sessionPlate } from '../store/session.js'
-import { saveWishes as saveWishesRemote } from '../store/db.js'
+import { saveWishes as saveWishesRemote, claimSeat as claimSeatRemote } from '../store/db.js'
 import { lockedSeats, refreshLocked } from '../store/locked.js'
+import { feeFor } from '../data/fee.js'
 
 // 全機車位（含 public 旗標）。可選資格（2026-08-16 決議）：
-//   一般戶＝大/小；重機戶＝大/小＋無障礙（占相鄰兩格，配位自動帶鄰格）；
-//   社宅戶＝僅公益位；無障礙保留 2 格已走 locked_seat 鎖定、天然不可選。
+//   一般戶＝大/小；重機戶＝大位（占相鄰兩個大位，配位自動帶鄰格；2026-10-29 起不得選無障礙位、不含小位）；
+//   社宅戶＝僅公益位（10/20 起社宅不登記，公益位改由物業整批鎖定）；無障礙位限身障者、由管理中心指派，地圖上一律不可選。
 const seats = motorSeats()
 const householdId = computed(() => sessionHousehold.value?.戶號 || '')
 
@@ -35,7 +36,7 @@ const orderOf = (id) => orderMap.value.get(String(id))
 // 已鎖定/已承租的車位（物業維護、雲端讀）：不可選。
 onMounted(refreshLocked)
 const isOccupied = (id) => lockedSeats.value.has(String(id))
-// 重機戶（該戶登記有重機）可加選無障礙位；一台重機占相鄰兩格（點一格即可，配位自動帶鄰格）。
+// 重機戶（該戶登記有重機）：一台重機占相鄰兩個大位（點一格大位即可，配位自動帶鄰格）；不開放無障礙位（2026-10-29）。
 const hasHeavy = computed(() => (sessionHousehold.value?.vehicles || []).some((v) => v.車種 === '重機'))
 // 社宅戶：公益位專用（一般戶不可選公益位）。
 const isSocial = computed(() => !!sessionHousehold.value?.社宅)
@@ -44,12 +45,61 @@ const isSocial = computed(() => !!sessionHousehold.value?.社宅)
 // （distribute.js 工作人員輪的 ok＝!public && type!=='無障礙'）。
 // 這裡一併擋住，否則他把這些位排進志願只是白填、抽完才發現全落空。
 const isStaff = computed(() => !!sessionHousehold.value?.工作人員)
+// ── 志願小位（辦法伍二（五）；2026-10-29 臨時管委會：登記時直接選定、依登記順序、限每戶第一輛一般機車）──
+// 住戶在這裡點一格小位 →「選定並鎖定」→ 後端 claim-seat 以 locked_seat 主鍵互斥搶鎖，搶到即鎖、別人地圖上立刻不可選。
+// 鎖下去後引擎視為已指派（preset）、不再抽；繳費由櫃台在維護頁標記。未繳費前可線上換格或放棄。
+const firstCar = computed(() =>
+  (sessionHousehold.value?.vehicles || []).find((v) => v.第幾輛 === 1 && v.車種 !== '自行車') || null,
+)
+const heldSmall = computed(() =>
+  firstCar.value?.配位狀態 === '志願小位' && firstCar.value?.車位編號 ? String(firstCar.value.車位編號) : '',
+)
+const smallEligible = computed(
+  () => !!householdId.value && !isStaff.value && !isSocial.value && firstCar.value?.車種 === '一般',
+)
+// 第一輛已有「不是自己線上選的」車位（櫃台指派／抽籤結果）→ 不給線上動。
+const firstLockedElsewhere = computed(() => !!firstCar.value?.車位編號 && !heldSmall.value)
+// 模式：登記時勾了志願小位、或已持有小位 → 預設進小位模式；否則排志願。可手動切換。
+const smallMode = ref(false)
+watch(
+  [smallEligible, heldSmall],
+  () => {
+    smallMode.value = smallEligible.value && !firstLockedElsewhere.value && (!!heldSmall.value || !!firstCar.value?.志願小位)
+  },
+  { immediate: true },
+)
+const pendingSmall = ref('') // 小位模式下點選、尚未送出的格
+const claiming = ref(false)
+const claimMsg = ref('')
+const claimErr = ref('')
+const isHeld = (id) => !!heldSmall.value && String(id) === heldSmall.value
+const smallSelectable = (s) => s.type === '小' && !s.public && (isHeld(s.id) || !isOccupied(s.id))
+async function doClaim(op) {
+  claimErr.value = ''
+  claimMsg.value = ''
+  const seat = op === 'claim' ? pendingSmall.value : ''
+  if (op === 'claim' && !seat) return
+  claiming.value = true
+  try {
+    const h = await claimSeatRemote({ op, 戶號: householdId.value, 車位編號: seat, 認證車號: sessionPlate.value })
+    if (h) sessionHousehold.value = h
+    pendingSmall.value = ''
+    claimMsg.value = op === 'claim' ? `✓ 已為您鎖定小位 ${seat}，請至管理中心繳費確認。` : '已放棄小位，可改選其他格或排志願抽籤。'
+  } catch (e) {
+    claimErr.value = e?.message || '操作失敗，請稍後再試'
+  } finally {
+    claiming.value = false
+    await refreshLocked() // 不論成敗都重抓：被搶走的格要立刻變灰
+  }
+}
+
 const selectable = (s) => {
+  if (smallMode.value) return smallSelectable(s)
   if (isOccupied(s.id)) return false
   if (isStaff.value) return !s.public && s.type !== '無障礙'
   if (isSocial.value) return !!s.public
   if (s.public) return false
-  return s.type === '大' || s.type === '小' || (s.type === '無障礙' && hasHeavy.value)
+  return s.type === '大' || s.type === '小' // 無障礙位限身障者（管理中心指派），任何人地圖上都不可選
 }
 
 const TYPE_LABEL = { 大: '大位', 小: '小位', 無障礙: '無障礙' }
@@ -61,6 +111,14 @@ function seatLabel(id) {
 function toggle(s) {
   if (!selectable(s)) return
   const id = String(s.id)
+  if (smallMode.value) {
+    // 小位模式：單選一格待確認；再點同一格取消。已持有的格點了沒事。
+    if (isHeld(id)) return
+    pendingSmall.value = pendingSmall.value === id ? '' : id
+    claimMsg.value = ''
+    claimErr.value = ''
+    return
+  }
   const i = wishes.value.indexOf(id)
   if (i >= 0) wishes.value.splice(i, 1)
   else wishes.value.push(id)
@@ -113,14 +171,19 @@ watch(householdId, (newId, oldId) => {
 
 // 座位外觀：選中=紅、已售=深灰、公益=金、大=琥珀、小=紫、無障礙=灰。
 function fill(s) {
-  if (isSel(s.id)) return '#ef4444'
+  if (isHeld(s.id)) return '#059669' // 自己已鎖定的小位＝綠
+  if (smallMode.value && pendingSmall.value === String(s.id)) return '#ef4444'
+  if (!smallMode.value && isSel(s.id)) return '#ef4444'
   if (isOccupied(s.id)) return '#475569'
+  if (smallMode.value && !(s.type === '小' && !s.public)) return 'rgba(203,213,225,.35)' // 小位模式：非小位淡化
   if (s.public) return 'rgba(234,179,8,.55)'
   if (s.type === '大') return 'rgba(245,158,11,.45)'
   if (s.type === '小') return 'rgba(139,92,246,.6)'
   return 'rgba(148,163,184,.4)'
 }
 function stroke(s) {
+  if (isHeld(s.id)) return '#065f46'
+  if (smallMode.value) return pendingSmall.value === String(s.id) ? '#b91c1c' : s.type === '小' && !s.public ? '#6d28d9' : '#cbd5e1'
   if (isSel(s.id)) return '#b91c1c'
   if (isOccupied(s.id)) return '#1e293b'
   if (s.public) return '#a16207'
@@ -130,15 +193,15 @@ function stroke(s) {
 }
 // 餵給 <SeatMap> 的每格外觀：未選顯示車位編號、選中顯示志願序號。
 function decorate(s) {
-  const sel = isSel(s.id)
+  const sel = smallMode.value ? pendingSmall.value === String(s.id) || isHeld(s.id) : isSel(s.id)
   return {
     fill: fill(s),
     stroke: stroke(s),
-    strokeWidth: s.public ? 2.4 : 0.8,
+    strokeWidth: s.public ? 2.4 : isHeld(s.id) ? 1.6 : 0.8,
     r: s.type === '小' ? 6 : 7,
     fontSize: s.type === '小' ? 5 : 5.5,
     fontWeight: sel ? 700 : 400,
-    text: sel ? orderOf(s.id) : s.id,
+    text: !smallMode.value && sel ? orderOf(s.id) : s.id,
     textFill: sel || isOccupied(s.id) ? '#e2e8f0' : '#0f172a',
     clickable: selectable(s),
   }
@@ -167,6 +230,52 @@ function decorate(s) {
 
       <!-- 志願清單 -->
       <aside class="rounded-lg border border-slate-200 bg-white p-4">
+        <!-- 志願小位（限第一輛一般機車）：模式切換 + 選定/鎖定面板 -->
+        <div v-if="smallEligible" class="mb-4 border-b border-slate-100 pb-4">
+          <div class="flex items-center justify-between">
+            <div class="font-semibold">志願小位 <span class="text-xs font-normal text-slate-400">免抽籤・先選先得</span></div>
+            <button
+              v-if="!firstLockedElsewhere"
+              class="text-xs text-slate-500 hover:underline"
+              @click="smallMode = !smallMode; pendingSmall = ''; claimMsg = ''; claimErr = ''"
+            >
+              {{ smallMode ? '改排志願（抽籤）→' : '← 我要選小位' }}
+            </button>
+          </div>
+
+          <p v-if="firstLockedElsewhere" class="mt-2 text-xs text-slate-500">
+            第 1 輛已有車位 <b class="font-mono">{{ firstCar.車位編號 }}</b>（{{ firstCar.配位狀態 }}），如需變更請洽管理中心。
+          </p>
+          <template v-else-if="smallMode">
+            <div v-if="heldSmall" class="mt-2 rounded bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+              ✓ 您已鎖定小位 <b class="font-mono">{{ heldSmall }}</b>
+              <span v-if="firstCar.已繳費">・已繳費確認</span>
+              <span v-else>・{{ feeFor('一般') }} 元，請至管理中心繳費確認</span>
+              <div v-if="!firstCar.已繳費" class="mt-1 text-xs text-emerald-700">繳費前可在地圖上點其他小位換格，或
+                <button class="underline" :disabled="claiming" @click="doClaim('release')">放棄此小位</button>（改走抽籤）。</div>
+            </div>
+            <p v-else class="mt-2 text-xs text-slate-600">
+              在地圖上點一格<b>小位</b>（紫色），按「選定並鎖定」即完成。鎖定後別人就選不到這格；請於登記期間至管理中心繳費確認。
+            </p>
+            <div v-if="pendingSmall" class="mt-2 flex items-center gap-2 text-sm">
+              <span>{{ heldSmall ? '換到' : '選定' }}小位 <b class="font-mono">{{ pendingSmall }}</b></span>
+              <button
+                class="ml-auto rounded bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
+                :disabled="claiming"
+                @click="doClaim('claim')"
+              >
+                {{ claiming ? '鎖定中…' : '選定並鎖定' }}
+              </button>
+            </div>
+            <p v-if="claimMsg" class="mt-2 text-sm text-emerald-700">{{ claimMsg }}</p>
+            <p v-if="claimErr" class="mt-2 text-sm text-rose-600">{{ claimErr }}</p>
+          </template>
+          <p v-else class="mt-2 text-xs text-slate-500">
+            <span v-if="heldSmall">您已鎖定小位 <b class="font-mono">{{ heldSmall }}</b>；下方志願序供第 2 輛起抽籤用。</span>
+            <span v-else>想免抽籤直接選小位？點上方「我要選小位」。</span>
+          </p>
+        </div>
+
         <div class="flex items-center justify-between">
           <div class="font-semibold">車位志願序 <span class="text-slate-400">({{ wishes.length }})</span></div>
           <button v-if="wishes.length" class="text-xs text-slate-500 hover:underline" @click="clearAll">清除全部</button>
@@ -213,11 +322,10 @@ function decorate(s) {
             <template v-else>
               <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(245,158,11,.6)"></span> 大位</span>
               <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(139,92,246,.7)"></span> 小位</span>
-              <span v-if="hasHeavy && !isStaff"><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(148,163,184,.45)"></span> 無障礙（重機戶可選）</span>
             </template>
             <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-rose-500"></span> 已選</span>
           </div>
-          <p v-if="hasHeavy" class="mt-1 text-amber-700">重機占<b>相鄰兩格</b>（大小不限）：點一格即可，配位自動帶相鄰格。</p>
+          <p v-if="hasHeavy" class="mt-1 text-amber-700">重機占<b>相鄰兩個大位</b>：點一格大位即可，配位自動帶相鄰大位；一般機車全部配完後才配重機。</p>
           <div class="mb-1 mt-2 font-medium text-slate-600">不可選</div>
           <div class="flex flex-wrap gap-x-3 gap-y-1">
             <span v-if="!isSocial"><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(234,179,8,.6);outline:1.5px solid #a16207"></span> 公益（社宅自行安排）</span>
@@ -226,7 +334,7 @@ function decorate(s) {
               <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(245,158,11,.6)"></span> 大位</span>
               <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(139,92,246,.7)"></span> 小位</span>
             </template>
-            <span v-if="!hasHeavy || isSocial"><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(148,163,184,.45)"></span> 無障礙</span>
+            <span v-if="!isStaff"><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(148,163,184,.45)"></span> 無障礙（限身障者，管理中心指派）</span>
             <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:#475569"></span> 已承租</span>
           </div>
         </div>
@@ -234,7 +342,8 @@ function decorate(s) {
     </div>
 
     <p class="mt-3 text-xs text-slate-400">
-      登入後「儲存志願序」會寫入後端（Supabase）；未登入僅本機試排。志願不限數量、多填越不易落空；志願小位／無障礙位免在此排。
+      登入後「儲存志願序」會寫入後端（Supabase）；未登入僅本機試排。志願不限數量、多填越不易落空。
+      志願小位（限第 1 輛一般機車）改為在本頁<b>直接選定一格並鎖定</b>，免抽籤；無障礙位由管理中心指派、免在此排。
     </p>
   </section>
 </template>

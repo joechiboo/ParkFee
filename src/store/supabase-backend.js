@@ -58,6 +58,12 @@ export async function saveWishes({ 戶號, 車位志願, 志願落選保底, 認
   return data.household
 }
 
+// 住戶線上志願小位（claim-seat）：選定並鎖定／放棄。被搶走時後端回 409 + taken，訊息原樣往上拋。
+export async function claimSeat({ op, 戶號, 車位編號, 認證車號 }) {
+  const data = await invoke('claim-seat', { op, 戶號, 車位編號, 認證車號 })
+  return data.household
+}
+
 // 物業發佈配位結果 → 回填 vehicle。轉發完整 input（rows + adminAuth：password / 戶號 / 認證車號）。
 export async function publishResult(input) {
   return invoke('publish-result', input)
