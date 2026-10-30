@@ -17,12 +17,12 @@ export function resultColumns({ 公開版 = false, 含戶號 = false } = {}) {
   return 公開版 && !含戶號 ? RESULT_COLUMNS_PUBLIC : RESULT_COLUMNS
 }
 
-// 簽約期限 = 公告日 + 5 日（辦法：公告後 5 日內簽約）。公告日為 'YYYY-MM-DD'；空/無效則回 ''。
+// 簽約期限 = 公告日 + 10 日（辦法伍二（六）10/29 臨時會：公告後 10 日內簽約，與逾期視同放棄之 10 日一致）。公告日為 'YYYY-MM-DD'；空/無效則回 ''。
 export function signDeadline(公告日) {
   if (!公告日) return ''
   const d = new Date(`${公告日}T00:00:00`)
   if (Number.isNaN(d.getTime())) return ''
-  d.setDate(d.getDate() + 5)
+  d.setDate(d.getDate() + 10)
   const p = (n) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }

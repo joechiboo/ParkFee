@@ -13,9 +13,9 @@ const sample = {
 }
 
 describe('配位結果匯出（result.js）', () => {
-  it('signDeadline = 公告日 + 5 日；空/無效回空字串', () => {
-    expect(signDeadline('2026-12-01')).toBe('2026-12-06')
-    expect(signDeadline('2026-12-30')).toBe('2027-01-04') // 跨月/跨年
+  it('signDeadline = 公告日 + 10 日；空/無效回空字串', () => {
+    expect(signDeadline('2026-12-01')).toBe('2026-12-11')
+    expect(signDeadline('2026-12-30')).toBe('2027-01-09') // 跨月/跨年
     expect(signDeadline('')).toBe('')
     expect(signDeadline('not-a-date')).toBe('')
   })
@@ -26,7 +26,7 @@ describe('配位結果匯出（result.js）', () => {
 
     expect(rows[0]).toMatchObject({
       戶號: 'A1-1', 車號: 'ABC-123', 車位編號: '100', 車位類型: '大',
-      應繳金額: 1200, 簽約期限: '2026-12-06', 狀態: '分配', 備註: '志願分發',
+      應繳金額: 1200, 簽約期限: '2026-12-11', 狀態: '分配', 備註: '志願分發',
     })
     // 重機 → 3600、雙位
     expect(rows[1]).toMatchObject({ 應繳金額: 3600, 車位編號: '150、151', 狀態: '分配' })

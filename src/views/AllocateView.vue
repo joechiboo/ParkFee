@@ -172,7 +172,7 @@ const bikeLostRows = computed(() =>
   (bikeResult.value?.落選 ?? []).slice().sort((x, y) => (x.順序號 ?? 0) - (y.順序號 ?? 0)),
 )
 
-// 下載配位結果 CSV（公告日 → 簽約期限=公告+5；加 BOM 供 Excel 中文正確）。
+// 下載配位結果 CSV（公告日 → 簽約期限=公告+10；加 BOM 供 Excel 中文正確）。
 const announceDate = ref('')
 
 // 發佈結果（回填 vehicle）＝寫真實資料 → 只有管理員看得到此鈕，後端再驗 ADMIN_PASSWORD。
@@ -315,7 +315,7 @@ function downloadResultCSV(pub = true) {
       <!-- 下載結果 CSV（含應繳/狀態/簽約期限） -->
       <div class="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
         <label class="block">
-          <span class="text-sm font-medium text-slate-700">公告日（→ 簽約期限＝公告+5）</span>
+          <span class="text-sm font-medium text-slate-700">公告日（→ 簽約期限＝公告+10）</span>
           <input
             v-model="announceDate"
             type="date"
