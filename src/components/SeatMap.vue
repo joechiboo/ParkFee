@@ -108,7 +108,8 @@ defineExpose({ focusSeats })
 </script>
 
 <template>
-  <div class="rounded-lg border border-slate-200 bg-slate-900">
+  <!-- min-w-0：手機單欄 grid 的子項預設 min-width:auto，會被內層 1400px 底圖撐開、整頁變 1000px 寬再被手機縮小 -->
+  <div class="min-w-0 rounded-lg border border-slate-200 bg-slate-900">
     <div class="flex items-center gap-2 border-b border-slate-700 px-3 py-2 text-xs text-slate-300">
       <button class="rounded bg-slate-700 px-2 py-1 hover:bg-slate-600" @click="zoomBy(0.3)">＋</button>
       <button class="rounded bg-slate-700 px-2 py-1 hover:bg-slate-600" @click="zoomBy(-0.3)">－</button>
