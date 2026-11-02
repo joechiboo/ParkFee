@@ -34,8 +34,8 @@ export async function listRoster(auth) {
   return await invoke('list-roster', auth)
 }
 
-export async function register({ 戶號, 電話, 社宅, 工作人員, vehicles }) {
-  const data = await invoke('register', { 戶號, 電話, 社宅, 工作人員, vehicles })
+export async function register({ 戶號, 電話, 社宅, 工作人員, vehicles, password }) {
+  const data = await invoke('register', { 戶號, 電話, 社宅, 工作人員, vehicles, password })
   return data.household
 }
 

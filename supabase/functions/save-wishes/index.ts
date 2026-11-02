@@ -2,7 +2,8 @@
 // 寫該戶「車位志願序」（戶層級，全戶共用一份）+ 志願落選保底。
 // 🔒 擁有權驗證：認證車號（登入時用的車號）必須「目前」屬於該戶，才允許寫入——
 //    與 update-household 同招，避免任何人拿公開 anon key 改他戶志願。
-import { corsHeaders, json, adminClient, fetchHousehold } from '../_shared/http.ts'
+import { corsHeaders, json, adminClient, fetchHousehold, verifyAdmin } from '../_shared/http.ts'
+import { windowClosed } from '../_shared/window.ts'
 import { normalizeHousehold, isValidHousehold, normalizeTWPlate } from '../_shared/normalize.ts'
 
 Deno.serve(async (req) => {
@@ -40,6 +41,10 @@ Deno.serve(async (req) => {
       .maybeSingle()
     if (!auth || auth.戶號 !== hid)
       return json({ error: '驗證失敗：請使用登入時的車號再試' }, 403)
+
+    // 登記時窗：截止後志願凍結，名冊才固定；管理員戶號可豁免。
+    const closed = windowClosed('志願排序')
+    if (closed && !(await verifyAdmin(db, { 戶號: hid, 認證車號 }))) return json({ error: closed }, 403)
 
     const { error } = await db
       .from('household')

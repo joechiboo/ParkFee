@@ -2,7 +2,8 @@
 // 編輯既有戶：整批取代車輛 + 改電話。戶號不可變。可一併增刪自行車（車號由後端合成，前端不送）。
 // 🔒 擁有權驗證：見 http.ts verifyOwnership——認證車號須「目前」屬於該戶，
 //    否則任何人拿公開 anon key 就能竄改他戶登記。自行車的合成車號不算憑證。
-import { corsHeaders, json, adminClient, fetchHousehold, verifyOwnership } from '../_shared/http.ts'
+import { corsHeaders, json, adminClient, fetchHousehold, verifyOwnership, verifyAdmin } from '../_shared/http.ts'
+import { windowClosed } from '../_shared/window.ts'
 import { normalizeHousehold, isValidHousehold } from '../_shared/normalize.ts'
 import { buildVehicleRows, isBikeOnly } from '../_shared/vehicles.ts'
 
@@ -24,6 +25,10 @@ Deno.serve(async (req) => {
     // 🔒 擁有權驗證：認證車號目前須屬於 hid
     if (!(await verifyOwnership(db, hid, { 認證車號 })))
       return json({ error: '驗證失敗：請使用登入時的車號再試' }, 403)
+
+    // 登記時窗：管理員戶號修改自己的登記可豁免。
+    const closed = windowClosed('登記資料修改')
+    if (closed && !(await verifyAdmin(db, { 戶號: hid, 認證車號 }))) return json({ error: closed }, 403)
 
     const { rows: cleaned, error: vErrMsg } = buildVehicleRows(hid, vehicles)
     if (vErrMsg) return json({ error: vErrMsg }, 400)

@@ -14,36 +14,13 @@
 // 安全：擁有權驗證同 save-wishes（認證車號須目前屬於該戶）；車位型別以伺服器端清單為準
 //   （_shared/seat-types.ts，由腳本自 b1-classification 產生），不信前端帶來的型別。
 //
-// 開放時窗（2026-10-30 會議定：11/15 00:00 – 11/30 23:59 台北時間）：預設寫死在 DEFAULT_WINDOW；
-//   測試期要提前開放可設環境變數 CLAIM_WINDOW="2026-10-01..2026-12-31" 覆蓋（supabase secrets set），上線前記得刪掉。
-//   CLAIM_OPEN_HOUR（如 "08"）可另限每日幾點起開放，會議未要求 → 不設。
+// 開放時窗見 _shared/window.ts。櫃台指派走維護頁（assign-seat），不受此限。
 import { corsHeaders, json, adminClient, verifyOwnership, fetchHousehold, audit } from '../_shared/http.ts'
 import { normalizeHousehold, isValidHousehold } from '../_shared/normalize.ts'
 import { isSmallGeneralSeat } from '../_shared/seat-types.ts'
+import { windowClosed } from '../_shared/window.ts'
 
 const STATUS_CLAIM = '志願小位' // 與 SeatAdminView 櫃台指派同一個狀態字，結果頁／維護頁不用分流
-
-function taipeiNow(): { date: string; hour: number } {
-  const t = new Date(Date.now() + 8 * 3600 * 1000)
-  return { date: t.toISOString().slice(0, 10), hour: t.getUTCHours() }
-}
-
-// 回傳 null＝開放；否則回拒絕訊息。
-const DEFAULT_WINDOW = '2026-11-15..2026-11-30'
-
-function windowCheck(): string | null {
-  const win = Deno.env.get('CLAIM_WINDOW') || DEFAULT_WINDOW
-  const { date, hour } = taipeiNow()
-  if (win) {
-    const [from, to] = win.split('..').map((s) => s.trim())
-    if (from && date < from) return `志願小位尚未開放選定（${from.replaceAll('-', '/')} 起）`
-    if (to && date > to) return `志願小位選定已於 ${to.replaceAll('-', '/')} 截止`
-  }
-  const openHour = Number(Deno.env.get('CLAIM_OPEN_HOUR') ?? '')
-  if (Number.isFinite(openHour) && openHour > 0 && hour < openHour)
-    return `志願小位每日 ${String(openHour).padStart(2, '0')}:00 起開放選定`
-  return null
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -94,7 +71,7 @@ Deno.serve(async (req) => {
     if (!seat) return json({ error: '請先在地圖上點一個小位' }, 400)
     if (!isSmallGeneralSeat(seat)) return json({ error: `車位 ${seat} 不是一般小機車位` }, 400)
 
-    const closed = windowCheck()
+    const closed = windowClosed('志願小位選定')
     if (closed) return json({ error: closed }, 403)
 
     // 這台車已經有位（櫃台指派／抽籤結果／已繳費）→ 不給線上改。只有「自己線上選的、尚未繳費」可以換。
