@@ -128,6 +128,7 @@ for (const r of rows) {
       工作人員: yes(r.工作人員),
       電話: String(r.聯絡電話 ?? '').trim(),
       志願: String(r.車位志願 ?? '').split(/[、,]/).map((s) => s.trim()).filter(Boolean),
+      保底: yes(r.志願落選保底),
       cars: [],
     })
   }
@@ -327,6 +328,16 @@ if (wrongSocial.length)
   add('info', '社宅戶志願指到一般車位', '依 Q7 分流該志願不會配出（無障礙位除外）。可提醒住戶改志願。', wrongSocial)
 if (wrongNormal.length)
   add('info', '一般戶志願指到公益車位', '公益位為社宅戶專用，該志願不會配出。可提醒住戶改志願。', wrongNormal)
+
+// 9) 沒填志願也沒勾電腦選號：還有機車沒配位的話，抽籤必落選。
+//    線上只登記、沒進選位頁的人就是這種（電腦選號後端預設 false）。
+const noWishNoPick = all.filter(
+  (h) => !h.工作人員 && !h.社宅 && !h.志願.length && !h.保底 && h.cars.some((c) => !isBikeCar(c) && !c.車位編號),
+)
+if (noWishNoPick.length)
+  add('warn', '沒填志願也沒勾電腦選號',
+    '這些戶抽籤必落選。登記截止前請提醒住戶到選位頁排志願，或勾選電腦選號。',
+    noWishNoPick.map((h) => h.戶號))
 
 // ── 輸出 ──
 const motorCars = all.reduce((n, h) => n + h.cars.filter((c) => !isBikeCar(c)).length, 0)
