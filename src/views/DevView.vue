@@ -90,8 +90,7 @@ function onRosterFile(e) {
       }
       const hh = new Set(entries.map((r) => r.戶號)).size
       const maxCars = entries.reduce((m, r) => Math.max(m, Number(r.第幾輛) || 1), 0) // 一戶最多幾輛 → 抽幾輪
-      const hasAccessible = entries.some((r) => r.身障 === 'Y' && Number(r.第幾輛) === 1) // 身障第1輛 → 另有無障礙輪
-      const info = `${file.name} · ${hh} 戶 / ${entries.length} 輛 · 最多 ${maxCars} 輛/戶 → ${maxCars} 輪${hasAccessible ? '（另有無障礙輪）' : ''}`
+      const info = `${file.name} · ${hh} 戶 / ${entries.length} 輛 · 最多 ${maxCars} 輛/戶 → ${maxCars} 輪`
       setImportedRoster(entries, info)
       const extra = invalid.length || conflicts.length ? `；無效 ${invalid.length}、衝突 ${conflicts.length}` : ''
       importOk.value = `✓ 已載入 ${info}${extra}`

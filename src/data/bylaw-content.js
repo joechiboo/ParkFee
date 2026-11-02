@@ -5,7 +5,7 @@
 export const bylawCurrent = {
   title: "樂菲莊園 社區地下室停車場管理辦法",
   revisions: ["中華民國 115 年 1 月 28 日 第二屆管委會訂定","中華民國 115 年 3 月 21 日 2026 年區分所有權人重開大會修訂"],
-  updatedAt: "2026-08-27",
+  updatedAt: "2026-11-02",
   html: `<h2>🅿️ 車位速查（機車）</h2>
 <div class="tbl"><table><thead><tr><th>項目</th><th>規定</th><th>條次</th></tr></thead><tbody><tr><td><strong>登記期間</strong></td><td>每年 <strong>11/15 – 11/30</strong>；每戶限登記一次，須出示行車執照查驗並登記車號</td><td>伍二(五)(六)(八)</td></tr><tr><td>一戶上限</td><td>先登記<strong>一個</strong>機車位，未登記者以棄權論</td><td>肆二</td></tr><tr><td>配位輪次</td><td>第一輪一戶一位抽籤；有剩餘再辦第二輛；第二輛完結有剩餘再依序辦第三輛以上</td><td>肆二／伍二(五)(六)(七)</td></tr><tr><td>志願小位</td><td>志願停一般（小）機車位者，<strong>免抽籤</strong>直接依登記順序選號</td><td>伍二(五)</td></tr><tr><td>抽籤觸發</td><td>登記戶數 ≤ 車位數 → 直接抽號；&gt; 車位數 → 截止後 <strong>10 天內</strong>公開抽籤定資格／號碼／候補序</td><td>伍二(六)</td></tr><tr><td>簽約期限</td><td>抽中後<strong>公告後 10 日內</strong>至管理中心簽約並一次繳一年費用（10/29 臨時會 5→10）</td><td>伍二(六)</td></tr><tr><td>棄權遞補</td><td>抽中者未於<strong>公告後 10 日內</strong>辦妥簽約，視同放棄，由候補依序遞補</td><td>伍二(六)</td></tr><tr><td>一般機車費</td><td>每月 100 → 抽中一次年繳 <strong>1,200/年</strong></td><td>柒二</td></tr><tr><td>重機費（佔雙位）</td><td>250CC↑（紅／黃牌）每月 300 → 一次年繳 <strong>3,600/年</strong>，限機車位<strong>足額</strong>時</td><td>肆五／柒二</td></tr><tr><td>自行車費</td><td><strong>不收費</strong></td><td>柒二</td></tr><tr><td>eTag</td><td>一車一 eTag，依行照車號；未登記 eTag 一律禁止入內，擅入依陸條罰則</td><td>肆二／伍四</td></tr><tr><td>罰則·佔位</td><td>佔他人車位 <strong>3,000/日</strong>，歸該車位所有權人</td><td>陸一</td></tr><tr><td>罰則·輪停押金</td><td>兩車輪停同一車位須繳 <strong>3,000 元押金</strong>；違規没收押金並撤銷增辦資格</td><td>伍一(三)／陸四</td></tr><tr><td>罰則·三振</td><td>機車／自行車<strong>三次</strong>違停或放雜物，公告提報管委會確認後<strong>立即取消資格</strong></td><td>陸五</td></tr><tr><td>中途退租</td><td>依剩餘月份退費，不滿一個月以一個月計</td><td>附件一·六</td></tr></tbody></table></div>
 <h3>車位數量（總則 肆二）</h3>
@@ -144,7 +144,7 @@ export const bylawDraft = {
 
 export const houseRules = {
   title: "樂菲莊園 機車・自行車車位使用實施細則（住戶版）",
-  updatedAt: "2026-10-30",
+  updatedAt: "2026-11-02",
   html: `<blockquote><p>本細則是「社區地下室停車場管理辦法」（115 年 9 月修訂）的作業說明，把<strong>登記、抽籤、配位、繳費、換位、自行車</strong>怎麼進行講清楚。規則以管理辦法為準，本文只講做法；括號內為對應條次。依 2026-09-03 管委會例會決議整理。</p></blockquote>
 <hr>
 <h2>一、誰可以登記、登記哪種車位</h2>
@@ -163,7 +163,7 @@ export const houseRules = {
 <h2>四、配位怎麼跑</h2>
 <p>配位的原理很簡單：<strong>先抽順序號，再依順序號從小到大，每戶分到自己志願序裡「還沒被拿走的最高志願」</strong>。就像大學分發，不用現場一個一個叫號選。</p>
 <p>依序處理：</p>
-<div class="tbl"><table><thead><tr><th>順序</th><th>對象</th><th>怎麼分</th></tr></thead><tbody><tr><td>0</td><td>無障礙位</td><td>行動不便住戶（一般機車）優先；登記超過 8 戶則抽籤，未中併入一般〔伍二（三）〕。重機不適用</td></tr><tr><td>1</td><td>志願小位</td><td>登記時線上選定並鎖定，免抽（限第 1 輛一般機車）</td></tr><tr><td>2</td><td>每戶第 1 輛一般機車</td><td>抽順序號 → 依志願序分發〔伍二（五）〕</td></tr><tr><td>3</td><td>第 2 輛起（一般機車）</td><td>用第 1 輛配完的剩餘位，同樣抽順序號分發；第 3 輛以上再往後〔伍二（六）（七）〕</td></tr><tr><td>4</td><td>重機</td><td>一般機車全部配完後才抽；取相鄰兩個大位，湊不到則落選〔肆五〕</td></tr><tr><td>5</td><td>社宅戶</td><td>不參加登記抽籤；公益位由社宅單位自行安排（2026-10-20）</td></tr><tr><td>6</td><td>工作人員</td><td>全體住戶配完後的剩餘位</td></tr></tbody></table></div>
+<div class="tbl"><table><thead><tr><th>順序</th><th>對象</th><th>怎麼分</th></tr></thead><tbody><tr><td>0</td><td>無障礙位</td><td>不進電腦抽籤。行動不便住戶（一般機車）攜身心障礙證明至管理中心核驗後指派；核驗通過者超過可用車位時另辦登記抽籤，未中併入一般〔伍二（三）〕。未核驗者照一般抽籤，重機不適用</td></tr><tr><td>1</td><td>志願小位</td><td>登記時線上選定並鎖定，免抽（限第 1 輛一般機車）</td></tr><tr><td>2</td><td>每戶第 1 輛一般機車</td><td>抽順序號 → 依志願序分發〔伍二（五）〕</td></tr><tr><td>3</td><td>第 2 輛起（一般機車）</td><td>用第 1 輛配完的剩餘位，同樣抽順序號分發；第 3 輛以上再往後〔伍二（六）（七）〕</td></tr><tr><td>4</td><td>重機</td><td>一般機車全部配完後才抽；取相鄰兩個大位，湊不到則落選〔肆五〕</td></tr><tr><td>5</td><td>社宅戶</td><td>不參加登記抽籤；公益位由社宅單位自行安排（2026-10-20）</td></tr><tr><td>6</td><td>工作人員</td><td>全體住戶配完後的剩餘位</td></tr></tbody></table></div>
 <ul><li>志願全被前面的人拿走 → 有勾「<strong>電腦選位</strong>」者由系統依本棟就近順序自動補位；未勾者列入<strong>落選名單</strong>，待分發完畢後再由管理中心安排，無剩餘則列候補。</li><li>順序號同時就是<strong>候補順序</strong>：有人放棄，依順序號往後遞補。〔伍二（六）〕</li></ul>
 <h3>不進配位的車位（鎖定）</h3>
 <div class="tbl"><table><thead><tr><th>類別</th><th>車位</th></tr></thead><tbody><tr><td>影響車道動線、轉角處</td><td>153、154、198、199、277、299、302–305、319、320、408、430–432、482–487、594–597、628、629</td></tr><tr><td>無障礙保留（留給實際行動不便住戶）</td><td>108、194</td></tr><tr><td>自行車旁暫留一排（擬開放停放自行車）</td><td>641–655</td></tr><tr><td>維修（漏水）</td><td>498</td></tr></tbody></table></div>

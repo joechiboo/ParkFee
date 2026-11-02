@@ -13,7 +13,7 @@ const EXPORTED_CSV = [
   'H3-6,ABC-123,一般,1,N,N,2026-11-15T08:00:00Z,0912-345-678,8、9、10,Y,線上',
   'H3-6,ABC-124,一般,2,N,N,2026-11-15T08:00:00Z,0912-345-678,,,線上', // 第2輛：戶層級志願留空，靠傳播
   'A1-2,XYZ-001,重機,1,N,N,2026-11-16T09:00:00Z,,,,線上',
-  'B2-3,DEF-200,一般,1,Y,N,2026-11-16T09:30:00Z,,11,,線上', // 身障 → 無障礙
+  'B2-3,DEF-200,一般,1,Y,N,2026-11-16T09:30:00Z,,11,,線上', // 身障申請、未經櫃台指派 → 照一般抽籤
 ].join('\r\n')
 
 // 固定座位 fixture（不依賴實際盤點資料，測試才穩）
@@ -39,10 +39,10 @@ describe('名冊匯出 CSV → 抽籤 橋接', () => {
   it('解析後直接餵 distribute 能跑出配位/落選（欄位對得上）', () => {
     const { entries } = buildRoster(parseCSVObjects(EXPORTED_CSV))
     const r = distribute({ registrations: entries, seats: SEATS, seed: '2027樂菲機車抽籤' })
-    // H3-6 第1輛應拿到志願中的某格；B2-3 身障應配無障礙
+    // H3-6 第1輛應拿到志願中的某格；B2-3 勾身障但未經櫃台指派，照一般抽籤拿志願 11
     expect(r.assigned.length).toBeGreaterThan(0)
     const b23 = r.assigned.find((a) => a.戶號 === 'B2-3')
-    expect(b23?.車位類型).toBe('無障礙')
+    expect(b23?.車位編號).toBe('11')
     // 同 seed 可重現
     const r2 = distribute({ registrations: entries, seats: SEATS, seed: '2027樂菲機車抽籤' })
     expect(r2.assigned).toEqual(r.assigned)

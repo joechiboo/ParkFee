@@ -12,7 +12,8 @@
 // 車位志願為「戶層級」一份（與車輛數無關）：同戶多車依順序號輪流，各取仍剩最高志願（跨輪共用、自動消耗）。
 //
 // 輪次政策依辦法（選位方式為志願分發，非 seq 取號）：
-//   Round 0 無障礙：身障優先，≤可用全配、>可用抽滿（無障礙位非志願制）。
+//   無障礙位**不在引擎內**（2026-11-02 使用者定）：一律由櫃台核驗身心障礙證明後在維護頁指派，寫 vehicle.車位編號，
+//     進引擎時走下方「已指派（preset）」。登記的身障旗標只是「申請」，未核驗指派者照一般抽籤，無障礙位也不進任何抽籤輪。
 //   Round 1 一戶一位：抽順序號、依序取志願中最高可得。
 //     志願小位（辦法伍二（五））**不在引擎內**：2026-10-29 臨時管委會定「登記時直接選定、依登記順序」→
 //     住戶於選位頁線上選定（claim-seat）或櫃台於維護頁指派，兩者都寫 vehicle.車位編號＋locked_seat，
@@ -172,7 +173,7 @@ export function distribute({
   // 物業抽籤前已指派者（vehicle 已有車位編號）：直接列入結果、佔住該戶名額，不進任何抽籤輪。
   const preset = entries.filter((e) => e.車位編號)
   const pendingAll = entries.filter((e) => !e.車位編號)
-  // 工作人員抽離住戶輪次（R0/R1/R2+/電腦選位），另於最後一輪撿剩位。
+  // 工作人員抽離住戶輪次（R1/R2+/重機/電腦選位），另於最後一輪撿剩位。
   const staff = pendingAll.filter((e) => e.工作人員)
   const pending = pendingAll.filter((e) => !e.工作人員)
 
@@ -273,38 +274,7 @@ export function distribute({
     rounds.push({ round: '指派', name: '物業指派（免抽）', draws: [], assignments: a })
   }
 
-  // ── Round 0：無障礙（身障第 1 輛優先）──────────────────────────────
-  // 無障礙位不分社宅／一般身分：有實際需要（身障）即可承租（2026-08-24 使用者決策）。
-  // 公益區 20 格無無障礙格，故社宅身障戶配到的是一般無障礙位——這是 Q7「社宅限公益位」
-  // 的明文例外；未中籤者仍回 R1 走公益位分流。
-  {
-    const nonPublic = (s) => !s.public
-    // 重機不得使用無障礙位（2026-10-29）→ 即使登記身障亦不進 R0，由重機輪處理。
-    const cands = pending.filter((e) => e.身障 && e.第幾輛 === 1 && e.車種 !== '重機')
-    const cap = pool.countOf('無障礙', nonPublic)
-    const draws = []
-    let winners
-    if (cands.length <= cap) {
-      winners = cands
-      say(`R0 無障礙：登記 ${cands.length} ≤ 可用 ${cap}，全配`)
-    } else {
-      const order = seededShuffle(cands, rng)
-      winners = order.slice(0, cap)
-      order.forEach((e, i) => draws.push({ 戶號: e.戶號, 車號: e.車號, 順序號: i + 1, 中籤: i < cap }))
-      say(`R0 無障礙：登記 ${cands.length} > 可用 ${cap}，抽 ${cap}，未中 ${cands.length - cap} 併入 R1`)
-    }
-    const a = []
-    for (const e of winners) {
-      const s = pool.takeLowest('無障礙', nonPublic)
-      if (!s) break
-      record(e, [s], VIA.ACCESSIBLE, 0)
-      assignedHouse.add(e.戶號)
-      a.push({ 戶號: e.戶號, 車位編號: s.id })
-    }
-    rounds.push({ round: 0, name: '無障礙', draws, assignments: a })
-  }
-
-  // ── Round 1：一戶一位（每戶第 1 個，未在 R0 取得者）──────────────────
+  // ── Round 1：一戶一位（每戶第 1 輛一般機車，已指派者除外）──────────────────
   {
     // 志願小位旗標不再在此分流（見檔頭 Round 1 說明）：已選定者早在 preset 記入、不會出現在 pending。
     // 重機不在此輪（辦法肆五「機車位足額」→ 一般機車全部抽完才抽重機，見下方「重機」輪）。

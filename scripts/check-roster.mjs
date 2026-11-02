@@ -167,12 +167,20 @@ if (social.length)
     `若確為社宅住戶請刪除其登記，若非社宅則請住戶重新送出登記（會自動清掉旗標）。`,
     social.map((h) => h.戶號))
 
-// 2) 身障 vs 無障礙位
-const disabled = all.flatMap((h) => h.cars.filter((c) => c.身障 && c.第幾輛 === 1 && !isBikeCar(c)).map((c) => ({ h, c })))
-if (disabled.length > cap.無障礙)
-  add('warn', '身障登記數超過無障礙車位',
-    `登記 ${disabled.length} ＞ 可用 ${cap.無障礙} 格（8 格扣掉鎖定保留）。超額者依 R0 規則併入一般抽籤。`,
-    disabled.map(({ h, c }) => `${h.戶號} ${c.車號}`))
+// 2) 無障礙申請：只由櫃台核驗後指派（2026-11-02），引擎不自動配
+//    還沒指派的申請者抽籤時會照一般抽籤；沒填志願的話直接落選，要在抽籤前逐筆處理。
+const accessibleWaiting = all.flatMap((h) =>
+  h.工作人員 ? [] : h.cars
+    .filter((c) => c.身障 && c.第幾輛 === 1 && !isBikeCar(c) && c.車種 !== '重機' && !c.車位編號)
+    .map((c) => ({ h, c })))
+if (accessibleWaiting.length)
+  add('warn', '無障礙申請尚未核驗指派',
+    '抽籤不會自動配無障礙位。請櫃台核驗身心障礙證明後在維護頁指派；未核驗者照一般抽籤，標「無志願」者若未勾電腦選號會落選。',
+    accessibleWaiting.map(({ h, c }) => `${h.戶號} ${c.車號}${h.志願.length ? '' : '（無志願）'}`))
+if (accessibleWaiting.length > cap.無障礙)
+  add('warn', '無障礙申請數超過可指派車位',
+    `待指派 ${accessibleWaiting.length} ＞ 可用 ${cap.無障礙} 格。辦法伍二（三）規定登記戶數大於車位數時採登記抽籤，未抽中者納入一般抽籤，請管委會先辦理。`,
+    accessibleWaiting.map(({ h, c }) => `${h.戶號} ${c.車號}`))
 
 // 3) 戶號格式
 const badHouse = all.filter(
