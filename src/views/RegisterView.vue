@@ -198,7 +198,7 @@ async function submit() {
     <!-- 表單 -->
     <form v-else class="mt-4 space-y-5" @submit.prevent="submit">
       <p class="text-sm text-slate-500">
-        一戶限登記一次，請一次填齊所有機車與自行車。證件查驗於<b>繳費簽約時</b>辦理，出示<b>行照或身分證</b>擇一即可。本系統不蒐集身分證號。
+        一戶限登記一次，請一次填齊所有機車與自行車。證件查驗於<b>繳費簽約時</b>辦理，出示<b>身分證明文件及行照（或車牌照片）</b>。本系統不蒐集身分證號。
       </p>
 
       <div class="grid gap-4 sm:grid-cols-2">
