@@ -222,7 +222,7 @@ function decorate(s) {
         （社區工作人員：可選<b>一般大／小位</b>；公益位與無障礙位不開放。實際配位排在<b>全體住戶之後</b>，
         住戶尚未配完時暫緩。）
       </span>
-      <span v-else class="text-amber-700">未登入：可先試排，<RouterLink to="/me" class="underline">登入</RouterLink>後才能儲存（志願需綁戶號才能進配位）。</span>
+      <span v-else-if="!householdId" class="text-amber-700">未登入：可先試排，<RouterLink to="/me" class="underline">登入</RouterLink>後才能儲存（志願需綁戶號才能進配位）。</span>
     </p>
 
     <div class="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
