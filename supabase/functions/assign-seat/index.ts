@@ -7,6 +7,7 @@
 //   assign → 鎖定該位；若帶車號則把該車指派到此位（寫 vehicle）。
 //   unlock → 解鎖該位；若帶車號則清掉該車的指派。
 import { corsHeaders, json, adminClient, verifyAdmin, audit } from '../_shared/http.ts'
+import { holderOf } from '../_shared/seat-holder.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -58,6 +59,22 @@ Deno.serve(async (req) => {
     const plate = String(body.車號 ?? '').trim().toUpperCase()
 
     if (op === 'assign') {
+      // 這格已掛別台車就擋下（住戶線上鎖定、抽籤結果、櫃台先前指派），避免同格配給第二人。
+      // 只改同一台車的狀態或繳費不受影響。要換人請先解除。
+      const conflict = async () => {
+        if (!plate) return null
+        const { data } = await db
+          .from('vehicle')
+          .select('車號, 戶號, 車位編號')
+          .like('車位編號', `%${seat}%`)
+        const h = holderOf(data, seat)
+        return h && h.車號 !== plate ? h : null
+      }
+      const taken = (h: { 戶號: string; 車號: string }) =>
+        json({ error: `車位 ${seat} 已由 ${h.戶號}（${h.車號}）持有，請先解除或改選其他車位`, taken: true }, 409)
+      const before = await conflict()
+      if (before) return taken(before)
+
       // 公益位資格檢查（2026-08-16 Q7）：公益位＝社宅戶專用，一般戶不得承租；
       // 反之社宅戶亦不應被指派到一般位。物業指派會繞過配位引擎的分流，故在此攔一次。
       // 車位是否公益由前端帶入（公益編號清單在前端 seat-id.js／spaces.js）；管理員為可信端，
@@ -82,8 +99,13 @@ Deno.serve(async (req) => {
           }
         }
       }
-      const { error: lkErr } = await db.from('locked_seat').upsert({ 車位編號: seat })
-      if (lkErr) return json({ error: lkErr.message }, 400)
+      // 與 claim-seat 同樣靠主鍵互斥：撞鍵代表這格已鎖，要再查一次是不是剛被住戶選走。
+      const { error: lkErr } = await db.from('locked_seat').insert({ 車位編號: seat })
+      if (lkErr && lkErr.code !== '23505') return json({ error: lkErr.message }, 400)
+      if (lkErr) {
+        const after = await conflict()
+        if (after) return taken(after)
+      }
       if (plate) {
         const { error: vErr } = await db
           .from('vehicle')

@@ -6,7 +6,7 @@ import { ref, computed, onMounted } from 'vue'
 import SeatMap from '../components/SeatMap.vue'
 import { motorSeats, bikeSeats } from '../map/seats.js'
 import { KIND, compareSeatId, displaySeatId, normalizeSeatInput } from '../map/seat-id.js'
-import { lockedSeats, refreshLocked, listAssignments, assignSeat, unlockSeat, setLocked, AssignNeedsConfirm } from '../store/locked.js'
+import { lockedSeats, refreshLocked, listAssignments, assignSeat, unlockSeat, batchLock, AssignNeedsConfirm } from '../store/locked.js'
 import { sessionHousehold } from '../store/session.js'
 import { isAdmin } from '../store/roles.js'
 
@@ -83,7 +83,7 @@ const parsedValid = computed(() =>
   parseSeatInput(batchInput.value).filter((id) => batchSeatIds.value.has(id)),
 )
 
-// mode：'lock' 加入鎖定 ∪、'unlock' 從鎖定移除。setLocked 整批取代，故都以現有清單為基準運算。
+// mode：'lock' 加入鎖定、'unlock' 從鎖定移除；後端只動這幾格，不影響住戶剛鎖定的格。
 async function runBatch(mode) {
   batchMsg.value = ''
   const parsed = parseSeatInput(batchInput.value)
@@ -95,14 +95,12 @@ async function runBatch(mode) {
   }
   saving.value = true
   try {
-    const cur = [...lockedSeats.value]
-    const vset = new Set(valid)
-    const next = mode === 'lock' ? [...cur, ...valid] : cur.filter((id) => !vset.has(id))
-    await setLocked(next)
+    const { skipped } = await batchLock(mode, valid)
     await refreshLocked()
     await reloadAssignments()
     batchMsg.value =
-      `${mode === 'lock' ? '已鎖定' : '已解除'} ${valid.length} 格` +
+      `${mode === 'lock' ? '已鎖定' : '已解除'} ${valid.length - skipped.length} 格` +
+      (skipped.length ? `（${skipped.map(displaySeatId).join('、')} 已掛車，未解除；請單格解除）` : '') +
       (unknown.length ? `（略過 ${unknown.length} 個不存在：${unknown.slice(0, 8).join('、')}）` : '')
     batchInput.value = ''
   } catch (e) {

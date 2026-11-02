@@ -34,12 +34,18 @@ export async function refreshLocked() {
   }
 }
 
-// 設定鎖定清單（整批取代）。管理員驗證由 adminAuth() 提供（密碼 or 車牌擁有權）。
-export async function setLocked(ids) {
-  const clean = [...new Set((ids || []).map(String))]
+// 批次鎖定／解除，只增減指定格。管理員驗證由 adminAuth() 提供（密碼 or 車牌擁有權）。
+// 回傳 skipped：已掛車而未解除的格。
+// 「車位編號」是給尚未更新的舊版函式用的完整清單（舊版只認它）；缺它舊版會清空全部鎖，部署完成後可移除。
+export async function batchLock(mode, ids) {
+  const changes = [...new Set((ids || []).map(String))]
+  const changeSet = new Set(changes)
+  const cur = [...lockedSeats.value].map(String)
+  const next = mode === 'lock' ? [...new Set([...cur, ...changes])] : cur.filter((id) => !changeSet.has(id))
+  let skipped = []
   if (useSupabase) {
     const { data, error } = await (await client()).functions.invoke('set-locked', {
-      body: { 車位編號: clean, ...adminAuth() },
+      body: { op: mode, 異動: changes, 車位編號: next, ...adminAuth() },
     })
     let msg = error?.message
     try {
@@ -50,9 +56,12 @@ export async function setLocked(ids) {
     }
     if (error) throw new Error(msg || '儲存失敗，請稍後再試')
     if (data?.error) throw new Error(data.error)
+    skipped = data?.skipped || []
   }
-  lockedSeats.value = new Set(clean)
-  saveOccupied(clean) // 本機快取
+  const final = [...next, ...skipped.map(String)]
+  lockedSeats.value = new Set(final)
+  saveOccupied(final) // 本機快取
+  return { skipped }
 }
 
 // 呼叫 assign-seat（驗管理員密碼），把錯誤訊息攤平。
