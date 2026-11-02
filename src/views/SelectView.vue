@@ -310,7 +310,7 @@ function decorate(s) {
         >
           登入後儲存
         </RouterLink>
-        <p v-if="saved" class="mt-2 text-center text-sm text-emerald-600">✓ 已儲存到後端（戶號 {{ householdId }}）</p>
+        <p v-if="saved" class="mt-2 text-center text-sm text-emerald-600">✓ 已儲存（戶號 {{ householdId }}）</p>
         <p v-if="saveErr" class="mt-2 text-center text-sm text-rose-600">{{ saveErr }}</p>
 
         <div class="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
@@ -342,7 +342,7 @@ function decorate(s) {
     </div>
 
     <p class="mt-3 text-xs text-slate-400">
-      登入後「儲存志願序」會寫入後端（Supabase）；未登入僅本機試排。志願不限數量、多填越不易落空。
+      登入後按「儲存志願序」才會儲存；未登入只能試排。志願不限數量、多填越不易落空。
       志願小位（限第 1 輛一般機車）改為在本頁<b>直接選定一格並鎖定</b>，免抽籤；無障礙位由管理中心核驗證明後指派；<b>未核驗者照一般抽籤</b>，申請者請仍排志願。
     </p>
   </section>

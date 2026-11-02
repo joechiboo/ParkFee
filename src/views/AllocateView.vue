@@ -63,7 +63,7 @@ async function loadFromCloud() {
     const { entries, invalid, conflicts } = buildRoster(rows)
     setImportedRoster(
       entries,
-      `Supabase 即時名冊 · ${戶數} 戶 / ${台數} 台` +
+      `線上即時名冊 · ${戶數} 戶 / ${台數} 台` +
         (invalid.length ? ` · ⚠️ ${invalid.length} 筆無效` : '') +
         (conflicts.length ? ` · ⚠️ ${conflicts.length} 筆衝突` : ''),
     )
@@ -348,7 +348,7 @@ function downloadResultCSV(pub = true) {
         >
           {{ publishing ? '發佈中…' : '📢 發佈結果（住戶可查）' }}
         </button>
-        <span class="text-xs text-slate-500">CSV：交住戶/存檔/公告。發佈：回填後端，住戶登入看自己的位。</span>
+        <span class="text-xs text-slate-500">CSV：交住戶/存檔/公告。發佈：住戶登入即可看到自己的車位。</span>
         <span v-if="publishMsg" class="w-full text-sm" :class="publishMsg.startsWith('✓') ? 'text-emerald-600' : 'text-rose-600'">{{ publishMsg }}</span>
       </div>
 

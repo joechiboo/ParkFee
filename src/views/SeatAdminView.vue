@@ -220,7 +220,7 @@ function decorate(s) {
         <span v-if="err" class="text-rose-600">· {{ err }}</span>
       </p>
       <p class="mt-1 text-xs text-slate-400">
-        🔒 車號/繳費只寫進受保護的 vehicle（其他住戶查不到）；公開表只存「哪些位被鎖」的編號。
+        🔒 車號與繳費資料其他住戶查不到；地圖只會顯示哪些車位已被選走。
       </p>
 
       <div class="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
