@@ -251,12 +251,12 @@ function decorate(s) {
             <div v-if="heldSmall" class="mt-2 rounded bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
               ✓ 您已鎖定小位 <b class="font-mono">{{ heldSmall }}</b>
               <span v-if="firstCar.已繳費">・已繳費確認</span>
-              <span v-else>・{{ feeFor('一般') }} 元，請於 12/1 公告後 10 日內至管理中心簽約繳費</span>
+              <span v-else>・一年 {{ feeFor('一般').toLocaleString() }} 元，請於 12/1 公告後 10 日內簽約繳費</span>
               <div v-if="!firstCar.已繳費" class="mt-1 text-xs text-emerald-700">繳費前可在地圖上點其他小位換格，或
                 <button class="underline" :disabled="claiming" @click="doClaim('release')">放棄此小位</button>（改走抽籤）。</div>
             </div>
             <p v-else class="mt-2 text-xs text-slate-600">
-              在地圖上點一格<b>小位</b>（紫色），按「選定並鎖定」即完成。鎖定後別人就選不到這格；請於 12/1 公告後 10 日內至管理中心簽約繳費。
+              在地圖上點一格<b>小位</b>（紫色），按「選定並鎖定」即完成。鎖定後別人就選不到這格；請於 12/1 公告後 10 日內簽約繳費。
             </p>
             <div v-if="pendingSmall" class="mt-2 flex items-center gap-2 text-sm">
               <span>{{ heldSmall ? '換到' : '選定' }}小位 <b class="font-mono">{{ pendingSmall }}</b></span>

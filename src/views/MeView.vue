@@ -104,7 +104,7 @@ function logout() {
                     <span :class="v.車位編號 ? (v.已繳費 ? 'font-medium text-emerald-700' : 'font-medium text-amber-700') : v.配位狀態 === HEAVY_WAIT_STATUS ? 'text-sky-700' : 'text-rose-600'">{{ v.配位狀態 }}</span>
                     <span v-if="!v.車位編號 && v.配位狀態 === HEAVY_WAIT_STATUS" class="text-slate-500">· 非重機車位確定後，若有多餘機車位再行安排</span>
                     <span v-if="v.車位編號 && v.已繳費" class="text-slate-500">· 已繳費</span>
-                    <span v-else-if="v.配位狀態 === '志願小位'" class="text-slate-500">· {{ feeFor(v.車種) }} 元 · 請至管理中心繳費確認</span>
+                    <span v-else-if="v.配位狀態 === '志願小位'" class="text-slate-500">· 一年 {{ feeFor(v.車種).toLocaleString() }} 元，請於 12/1 公告後 10 日內簽約繳費</span>
                     <span v-else-if="v.車位編號" class="text-slate-500">· {{ feeFor(v.車種) }} 元 · 簽約 {{ v.簽約期限 || '公告後10日內' }}</span>
                   </template>
                   <span v-else class="text-slate-400">未公布</span>
