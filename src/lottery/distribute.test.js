@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { distribute, REASON, VIA } from './distribute.js'
+import { distribute, drawHeavy, REASON, VIA } from './distribute.js'
 import { motorSeats } from '../map/seats.js'
 import { buildRoster } from '../data/registry.js'
 import { sampleRoster } from '../data/sample.js'
@@ -18,6 +18,8 @@ const SEATS = [
 const ADJ = { 1: ['2'], 2: ['1', '3'], 3: ['2', '4'], 4: ['3'], 9: ['12'], 12: ['9'], 90: [], 10: [], 11: ['10'] }
 const run = (registrations, opts = {}) =>
   distribute({ registrations, seats: SEATS, seed: 'test', adjacency: ADJ, ...opts })
+const runHeavy = (registrations, opts = {}) =>
+  drawHeavy({ registrations, seats: SEATS, seed: 'test', adjacency: ADJ, ...opts })
 
 describe('distribute — 填志願 + 統一分發（第一階段）', () => {
   it('單戶取志願序中最高可得（志願 3 在 2 之前 → 給 3）', () => {
@@ -98,21 +100,59 @@ describe('distribute — 填志願 + 統一分發（第一階段）', () => {
     expect(r.落選[0].原因).toBe(REASON.LOST)
   })
 
-  // ── 重機（2026-10-29 臨時管委會）：穿插一般車位，實體相鄰的兩個**大**位；不得使用無障礙位；一般機車抽完才抽 ──
+  // ── 重機（經理 2026-11-02）：只登記、不參與抽籤；distribute 列待安排，不算落選 ──
+  it('重機不抽籤：列待安排、不佔車位、不算落選，也不佔順序號', () => {
+    const r = run([
+      { 戶號: 'H', 車號: 'HV1', 第幾輛: 1, 車種: '重機', 車位志願: ['2'] },
+      { 戶號: 'A', 車號: 'A1', 第幾輛: 1, 車位志願: ['2'] },
+    ])
+    expect(r.待安排).toEqual([
+      { 戶號: 'H', 車號: 'HV1', 車種: '重機', 第幾輛: 1, 工作人員: false, 原因: REASON.HEAVY_WAIT },
+    ])
+    expect(r.summary.待安排).toBe(1)
+    expect(r.落選).toHaveLength(0)
+    expect(r.assigned.map((x) => x.車號)).toEqual(['A1'])
+    expect(r.assigned[0].順序號).toBe(1)
+    expect(r.rounds.some((x) => x.round === '重機')).toBe(false)
+  })
+
+  it('工作人員的重機同樣列待安排，不進工作人員輪', () => {
+    const r = run([{ 戶號: '員工-甲', 車號: 'S1', 第幾輛: 1, 車種: '重機', 工作人員: 'Y', 車位志願: [] }])
+    expect(r.待安排).toMatchObject([{ 車號: 'S1', 工作人員: true }])
+    expect(r.assigned).toHaveLength(0)
+    expect(r.落選).toHaveLength(0)
+  })
+
+  it('已指派的重機走物業指派，不再列待安排', () => {
+    const r = run([{ 戶號: 'H', 車號: 'HV1', 第幾輛: 1, 車種: '重機', 車位編號: '2、3' }])
+    expect(r.待安排).toHaveLength(0)
+    expect(r.assigned[0]).toMatchObject({ 車位編號: '2、3', 占用位數: 2, 配位方式: VIA.PRESET })
+  })
+
+  it('同戶重機第 1 輛不影響一般第 2 輛照常抽籤', () => {
+    const r = run([
+      { 戶號: 'H', 車號: 'HV1', 第幾輛: 1, 車種: '重機', 車位志願: [] },
+      { 戶號: 'H', 車號: 'H2', 第幾輛: 2, 車位志願: ['2'] },
+    ])
+    expect(r.assigned.map((x) => x.車號)).toEqual(['H2'])
+    expect(r.待安排.map((x) => x.車號)).toEqual(['HV1'])
+  })
+
+  // ── drawHeavy（12/15 後另抽）：實體相鄰的兩個**大**位；不得使用無障礙位 ──
   it('重機：未填志願 → 全場最低號「兩大位」相鄰對（跳過小位）', () => {
-    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }])
+    const r = runHeavy([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }])
     expect(r.assigned[0].占用位數).toBe(2)
     expect(r.assigned[0].車位編號).toBe('2、3') // SEATS：1小 2大 3大 4小 → 只有 2、3 是兩大位
     expect(r.assigned[0].車位類型).toBe('大、大')
   })
 
   it('重機：志願指到大位 → 配該格＋相鄰大位（鄰格是小位則不湊）', () => {
-    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: ['3'] }])
+    const r = runHeavy([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: ['3'] }])
     expect(r.assigned[0].車位編號).toBe('2、3') // 3 的鄰格 4 是小位 → 回頭取 2
   })
 
   it('重機：志願指名無障礙位 → 不配（無障礙限身障者，2026-10-29）', () => {
-    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: ['10'] }], {
+    const r = runHeavy([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: ['10'] }], {
       seats: [{ id: '9', type: '大' }, { id: '10', type: '無障礙' }],
     })
     expect(r.assigned).toHaveLength(0)
@@ -120,7 +160,7 @@ describe('distribute — 填志願 + 統一分發（第一階段）', () => {
   })
 
   it('重機：無相鄰兩大位且有無障礙位 → 仍落選 HEAVY_SHORT（不退而取無障礙單格）', () => {
-    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
+    const r = runHeavy([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
       seats: [{ id: '1', type: '大' }, { id: '3', type: '大' }, { id: '10', type: '無障礙' }],
     })
     expect(r.assigned).toHaveLength(0)
@@ -128,29 +168,39 @@ describe('distribute — 填志願 + 統一分發（第一階段）', () => {
   })
 
   it('重機：勾身障的重機同樣走重機輪，配相鄰兩大位', () => {
-    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 身障: 'Y', 車位志願: [] }])
+    const r = runHeavy([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 身障: 'Y', 車位志願: [] }])
     expect(r.assigned[0].車位類型).toBe('大、大')
   })
 
-  it('重機排在一般機車全部抽完之後：一般第 2 輛先於重機第 1 輛；重機輪獨立列出', () => {
-    const r = run([
-      { 戶號: 'H', 車號: 'HV1', 第幾輛: 1, 車種: '重機', 車位志願: ['2'] },
-      { 戶號: 'A', 車號: 'A1', 第幾輛: 1, 車位志願: ['1'] },
-      { 戶號: 'A', 車號: 'A2', 第幾輛: 2, 車位志願: ['2'] },
-      { 戶號: 'B', 車號: 'B1', 第幾輛: 1, 車位志願: ['3'] },
+  it('drawHeavy：住戶依第幾輛先後抽，工作人員排最後；順序號只給住戶', () => {
+    const r = runHeavy(
+      [
+        { 戶號: '員工-甲', 車號: 'S1', 第幾輛: 1, 車種: '重機', 工作人員: 'Y', 車位志願: [] },
+        { 戶號: 'A', 車號: 'A2', 第幾輛: 2, 車種: '重機', 車位志願: [] },
+        { 戶號: 'B', 車號: 'B1', 第幾輛: 1, 車種: '重機', 車位志願: [] },
+        { 戶號: 'C', 車號: 'C1', 第幾輛: 1, 車位志願: [] },
+      ],
+      {
+        seats: [1, 2, 3, 4, 5, 6].map((id) => ({ id: String(id), type: '大' })),
+        adjacency: { 1: ['2'], 2: ['1'], 3: ['4'], 4: ['3'], 5: ['6'], 6: ['5'] },
+      },
+    )
+    expect(r.assigned.map((x) => [x.車號, x.車位編號, x.順序號])).toEqual([
+      ['B1', '1、2', 1],
+      ['A2', '3、4', 2],
+      ['S1', '5、6', null],
     ])
-    // 2、3 被一般機車 A2（第 2 輛）與 B1 拿走 → 重機湊不到兩大位
-    expect(r.assigned.map((x) => x.車號).sort()).toEqual(['A1', 'A2', 'B1'])
-    expect(r.落選[0]).toMatchObject({ 車號: 'HV1', 原因: REASON.HEAVY_SHORT, 輪次: '重機' })
-    const heavyRound = r.rounds.find((x) => x.round === '重機')
-    expect(heavyRound.draws).toHaveLength(1)
-    expect(r.rounds.find((x) => x.round === 1).draws.map((d) => d.車號)).not.toContain('HV1')
-    // 順序號接在一般機車之後連續
-    expect(heavyRound.draws[0].順序號).toBe(4)
+    expect(r.assigned[2].配位方式).toBe(VIA.STAFF)
+  })
+
+  it('drawHeavy：已指派的重機不再抽', () => {
+    const r = runHeavy([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位編號: '2、3' }])
+    expect(r.assigned).toHaveLength(0)
+    expect(r.summary.registrations).toBe(0)
   })
 
   it('重機：編號連號但實體不相鄰 → 不配對（落選 HEAVY_SHORT）', () => {
-    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
+    const r = runHeavy([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
       seats: [{ id: '1', type: '大' }, { id: '2', type: '大' }],
       adjacency: { 1: [], 2: [] }, // 編號連號、但幾何上不相鄰
     })
@@ -159,7 +209,7 @@ describe('distribute — 填志願 + 統一分發（第一階段）', () => {
   })
 
   it('重機：編號不連號但實體相鄰 → 照配（如轉角處 40 與 55 實際貼在一起）', () => {
-    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
+    const r = runHeavy([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
       seats: [{ id: '40', type: '大' }, { id: '55', type: '大' }],
       adjacency: { 40: ['55'], 55: ['40'] },
     })
@@ -168,7 +218,7 @@ describe('distribute — 填志願 + 統一分發（第一階段）', () => {
   })
 
   it('重機：兩小位相鄰不可配（2026-10-29 限兩大位）', () => {
-    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
+    const r = runHeavy([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
       seats: [{ id: '1', type: '小' }, { id: '2', type: '小' }],
       adjacency: { 1: ['2'], 2: ['1'] },
     })
@@ -177,7 +227,7 @@ describe('distribute — 填志願 + 統一分發（第一階段）', () => {
   })
 
   it('重機：有相鄰對時優先配對，不搶無障礙位', () => {
-    const r = run([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
+    const r = runHeavy([{ 戶號: 'A', 車號: 'X1', 第幾輛: 1, 車種: '重機', 車位志願: [] }], {
       seats: [{ id: '1', type: '大' }, { id: '2', type: '大' }, { id: '10', type: '無障礙' }],
     })
     expect(r.assigned[0].車位編號).toBe('1、2')
@@ -281,7 +331,7 @@ describe('大規模模擬（277 戶 ≈ 401 台、真實 655 座位）— 每月
   it('機車總數 ≈ 400、每台都有下落（配到或落選）', () => {
     expect(entries.length).toBeGreaterThanOrEqual(390)
     expect(entries.length).toBeLessThanOrEqual(410)
-    expect(r.assigned.length + r.落選.length).toBe(entries.length)
+    expect(r.assigned.length + r.落選.length + r.待安排.length).toBe(entries.length)
   })
 
   it('名冊含自行車，且機車引擎完全不碰它們（不會配到機車位）', () => {
@@ -309,13 +359,16 @@ describe('大規模模擬（277 戶 ≈ 401 台、真實 655 座位）— 每月
     }
   })
 
-  it('重機都占相鄰兩個大位（編號連號）；絕不配到無障礙或小位', () => {
-    const heavies = r.assigned.filter((a) => a.車種 === '重機' && a.配位方式 !== VIA.PRESET)
-    expect(heavies.length).toBeGreaterThan(0)
-    for (const h of heavies) {
-      expect(h.車位類型).toBe('大、大')
-      const [x, y] = h.車位編號.split('、').map(Number)
-      expect(h.占用位數).toBe(2)
+  it('重機全列待安排；另抽時都占相鄰兩個大位（編號連號），絕不配到無障礙或小位', () => {
+    expect(r.待安排.length).toBeGreaterThan(0)
+    expect(r.assigned.filter((a) => a.車種 === '重機' && a.配位方式 !== VIA.PRESET)).toHaveLength(0)
+    const usedIds = new Set(r.assigned.flatMap((a) => a.車位編號.split('、')))
+    const h = drawHeavy({ registrations: entries, seats: seats.filter((x) => !usedIds.has(String(x.id))), seed: '模擬' })
+    expect(h.assigned.length).toBeGreaterThan(0)
+    for (const a of h.assigned) {
+      expect(a.車位類型).toBe('大、大')
+      const [x, y] = a.車位編號.split('、').map(Number)
+      expect(a.占用位數).toBe(2)
       expect(y - x).toBe(1)
     }
   })

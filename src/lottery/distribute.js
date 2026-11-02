@@ -20,10 +20,11 @@
 //     進引擎時走下方「已指派（preset）」直接記入結果。只勾旗標、沒選定格子的人照常抽籤。
 //   Round 2+ 第二位起：抽順序號依序取志願（剩餘耗盡則自然全落選）。
 //
-// 重機（2026-08-16 小組決議不設專區；2026-10-29 臨時管委會再修，docs/34）：
-//   穿插一般車位取「實體相鄰的兩個**大**位」（10/29：不再含小位、**不開放無障礙位**——無障礙限身障者）。
-//   辦法肆五「機車位足額之條件下」→ **一般機車全部輪次抽完才抽重機**（獨立「重機」輪，排在 R2+ 之後、
-//   電腦選位之前）；吃戶志願（志願中可湊相鄰對者優先）、否則全場最低號相鄰對；無相鄰對 → 落選 HEAVY_SHORT。
+// 重機（經理 2026-11-02 說明表：只登記，不參與抽籤；所有非重機車位確定後，若有多餘機車位再行安排）：
+//   distribute() 不配重機，一律列入「待安排」（不算落選）。12/15 第二輪抽完後另跑 drawHeavy()，
+//   或由櫃台在維護頁指派；已指派者帶車位編號，走下方「已指派（preset）」。
+//   drawHeavy() 取「實體相鄰的兩個**大**位」（2026-10-29：不含小位、不開放無障礙位）；
+//   吃戶志願（志願中可湊相鄰對者優先）、否則全場最低號相鄰對；無相鄰對 → 落選 HEAVY_SHORT。
 // 社宅（2026-08-16 決議 Q7）：公益位＝社會住宅住戶專用。登記戶帶 社宅 旗標 → 只配公益位；
 //   一般戶反之只配非公益位。池預設含公益位（motorSeats），由資格判斷分流。
 // v1 限制（待後續/管委會）：未填志願者直接列落選（原因「未填志願」），交物業第二階段保底/候補。
@@ -74,6 +75,7 @@ export const REASON = {
   NO_WISH: '未填志願',
   NO_SMALL: '小位不足', // 保留鍵名給舊結果檔相容；引擎已不再產生（志願小位改線上/櫃台選定）
   HEAVY_SHORT: '無相鄰兩格可配重機',
+  HEAVY_WAIT: '重機不參與抽籤，待安排',
   STAFF_PENDING: '暫緩（尚有住戶未配到車位）', // 工作人員專用：住戶優先，讓位義務在前
 }
 
@@ -153,6 +155,45 @@ function pickWish(pool, wishes, compatTypes, ok = () => true) {
 // 戶別 → 車位資格：社宅戶只配公益位、一般戶只配非公益位（2026-08-16 Q7 決議）。
 const eligibleFor = (e) => (s) => (e.社宅 ? !!s.public : !s.public)
 
+// 重機：穿插一般車位取「實體相鄰的兩個大位」（2026-10-29）。
+// 先依志願序取「可湊相鄰對」的格；志願落空/沒填 → 全場最低號相鄰對；無相鄰對 → null（HEAVY_SHORT）。
+// 不再有無障礙單格路徑（無障礙限身障者；重機不得使用）。
+function takeHeavy(pool, seats, adj, wishList = [], ok = () => true) {
+  const usable = seats.filter((s) => pool.isAvail(s.id) && ok(s))
+
+  // 相鄰兩格：**實體相鄰**（見 REAL_ADJ 註解），不是編號連號。
+  const availIds = usable
+    .filter((s) => HEAVY_PAIR_TYPES.has(s.type))
+    .map((s) => String(s.id))
+    .sort((a, b) => +a - +b)
+  const avail = new Set(availIds)
+  // 一格可能左右/上下都有鄰居 → 優先取**編號較大**者，讓指定的格當起點（3 → 3、4 而非 2、3）；
+  // 沒有較大的才回頭取較小的。固定規則＝結果可重現。
+  const partnerOf = (id) => {
+    const ns = (adj[String(id)] || [])
+      .filter((n) => avail.has(n) && n !== String(id))
+      .sort((a, b) => +a - +b)
+    return ns.find((n) => +n > +id) ?? ns[ns.length - 1] ?? null
+  }
+  const pairFrom = (id) => {
+    if (!avail.has(String(id))) return null
+    const p = partnerOf(id)
+    return p ? [String(id), p].sort((a, b) => +a - +b) : null
+  }
+
+  // ① 依志願序逐一嘗試，先中者勝：該志願是大位→取它＋可用鄰格（鄰格也須是大位）。
+  for (const w of wishList) {
+    const p = pairFrom(w)
+    if (p) return p.map((x) => pool.take(x))
+  }
+  // ② 志願全落空 → 全場最低號可湊對者
+  for (const id of availIds) {
+    const p = pairFrom(id)
+    if (p) return p.map((x) => pool.take(x))
+  }
+  return null
+}
+
 export function distribute({
   registrations,
   seats = motorSeats(), // 含公益位；社宅/一般由 eligibleFor 分流（呼叫端仍應先扣鎖定位）
@@ -173,9 +214,12 @@ export function distribute({
   // 物業抽籤前已指派者（vehicle 已有車位編號）：直接列入結果、佔住該戶名額，不進任何抽籤輪。
   const preset = entries.filter((e) => e.車位編號)
   const pendingAll = entries.filter((e) => !e.車位編號)
-  // 工作人員抽離住戶輪次（R1/R2+/重機/電腦選位），另於最後一輪撿剩位。
-  const staff = pendingAll.filter((e) => e.工作人員)
-  const pending = pendingAll.filter((e) => !e.工作人員)
+  // 重機不抽籤（含工作人員的重機）：列「待安排」，不進任何輪次、也不算落選。
+  const heavyWaiting = pendingAll.filter((e) => e.車種 === '重機')
+  const drawable = pendingAll.filter((e) => e.車種 !== '重機')
+  // 工作人員抽離住戶輪次（R1/R2+/電腦選位），另於最後一輪撿剩位。
+  const staff = drawable.filter((e) => e.工作人員)
+  const pending = drawable.filter((e) => !e.工作人員)
 
   const assigned = []
   const lost = [] // 落選名單 → 交物業第二階段（勾保底→就近補、未勾→候補）
@@ -204,45 +248,6 @@ export function distribute({
   }
   const lose = (e, round, reason, seqNo = null) =>
     lost.push({ 戶號: e.戶號, 車號: e.車號, 第幾輛: e.第幾輛, 輪次: round, 順序號: seqNo, 原因: reason })
-
-  // 重機：穿插一般車位取「實體相鄰的兩個大位」（2026-10-29）。
-  // 先依志願序取「可湊相鄰對」的格；志願落空/沒填 → 全場最低號相鄰對；無相鄰對 → null（HEAVY_SHORT）。
-  // 不再有無障礙單格路徑（無障礙限身障者；重機不得使用）。
-  const takeHeavy = (wishList = [], ok = () => true) => {
-    const usable = seats.filter((s) => pool.isAvail(s.id) && ok(s))
-
-    // 相鄰兩格：**實體相鄰**（見 ADJ 註解），不是編號連號。
-    const availIds = usable
-      .filter((s) => HEAVY_PAIR_TYPES.has(s.type))
-      .map((s) => String(s.id))
-      .sort((a, b) => +a - +b)
-    const avail = new Set(availIds)
-    // 一格可能左右/上下都有鄰居 → 優先取**編號較大**者，讓指定的格當起點（3 → 3、4 而非 2、3）；
-    // 沒有較大的才回頭取較小的。固定規則＝結果可重現。
-    const partnerOf = (id) => {
-      const ns = (ADJ[String(id)] || [])
-        .filter((n) => avail.has(n) && n !== String(id))
-        .sort((a, b) => +a - +b)
-      return ns.find((n) => +n > +id) ?? ns[ns.length - 1] ?? null
-    }
-    const pairFrom = (id) => {
-      if (!avail.has(String(id))) return null
-      const p = partnerOf(id)
-      return p ? [String(id), p].sort((a, b) => +a - +b) : null
-    }
-
-    // ① 依志願序逐一嘗試，先中者勝：該志願是大位→取它＋可用鄰格（鄰格也須是大位）。
-    for (const w of wishList) {
-      const p = pairFrom(w)
-      if (p) return p.map((x) => pool.take(x))
-    }
-    // ② 志願全落空 → 全場最低號可湊對者
-    for (const id of availIds) {
-      const p = pairFrom(id)
-      if (p) return p.map((x) => pool.take(x))
-    }
-    return null
-  }
 
   // 車位編號 → 型別查詢：優先用傳入 pool，否則查完整主檔（已指派位多半已 locked、不在 pool）。
   const masterType = new Map(motorSeats().map((s) => [String(s.id), s.type]))
@@ -277,8 +282,7 @@ export function distribute({
   // ── Round 1：一戶一位（每戶第 1 輛一般機車，已指派者除外）──────────────────
   {
     // 志願小位旗標不再在此分流（見檔頭 Round 1 說明）：已選定者早在 preset 記入、不會出現在 pending。
-    // 重機不在此輪（辦法肆五「機車位足額」→ 一般機車全部抽完才抽重機，見下方「重機」輪）。
-    const others = pending.filter((e) => e.第幾輛 === 1 && e.車種 !== '重機' && !assignedHouse.has(e.戶號))
+    const others = pending.filter((e) => e.第幾輛 === 1 && !assignedHouse.has(e.戶號))
     const a = []
     const draws = []
 
@@ -299,7 +303,7 @@ export function distribute({
   }
 
   // ── Round 2+：第二位起（依序用前一輪剩餘；耗盡則自然全落選）──────────
-  const generalExtra = pending.filter((e) => e.第幾輛 >= 2 && e.車種 !== '重機')
+  const generalExtra = pending.filter((e) => e.第幾輛 >= 2)
   const extraNths = [...new Set(generalExtra.map((e) => e.第幾輛))].sort((x, y) => x - y)
   for (const nth of extraNths) {
     const cands = generalExtra.filter((e) => e.第幾輛 === nth)
@@ -318,36 +322,10 @@ export function distribute({
     rounds.push({ round: nth, name: `第 ${nth} 位`, draws, assignments: a })
   }
 
-  // ── 重機輪：一般機車全部抽完後才抽（辦法肆五「機車位足額之條件下」；2026-10-29 臨時管委會「重機最後」）──
-  //    依第幾輛由小到大分組（第 1 輛重機先於第 2 輛重機），組內抽順序號；取實體相鄰兩個大位，湊不到 → HEAVY_SHORT。
-  {
-    const heavies = pending.filter((e) => e.車種 === '重機')
-    const nths = [...new Set(heavies.map((e) => e.第幾輛))].sort((x, y) => x - y)
-    const a = []
-    const draws = []
-    for (const nth of nths) {
-      const order = seededShuffle(heavies.filter((e) => e.第幾輛 === nth), rng)
-      order.forEach((e) => {
-        const seq = ++seqCounter
-        const taken = takeHeavy(e.車位志願, eligibleFor(e))
-        draws.push({ 戶號: e.戶號, 車號: e.車號, 車種: '重機', 第幾輛: nth, 順序號: seq, 中籤: !!taken })
-        if (!taken) return lose(e, '重機', REASON.HEAVY_SHORT, seq)
-        record(e, taken, VIA.WISH, '重機', seq)
-        assignedHouse.add(e.戶號)
-        a.push({ 戶號: e.戶號, 車位編號: taken.map((s) => s.id).join('、'), 順序號: seq, 配位方式: VIA.WISH })
-      })
-    }
-    if (heavies.length) {
-      say(`重機輪（一般機車配完後）：登記 ${heavies.length}，配得 ${a.length}，剩餘 ${pool.remaining()}`)
-      rounds.push({ round: '重機', name: '重機（一般機車配完後，相鄰兩大位）', draws, assignments: a })
-    }
-  }
-
   // ── 電腦選位：志願落空 + 勾「電腦選號」的一般車，自動配剩餘位 ──
   //    一般戶＝「本棟·靠電梯」（tower-priority.json，本棟無剩往鄰棟）；
   //    社宅戶＝「公益位由小到大」（僅 20 格、同一區，不需分棟排序；tower-priority 不含公益位）。
   //    保底一位優先：先第 1 輛、再第 2 輛+，同組依順序號。凍結位不在池中 → 自動略過。
-  //    重機不走電腦選位（v1）；配不到者維持落選、交物業。
   {
     const key = (x) => `${x.戶號}|${x.車號}|${x.第幾輛}`
     // 公益位候選序：優先用 tower-priority.json 的區順序（zones.公益，可手排），
@@ -369,7 +347,7 @@ export function distribute({
     const targets = lost
       .filter((l) => l.原因 === REASON.LOST || l.原因 === REASON.NO_WISH)
       .map((l) => ({ l, e: entryOf.get(key(l)) }))
-      .filter(({ e }) => e && e.電腦選號 && e.車種 !== '重機')
+      .filter(({ e }) => e && e.電腦選號)
       .sort((p, q) => p.e.第幾輛 - q.e.第幾輛 || (p.l.順序號 ?? 0) - (q.l.順序號 ?? 0))
 
     const a = []
@@ -418,16 +396,6 @@ export function distribute({
     const ok = (s) => !s.public && s.type !== '無障礙'
     const a = []
     for (const e of [...staff].sort((x, y) => x._order - y._order)) {
-      if (e.車種 === '重機') {
-        const taken = takeHeavy(e.車位志願, ok)
-        if (!taken) {
-          lose(e, '工作人員', REASON.HEAVY_SHORT)
-          continue
-        }
-        record(e, taken, VIA.STAFF, '工作人員')
-        a.push({ 戶號: e.戶號, 車位編號: taken.map((s) => s.id).join('、'), 配位方式: VIA.STAFF })
-        continue
-      }
       const s = pickWish(pool, e.車位志願, COMPAT.general, ok) || pool.takeLowest('大', ok) || pool.takeLowest('小', ok)
       if (!s) {
         lose(e, '工作人員', REASON.LOST)
@@ -441,6 +409,16 @@ export function distribute({
     }
   }
 
+  const waiting = heavyWaiting.map((e) => ({
+    戶號: e.戶號,
+    車號: e.車號,
+    車種: e.車種,
+    第幾輛: e.第幾輛,
+    工作人員: e.工作人員,
+    原因: REASON.HEAVY_WAIT,
+  }))
+  if (waiting.length) say(`重機待安排：${waiting.length} 台，不參與抽籤`)
+
   return {
     seed,
     seedHash: hashSeed(seed),
@@ -448,12 +426,67 @@ export function distribute({
     rounds,
     assigned,
     落選: lost, // 第二階段（物業）處理：勾保底→就近補、未勾→候補
+    待安排: waiting, // 重機：非重機車位確定後再安排，見 drawHeavy()
     log,
     summary: {
       registrations: entries.length,
       assigned: assigned.length,
       落選: lost.length,
+      待安排: waiting.length,
       remaining: pool.remaining(),
     },
+  }
+}
+
+// 重機另抽（非重機車位全部確定後才跑；呼叫端傳入的 seats 要扣掉已配位與鎖定位）。
+// 住戶依第幾輛分組、組內抽順序號；工作人員排在住戶之後、依登記序，不佔順序號。
+export function drawHeavy({ registrations, seats = motorSeats(), seed = 'parkfee', runAt = null, adjacency = null }) {
+  const adj = adjacency ?? REAL_ADJ
+  const rng = mulberry32(hashSeed(seed))
+  const pool = makePool(seats)
+  const heavies = registrations.map(toEntry).filter((e) => e.車種 === '重機' && !e.車位編號)
+  const residents = heavies.filter((e) => !e.工作人員)
+  const staff = heavies.filter((e) => e.工作人員).sort((x, y) => x._order - y._order)
+  const assigned = []
+  const lost = []
+  const draws = []
+  const place = (e, ok, via, seqNo) => {
+    const taken = takeHeavy(pool, seats, adj, e.車位志願, ok)
+    if (seqNo !== null) draws.push({ 戶號: e.戶號, 車號: e.車號, 車種: '重機', 第幾輛: e.第幾輛, 順序號: seqNo, 中籤: !!taken })
+    if (!taken) {
+      lost.push({ 戶號: e.戶號, 車號: e.車號, 第幾輛: e.第幾輛, 輪次: '重機', 順序號: seqNo, 原因: REASON.HEAVY_SHORT })
+      return
+    }
+    assigned.push({
+      戶號: e.戶號,
+      車號: e.車號,
+      車種: e.車種,
+      第幾輛: e.第幾輛,
+      車位編號: taken.map((s) => s.id).join('、'),
+      車位類型: taken.map((s) => s.type).join('、'),
+      占用位數: taken.length,
+      配位方式: via,
+      順序號: seqNo,
+      輪次: '重機',
+      已繳費: !!e.已繳費,
+    })
+  }
+
+  let seq = 0
+  const nths = [...new Set(residents.map((e) => e.第幾輛))].sort((x, y) => x - y)
+  for (const nth of nths) {
+    for (const e of seededShuffle(residents.filter((x) => x.第幾輛 === nth), rng)) place(e, eligibleFor(e), VIA.WISH, ++seq)
+  }
+  for (const e of staff) place(e, (s) => !s.public, VIA.STAFF, null)
+
+  return {
+    seed,
+    seedHash: hashSeed(seed),
+    runAt,
+    rounds: [{ round: '重機', name: '重機（相鄰兩大位）', draws, assignments: assigned }],
+    assigned,
+    落選: lost,
+    log: [`重機：登記 ${heavies.length}，配得 ${assigned.length}，剩餘 ${pool.remaining()}`],
+    summary: { registrations: heavies.length, assigned: assigned.length, 落選: lost.length, remaining: pool.remaining() },
   }
 }

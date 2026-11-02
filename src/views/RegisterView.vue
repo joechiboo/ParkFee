@@ -280,9 +280,12 @@ async function submit() {
             自行車不用填車號、也不用排志願序 — 12/1 直接抽車位號碼。
           </p>
           <div v-else class="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+            <p v-if="v.車種 === '重機'" class="text-xs text-slate-500">
+              重機只登記，不參與抽籤；所有非重機車位確定後，若有多餘機車位再行安排。
+            </p>
             <label v-if="v.車種 !== '重機'" class="flex items-center gap-2 py-1 text-sm text-slate-700">
               <input v-model="v.身障" type="checkbox" class="h-4 w-4" /> 需無障礙位
-              <span class="text-xs text-slate-500">（限持身心障礙證明且行動不便者；請於登記期間攜證明至管理中心核驗，由管理中心指派。未核驗者照一般抽籤，請仍排志願序）</span>
+              <span class="text-xs text-slate-500">（限持有身心障礙者專用機車之住戶申請；請於登記期間攜證明至管理中心核驗，由管理中心指派。未核驗者照一般抽籤，請仍排志願序）</span>
             </label>
             <label v-if="v.車種 === '一般' && form.vehicles.findIndex((x) => !isBike(x)) === i" class="flex items-center gap-2 py-1 text-sm text-slate-700">
               <input v-model="v.志願小位" type="checkbox" class="h-4 w-4" /> 志願小位（限第 1 輛：登記後到選位頁<b>直接選定一格</b>，免抽籤、先選先得）

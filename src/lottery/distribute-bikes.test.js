@@ -146,7 +146,7 @@ describe('與機車名冊混用', () => {
 })
 
 describe('全量真實池', () => {
-  it('179 格全滿時（自行車格 164＋開放機車位 641–655），655 戶登記 → 179 中籤、476 候補', () => {
+  it('164 格全滿時，655 戶登記 → 164 中籤、491 候補', () => {
     const regs = Array.from({ length: 655 }, (_, i) => bike(`A1-${i + 1}`))
     const r = distributeBikes({
       registrations: regs,
@@ -154,10 +154,10 @@ describe('全量真實池', () => {
       seed: '2026',
       socialHousingPublicOnly: false,
     })
-    expect(r.assigned).toHaveLength(179)
-    expect(r.落選).toHaveLength(655 - 179)
-    expect(new Set(r.assigned.map((x) => x.車位編號)).size).toBe(179) // 無重複配位
-    expect(r.assigned.filter((x) => /^B6[45]\d$/.test(x.車位編號))).toHaveLength(15) // 借用的機車格確實配得出去
+    expect(r.assigned).toHaveLength(164)
+    expect(r.落選).toHaveLength(655 - 164)
+    expect(new Set(r.assigned.map((x) => x.車位編號)).size).toBe(164) // 無重複配位
+    expect(r.assigned.filter((x) => /^B6[45]\d$/.test(x.車位編號))).toHaveLength(0) // 641–655 不配自行車
   })
 })
 
@@ -179,7 +179,7 @@ describe('混合名冊端到端（名冊 → 兩支引擎 → 合併匯出）', 
   it('兩支引擎各自吃到自己的車種，沒有漏也沒有重疊', () => {
     const motorCount = entries.filter((e) => e.車種 !== KIND.BIKE).length
     const bikeCount = entries.filter((e) => e.車種 === KIND.BIKE).length
-    expect(motor.assigned.length + motor.落選.length).toBe(motorCount)
+    expect(motor.assigned.length + motor.落選.length + motor.待安排.length).toBe(motorCount)
     expect(bikes.summary.registrations).toBe(bikeCount)
     expect(bikes.assigned.length + bikes.落選.length).toBe(bikeCount)
   })

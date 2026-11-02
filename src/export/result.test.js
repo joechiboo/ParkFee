@@ -136,3 +136,22 @@ describe('公告版戶號開關（含戶號）', () => {
     expect(resultCSV(r, { 公開版: true, 含戶號: true }).split('\n')).toHaveLength(1)
   })
 })
+
+describe('重機待安排', () => {
+  const r = {
+    assigned: [],
+    落選: [],
+    待安排: [
+      { 戶號: 'A1-1', 車號: 'HV-1', 車種: '重機', 第幾輛: 1, 工作人員: false, 原因: '重機不參與抽籤，待安排' },
+      { 戶號: '員工-甲', 車號: 'HV-2', 車種: '重機', 第幾輛: 1, 工作人員: true, 原因: '重機不參與抽籤，待安排' },
+    ],
+  }
+  it('列為待安排，不是未中，也不出金額與期限', () => {
+    const rows = resultRows(r, { 公告日: '2026-12-01' })
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toMatchObject({ 車號: 'HV-1', 車位編號: '', 應繳金額: '', 簽約期限: '', 狀態: '待安排' })
+  })
+  it('公告版略過工作人員', () => {
+    expect(resultRows(r, { 公開版: true }).map((x) => x.車號)).toEqual(['HV-1'])
+  })
+})

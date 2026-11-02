@@ -92,7 +92,7 @@ export async function listAssignments() {
   return data?.assignments || []
 }
 
-// 指派/鎖定一個車位。rec：{ 車位編號, 車位類型, 車號?, 配位狀態?, 已繳費? }。
+// 指派/鎖定一個車位。rec：{ 車位編號, 車位類型, 車號?, 配位狀態?, 已繳費?, 配對車位? }（重機帶相鄰大位）。
 // 帶車號 → 把該車指派到此位（寫 vehicle）；不帶 → 純鎖定（保留/維修）。
 // 公益位資格不符時後端回 409 + needsConfirm；前端確認後再帶 強制:true 呼叫一次。
 export class AssignNeedsConfirm extends Error {}
@@ -112,19 +112,22 @@ export async function assignSeat(rec) {
   }
   const next = new Set(lockedSeats.value)
   next.add(seat)
+  if (rec.配對車位) next.add(String(rec.配對車位))
   lockedSeats.value = next
   saveOccupied([...next])
 }
 
-// 解鎖一個車位；帶車號則一併清掉該車指派。
+// 解鎖一個車位；帶車號則一併清掉該車指派（重機兩格一起解，以後端回傳的 released 為準）。
 export async function unlockSeat(seatId, plate) {
   const seat = String(seatId ?? '').trim()
   if (!seat) return
+  let released = [seat]
   if (useSupabase) {
-    await callAssign({ op: 'unlock', 車位編號: seat, 車號: plate || '', ...adminAuth() })
+    const data = await callAssign({ op: 'unlock', 車位編號: seat, 車號: plate || '', ...adminAuth() })
+    released = (data?.released || released).map(String)
   }
   const next = new Set(lockedSeats.value)
-  next.delete(seat)
+  for (const id of released) next.delete(id)
   lockedSeats.value = next
   saveOccupied([...next])
 }

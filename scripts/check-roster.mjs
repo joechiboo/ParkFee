@@ -21,7 +21,7 @@ const motorSeats = cls.seats
   .map((s) => ({ id: String(s.id), type: MOTOR_CATS[s.cat], public: !!s.public }))
 const bikeIds = new Set([
   ...cls.seats.filter((s) => s.cat === 'bike').map((s) => toBikeId(s.id)),
-  ...MOTOR_SEATS_OPEN_TO_BIKE.map(toBikeId), // 641–655 開放停自行車（與 seats.js bikeSeats() 同步）
+  ...MOTOR_SEATS_OPEN_TO_BIKE.map(toBikeId), // 與 seats.js bikeSeats() 同步（目前無）
 ])
 const motorById = new Map(motorSeats.map((s) => [s.id, s]))
 const publicBike = new Set(PUBLIC_BIKE_IDS)
@@ -134,7 +134,7 @@ for (const r of rows) {
   }
   houses.get(id).cars.push({
     車號: String(r.車號 ?? '').trim(),
-    車種: String(r.車種 ?? '一般').trim(),
+    車種: String(r.車種 ?? '一般').trim().startsWith('重機') ? '重機' : String(r.車種 ?? '一般').trim(), // 測試名冊可能是「重機（250CC↑）」
     第幾輛: Number(r.第幾輛) || 1,
     身障: yes(r.身障),
     志願小位: yes(r.志願小位),
@@ -176,7 +176,7 @@ const accessibleWaiting = all.flatMap((h) =>
     .map((c) => ({ h, c })))
 if (accessibleWaiting.length)
   add('warn', '無障礙申請尚未核驗指派',
-    '抽籤不會自動配無障礙位。請櫃台核驗身心障礙證明後在維護頁指派；未核驗者照一般抽籤，標「無志願」者若未勾電腦選號會落選。',
+    '抽籤不會自動配無障礙位。請櫃台核驗證明（限持有身心障礙者專用機車）後在維護頁指派；未核驗者照一般抽籤，標「無志願」者若未勾電腦選號會落選。',
     accessibleWaiting.map(({ h, c }) => `${h.戶號} ${c.車號}${h.志願.length ? '' : '（無志願）'}`))
 if (accessibleWaiting.length > cap.無障礙)
   add('warn', '無障礙申請數超過可指派車位',
@@ -245,7 +245,7 @@ if (staffHouses.length && staffRoster) {
       '工作人員戶號應為「員工-<姓名>」。不一致多為登打漏勾或戶號打錯，會影響配位輪次與收費。', mismatch)
   if (ignored.length)
     add('info', '工作人員登記了身障需求（無障礙位不開放工作人員）',
-      '該註記不會生效——無障礙位保留給住戶中行動不便者。若確有需求，請循個案由管委會決定。', ignored)
+      '該註記不會生效——無障礙位保留給持有身心障礙者專用機車之住戶。若確有需求，請循個案由管委會決定。', ignored)
 }
 
 // 3.7) 物業已指派的重機雙位：必須**實體相鄰**（同排橫連或同列直連）
@@ -329,15 +329,23 @@ if (wrongSocial.length)
 if (wrongNormal.length)
   add('info', '一般戶志願指到公益車位', '公益位為社宅戶專用，該志願不會配出。可提醒住戶改志願。', wrongNormal)
 
-// 9) 沒填志願也沒勾電腦選號：還有機車沒配位的話，抽籤必落選。
-//    線上只登記、沒進選位頁的人就是這種（電腦選號後端預設 false）。
+// 9) 沒填志願也沒勾電腦選號：還有一般機車沒配位的話，抽籤必落選。
+//    線上只登記、沒進選位頁的人就是這種（電腦選號後端預設 false）。重機不抽籤，不算。
 const noWishNoPick = all.filter(
-  (h) => !h.工作人員 && !h.社宅 && !h.志願.length && !h.保底 && h.cars.some((c) => !isBikeCar(c) && !c.車位編號),
+  (h) => !h.工作人員 && !h.社宅 && !h.志願.length && !h.保底 && h.cars.some((c) => !isBikeCar(c) && c.車種 !== '重機' && !c.車位編號),
 )
 if (noWishNoPick.length)
   add('warn', '沒填志願也沒勾電腦選號',
     '這些戶抽籤必落選。登記截止前請提醒住戶到選位頁排志願，或勾選電腦選號。',
     noWishNoPick.map((h) => h.戶號))
+
+// 10) 重機待安排：不參與抽籤，非重機車位確定後才安排，要先知道需要多少相鄰大位。
+const heavyWaiting = all.flatMap((h) =>
+  h.cars.filter((c) => c.車種 === '重機' && !c.車位編號).map((c) => `${h.戶號} ${c.車號}${h.工作人員 ? '（工作人員）' : ''}`))
+if (heavyWaiting.length)
+  add('info', '重機待安排（不參與抽籤）',
+    `共 ${heavyWaiting.length} 台，每台要相鄰兩個大位。所有非重機車位確定後，由管理中心安排。`,
+    heavyWaiting)
 
 // ── 輸出 ──
 const motorCars = all.reduce((n, h) => n + h.cars.filter((c) => !isBikeCar(c)).length, 0)

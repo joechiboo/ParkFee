@@ -18,12 +18,14 @@ const vehicles = computed(() => household.value?.vehicles || [])
 const CLS = {
   paid: 'bg-emerald-50 text-emerald-700',
   pending: 'bg-amber-50 text-amber-700',
+  arranging: 'bg-sky-50 text-sky-700',
   waitlist: 'bg-rose-50 text-rose-600',
   registered: 'bg-slate-100 text-slate-500',
 }
 function labelOf(key, v) {
   if (key === 'paid') return '✅ 已繳費確認'
   if (key === 'pending') return '⚠️ 待繳費'
+  if (key === 'arranging') return '⏳ 重機待安排'
   if (key === 'waitlist') return '❌ ' + v.配位狀態
   return '🔄 已登記·待配位'
 }
@@ -106,6 +108,7 @@ const hasPending = computed(() => rows.value.some((r) => r.s.key === 'pending'))
           <span class="text-rose-600">候補</span>，前位放棄即依序遞補。
         </li>
         <li>志願小位／無障礙在物業指派當下即完成繳費；中籤大位需於簽約期限內到管理中心繳費。</li>
+        <li>重機只登記，不參與抽籤；所有非重機車位確定後，若有多餘機車位再行安排。</li>
       </ul>
     </div>
 

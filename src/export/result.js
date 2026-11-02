@@ -4,6 +4,7 @@ import { VIA, REASON } from '../lottery/distribute.js'
 //   供 AllocateView 下載配位結果 CSV，亦供 ResultView 顯示清單（同一份資料）。
 
 import { feeFor } from '../data/fee.js'
+import { HEAVY_WAIT_STATUS } from '../data/vehicleStatus.js'
 import { toCSV } from '../data/csv.js'
 import { displaySeatIds } from '../map/seat-id.js'
 
@@ -27,7 +28,7 @@ export function signDeadline(公告日) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
-// distribute() 結果 → 清單列陣列（分配在前、未中在後）。
+// distribute() 結果 → 清單列陣列（分配在前、未中其次、待安排最後）。
 //   opts.公告日（'YYYY-MM-DD'）→ 帶出簽約期限。
 //   opts.公開版=true → 略過工作人員列（2026-08-26）：工作人員配的是住戶配畢後的剩餘位、
 //     免費且隨時可收回，與住戶的承租結果性質不同；且其識別為「員工-NN」或姓名，
@@ -61,6 +62,19 @@ export function resultRows(result, { 公告日 = '', 公開版 = false } = {}) {
       簽約期限: '',
       狀態: '未中', // 交物業第二階段：勾保底→就近補、未勾→候補
       備註: l.原因 || '',
+    })
+  }
+  for (const w of result.待安排 || []) {
+    if (公開版 && w.工作人員) continue
+    rows.push({
+      戶號: w.戶號,
+      車號: w.車號,
+      車位編號: '',
+      車位類型: '',
+      應繳金額: '',
+      簽約期限: '',
+      狀態: HEAVY_WAIT_STATUS,
+      備註: w.原因 || '',
     })
   }
   return rows

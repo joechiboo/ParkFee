@@ -8,7 +8,7 @@ import { lockedSeats, refreshLocked } from '../store/locked.js'
 import { feeFor } from '../data/fee.js'
 
 // 全機車位（含 public 旗標）。可選資格（2026-08-16 決議）：
-//   一般戶＝大/小；重機戶＝大位（占相鄰兩個大位，配位自動帶鄰格；2026-10-29 起不得選無障礙位、不含小位）；
+//   一般戶＝大/小；重機只登記不抽籤，可填希望的起始大位（供事後安排參考，占相鄰兩個大位、不得用無障礙位）；
 //   社宅戶＝僅公益位（10/20 起社宅不登記，公益位改由物業整批鎖定）；無障礙位限身障者、由管理中心指派，地圖上一律不可選。
 const seats = motorSeats()
 const householdId = computed(() => sessionHousehold.value?.戶號 || '')
@@ -36,7 +36,7 @@ const orderOf = (id) => orderMap.value.get(String(id))
 // 已鎖定/已承租的車位（物業維護、雲端讀）：不可選。
 onMounted(refreshLocked)
 const isOccupied = (id) => lockedSeats.value.has(String(id))
-// 重機戶（該戶登記有重機）：一台重機占相鄰兩個大位（點一格大位即可，配位自動帶鄰格）；不開放無障礙位（2026-10-29）。
+// 重機戶（該戶登記有重機）：重機不參與抽籤，非重機車位確定後再行安排；這裡只顯示說明。
 const hasHeavy = computed(() => (sessionHousehold.value?.vehicles || []).some((v) => v.車種 === '重機'))
 // 社宅戶：公益位專用（一般戶不可選公益位）。
 const isSocial = computed(() => !!sessionHousehold.value?.社宅)
@@ -325,16 +325,16 @@ function decorate(s) {
             </template>
             <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-rose-500"></span> 已選</span>
           </div>
-          <p v-if="hasHeavy" class="mt-1 text-amber-700">重機占<b>相鄰兩個大位</b>：點一格大位即可，配位自動帶相鄰大位；一般機車全部配完後才配重機。</p>
+          <p v-if="hasHeavy" class="mt-1 text-amber-700">重機<b>只登記，不參與抽籤</b>；所有非重機車位確定後，若有多餘機車位再行安排，占<b>相鄰兩個大位</b>。可填希望的起始大位；電腦選號不適用重機。</p>
           <div class="mb-1 mt-2 font-medium text-slate-600">不可選</div>
           <div class="flex flex-wrap gap-x-3 gap-y-1">
             <span v-if="!isSocial"><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(234,179,8,.6);outline:1.5px solid #a16207"></span> 公益（社宅自行安排）</span>
-            <span v-if="isStaff"><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(148,163,184,.45)"></span> 無障礙（保留給行動不便住戶）</span>
+            <span v-if="isStaff"><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(148,163,184,.45)"></span> 無障礙（保留給持有身心障礙者專用機車之住戶）</span>
             <template v-else>
               <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(245,158,11,.6)"></span> 大位</span>
               <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(139,92,246,.7)"></span> 小位</span>
             </template>
-            <span v-if="!isStaff"><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(148,163,184,.45)"></span> 無障礙（限身障者，管理中心指派）</span>
+            <span v-if="!isStaff"><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:rgba(148,163,184,.45)"></span> 無障礙（限持有身心障礙者專用機車，管理中心指派）</span>
             <span><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:#475569"></span> 已承租</span>
           </div>
         </div>
@@ -343,7 +343,7 @@ function decorate(s) {
 
     <p class="mt-3 text-xs text-slate-400">
       登入後按「儲存志願序」才會儲存；未登入只能試排。志願不限數量、多填越不易落空。
-      志願小位（限第 1 輛一般機車）改為在本頁<b>直接選定一格並鎖定</b>，免抽籤；無障礙位由管理中心核驗證明後指派；<b>未核驗者照一般抽籤</b>，申請者請仍排志願。
+      志願小位（限第 1 輛一般機車）改為在本頁<b>直接選定一格並鎖定</b>，免抽籤；無障礙位限持有身心障礙者專用機車之住戶申請，由管理中心核驗證明後指派；<b>未核驗者照一般抽籤</b>，申請者請仍排志願。
     </p>
   </section>
 </template>

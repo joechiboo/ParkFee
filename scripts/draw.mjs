@@ -110,7 +110,7 @@ const bikes = distributeBikes({
 console.log(`種子          ${motor.seed}（hash ${motor.seedHash}）`)
 console.log(`執行時間      ${runAt}`)
 console.log('')
-console.log('機車          配到 ' + motor.summary.assigned + ' ／ 落選 ' + motor.summary.落選)
+console.log('機車          配到 ' + motor.summary.assigned + ' ／ 落選 ' + motor.summary.落選 + ' ／ 重機待安排 ' + motor.summary.待安排)
 console.log('自行車        配到 ' + bikes.summary.assigned + ' ／ 落選 ' + bikes.summary.落選)
 
 // 落選原因分布 —— 物業最需要看的一欄。
@@ -125,7 +125,7 @@ if (Object.keys(reasons).length) {
 // ── 4. 輸出 ──
 if (outPath) {
   writeCsvUtf8(outPath, mergedResultCSV([motor, bikes], { 公告日 }))
-  const n = (motor.summary.assigned + motor.summary.落選) + (bikes.summary.assigned + bikes.summary.落選)
+  const n = (motor.summary.assigned + motor.summary.落選 + motor.summary.待安排) + (bikes.summary.assigned + bikes.summary.落選)
   console.log('')
   console.log(`已寫出 ${outPath}（${n} 列）`)
   console.log('→ 可接著跑：node scripts/build-shequbang-import.mjs --fee <物業檔> --result ' + outPath + ' --announce ' + (公告日 || '<公告日>'))

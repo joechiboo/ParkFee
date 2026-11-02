@@ -54,7 +54,7 @@ export function carSeats() {
 // 公益自行車位清單定義於 seat-id.js（無相依，scripts/ 也要用）；此處轉出供既有匯入點沿用。
 export { PUBLIC_BIKE_IDS } from './seat-id.js'
 
-// 自行車位 179 格＝自行車格 164（B001–B164）＋開放停自行車的機車位 15（B641–B655）。
+// 自行車位 164 格（B001–B164）；另加 MOTOR_SEATS_OPEN_TO_BIKE 列出的機車位（目前無，見 seat-id.js）。
 // **id 在此處套上前綴正規化**——盤點檔存的是地面漆的號碼（自行車 1–164，與機車 1–655 有 155 個
 // 字面重複），前綴是應用層的鍵，見 seat-id.js。顯示給住戶時用 displaySeatId() 剝回地面數字。
 // 借用的機車格沿用機車座標，帶 fromMotor 旗標（地圖／列印可另行標示）；機車端該格仍由 locked_seat 鎖住。

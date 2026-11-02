@@ -39,6 +39,6 @@ describe('mock 名冊產生器（dev）', () => {
   it('能餵真 distribute() 跑出結果（不丟錯）', () => {
     const result = distribute({ registrations: toRows(hh), seed: 'mock-test' })
     expect(result.summary.registrations).toBe(toRows(hh).length)
-    expect(result.assigned.length + result.落選.length).toBe(toRows(hh).length)
+    expect(result.assigned.length + result.落選.length + result.待安排.length).toBe(toRows(hh).length)
   })
 })

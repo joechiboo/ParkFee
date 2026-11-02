@@ -5,6 +5,7 @@
 import { ref, computed, onMounted } from 'vue'
 import SeatMap from '../components/SeatMap.vue'
 import { motorSeats, bikeSeats } from '../map/seats.js'
+import { heavyPartners } from '../map/heavy-pair.js'
 import { KIND, compareSeatId, displaySeatId, normalizeSeatInput } from '../map/seat-id.js'
 import { lockedSeats, refreshLocked, listAssignments, assignSeat, unlockSeat, batchLock, AssignNeedsConfirm } from '../store/locked.js'
 import { sessionHousehold } from '../store/session.js'
@@ -26,7 +27,30 @@ const assignMap = computed(() => {
 })
 
 const selected = ref(null) // 目前點選的車位物件
-const form = ref({ 車號: '', 車種: '一般', 配位狀態: '', 已繳費: false })
+const form = ref({ 車號: '', 車種: '一般', 配對車位: '', 配位狀態: '', 已繳費: false })
+
+// 重機占相鄰兩個大位：候選＝主格實體相鄰的大位，且沒鎖、沒人佔（同一台車原本的格除外）。
+const isHeavyForm = computed(() => form.value.車種 === '重機')
+const partnerOptions = computed(() => {
+  if (!selected.value || !isHeavyForm.value) return []
+  const plate = form.value.車號.trim().toUpperCase()
+  return heavyPartners(selected.value, seats, (id) => {
+    const a = assignMap.value.get(id)
+    if (a?.車號 && a.車號 === plate) return true
+    return !a && !isLocked(id)
+  })
+})
+const heavyBlocked = computed(() => isHeavyForm.value && (!form.value.車號.trim() || !form.value.配對車位))
+const heavyHint = computed(() => {
+  if (!isHeavyForm.value || !selected.value) return ''
+  if (selected.value.type !== '大' || selected.value.public) return '重機只能指派一般大位，請改點大位。'
+  if (!partnerOptions.value.length) return '這格旁邊沒有可用的相鄰大位，請改點其他大位。'
+  return ''
+})
+function onKindChange() {
+  form.value.配對車位 = ''
+  if (isHeavyForm.value) form.value.配位狀態 = '分配'
+}
 
 // 佔用 = 物業鎖定(locked) ∪ 抽籤分配(!locked)。抽籤分配只顯示、不可解除（避免誤清中籤者結果）。
 const lotteryCount = computed(() => assignments.value.filter((a) => !a.locked).length)
@@ -114,9 +138,14 @@ function selectSeat(s) {
   err.value = ''
   selected.value = s
   const a = assignMap.value.get(String(s.id))
+  // 這台車若已佔兩格，帶出另一格，改繳費時不用重選。
+  const other = a?.車號
+    ? assignments.value.find((x) => x.車號 === a.車號 && String(x.車位編號) !== String(s.id))
+    : null
   form.value = {
     車號: a?.車號 || '',
     車種: a?.車種 || '一般',
+    配對車位: other ? String(other.車位編號) : '',
     配位狀態: a?.配位狀態 || defaultStatus(s),
     已繳費: !!a?.已繳費,
   }
@@ -129,7 +158,8 @@ async function doAssign(強制 = false) {
   try {
     await assignSeat({
       車位編號: String(selected.value.id),
-      車位類型: selected.value.type,
+      車位類型: isHeavyForm.value ? '大、大' : selected.value.type,
+      ...(isHeavyForm.value ? { 配對車位: form.value.配對車位 } : {}),
       車位公益: !!selected.value.public, // 後端據此比對該戶社宅旗標（公益位＝社宅戶專用）
       車號: form.value.車號.trim().toUpperCase(),
       配位狀態: form.value.配位狀態,
@@ -214,7 +244,7 @@ function decorate(s) {
     <template v-else>
       <p class="mt-1 text-sm text-slate-500">
         點車位 → 右側填<b>車號/類型/繳費</b> → <b>指派（鎖定）</b>。指派者<b>不進抽籤、選位頁不可選</b>。
-        抽籤前用來確定<b>志願小位／無障礙</b>（先繳費）與<b>保留位</b>。
+        抽籤前用來確定<b>志願小位／無障礙</b>（先繳費）與<b>保留位</b>；重機不抽籤，事後在這裡指派<b>相鄰兩個大位</b>。
         目前鎖定 <b class="text-rose-600">{{ lockedIds.length }}</b> 格<span v-if="lotteryCount"> · 抽籤已分 <b class="text-amber-600">{{ lotteryCount }}</b> 格（琥珀，不可解除）</span>。
         <span v-if="saving" class="text-slate-400">· 處理中…</span>
         <span v-if="err" class="text-rose-600">· {{ err }}</span>
@@ -256,7 +286,7 @@ function decorate(s) {
               <div class="mt-3 grid grid-cols-2 gap-2">
                 <div>
                   <label class="block text-xs font-medium text-slate-600">車種</label>
-                  <select v-model="form.車種" class="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm">
+                  <select v-model="form.車種" class="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm" @change="onKindChange">
                     <option>一般</option>
                     <option>重機</option>
                   </select>
@@ -267,6 +297,15 @@ function decorate(s) {
                     <option v-for="s in STATUS_OPTIONS" :key="s">{{ s }}</option>
                   </select>
                 </div>
+              </div>
+
+              <div v-if="isHeavyForm" class="mt-3">
+                <label class="block text-xs font-medium text-slate-600">相鄰大位（重機占兩格，須填車號）</label>
+                <select v-model="form.配對車位" class="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 font-mono text-sm">
+                  <option value="">請選擇</option>
+                  <option v-for="id in partnerOptions" :key="id" :value="id">{{ id }}</option>
+                </select>
+                <p v-if="heavyHint" class="mt-1 text-xs text-rose-600">{{ heavyHint }}</p>
               </div>
 
               <label class="mt-3 flex items-center gap-2 text-sm text-slate-700">
@@ -284,8 +323,8 @@ function decorate(s) {
               <div class="mt-4 flex gap-2">
                 <button
                   class="flex-1 rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                  :disabled="saving"
-                  @click="doAssign"
+                  :disabled="saving || heavyBlocked"
+                  @click="doAssign()"
                 >{{ isLocked(selected.id) ? '更新指派' : '指派並鎖定' }}</button>
                 <button
                   v-if="isLocked(selected.id)"

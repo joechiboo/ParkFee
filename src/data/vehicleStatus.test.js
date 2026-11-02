@@ -13,6 +13,7 @@ describe('vehicleResultStatus（結果頁每台車狀態）', () => {
   it('有配位狀態、無車位 → waitlist（落選/候補）', () => {
     expect(vehicleResultStatus({ 配位狀態: '候補' })).toBe('waitlist')
     expect(vehicleResultStatus({ 配位狀態: '未中' })).toBe('waitlist')
+    expect(vehicleResultStatus({ 配位狀態: '待安排' })).toBe('arranging')
   })
 
   it('已登記、無任何結果 → registered（待配位）', () => {

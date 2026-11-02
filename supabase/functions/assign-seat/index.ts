@@ -4,10 +4,10 @@
 //   - 戶號/車號/繳費 寫 RLS deny-all 的 vehicle（只該戶 login 或本函式讀得到）。
 // op：
 //   list   → 回傳目前鎖定清單 + 各位指派（管理員專屬讀，含個資）。
-//   assign → 鎖定該位；若帶車號則把該車指派到此位（寫 vehicle）。
-//   unlock → 解鎖該位；若帶車號則清掉該車的指派。
+//   assign → 鎖定該位；若帶車號則把該車指派到此位（寫 vehicle）。重機要再帶 配對車位，一次佔兩格。
+//   unlock → 解鎖該位；若帶車號則清掉該車的指派（重機兩格一起解）。
 import { corsHeaders, json, adminClient, verifyAdmin, audit } from '../_shared/http.ts'
-import { holderOf } from '../_shared/seat-holder.ts'
+import { holderOf, planAssign, seatIdsOf } from '../_shared/seat-holder.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -59,21 +59,32 @@ Deno.serve(async (req) => {
     const plate = String(body.車號 ?? '').trim().toUpperCase()
 
     if (op === 'assign') {
+      const pair = String(body.配對車位 ?? '').trim()
+      const { data: current } = plate
+        ? await db.from('vehicle').select('車種, 車位編號').eq('車號', plate).maybeSingle()
+        : { data: null }
+      const plan = planAssign(seat, pair, current)
+      if ('error' in plan) return json({ error: plan.error }, 400)
+      const seatIds = plan.ids
+      const currentIds = seatIdsOf(current?.車位編號)
+
       // 這格已掛別台車就擋下（住戶線上鎖定、抽籤結果、櫃台先前指派），避免同格配給第二人。
       // 只改同一台車的狀態或繳費不受影響。要換人請先解除。
-      const conflict = async () => {
+      const conflict = async (id: string) => {
         if (!plate) return null
         const { data } = await db
           .from('vehicle')
           .select('車號, 戶號, 車位編號')
-          .like('車位編號', `%${seat}%`)
-        const h = holderOf(data, seat)
+          .like('車位編號', `%${id}%`)
+        const h = holderOf(data, id)
         return h && h.車號 !== plate ? h : null
       }
-      const taken = (h: { 戶號: string; 車號: string }) =>
-        json({ error: `車位 ${seat} 已由 ${h.戶號}（${h.車號}）持有，請先解除或改選其他車位`, taken: true }, 409)
-      const before = await conflict()
-      if (before) return taken(before)
+      const taken = (id: string, h: { 戶號: string; 車號: string }) =>
+        json({ error: `車位 ${id} 已由 ${h.戶號}（${h.車號}）持有，請先解除或改選其他車位`, taken: true }, 409)
+      for (const id of seatIds) {
+        const before = await conflict(id)
+        if (before) return taken(id, before)
+      }
 
       // 公益位資格檢查（2026-08-16 Q7）：公益位＝社宅戶專用，一般戶不得承租；
       // 反之社宅戶亦不應被指派到一般位。物業指派會繞過配位引擎的分流，故在此攔一次。
@@ -100,35 +111,65 @@ Deno.serve(async (req) => {
         }
       }
       // 與 claim-seat 同樣靠主鍵互斥：撞鍵代表這格已鎖，要再查一次是不是剛被住戶選走。
-      const { error: lkErr } = await db.from('locked_seat').insert({ 車位編號: seat })
-      if (lkErr && lkErr.code !== '23505') return json({ error: lkErr.message }, 400)
-      if (lkErr) {
-        const after = await conflict()
-        if (after) return taken(after)
+      // 重機兩格要嘛都鎖、要嘛都不鎖：第二格失敗就還原這次新鎖的格。
+      const fresh: string[] = []
+      const rollback = async () => {
+        if (fresh.length) await db.from('locked_seat').delete().in('車位編號', fresh)
+      }
+      for (const id of seatIds) {
+        const { error: lkErr } = await db.from('locked_seat').insert({ 車位編號: id })
+        if (!lkErr) {
+          fresh.push(id)
+          continue
+        }
+        if (lkErr.code !== '23505') {
+          await rollback()
+          return json({ error: lkErr.message }, 400)
+        }
+        const after = await conflict(id)
+        if (after) {
+          await rollback()
+          return taken(id, after)
+        }
+        // 主格是管理員自己點的，可以指派到保留位；相鄰格已鎖（動線、維修）就不能順手佔走。
+        if (id === pair && !currentIds.includes(id)) {
+          await rollback()
+          return json({ error: `相鄰車位 ${id} 已鎖定，請改選其他車位`, taken: true }, 409)
+        }
       }
       if (plate) {
         const { error: vErr } = await db
           .from('vehicle')
           .update({
-            車位編號: seat,
+            車位編號: seatIds.join('、'),
             車位類型: body.車位類型 || null,
             配位狀態: body.配位狀態 || '分配',
             已繳費: !!body.已繳費,
           })
           .eq('車號', plate)
         if (vErr) return json({ error: vErr.message }, 400)
+        // 換格時把舊格的鎖放掉，否則舊格會變成沒人持有卻選不到的格。
+        const dropped = currentIds.filter((id) => !seatIds.includes(id))
+        if (dropped.length) await db.from('locked_seat').delete().in('車位編號', dropped)
       }
       // 稽核：指派同時會寫入繳費狀態 → 住戶日後爭執「我明明繳了」時可回溯。
       await audit(db, 'seat.assign', {
         body,
-        target: String(seat),
+        target: seatIds.join('、'),
         detail: { 車號: plate || '-', 車位類型: body.車位類型 || '-', 已繳費: !!body.已繳費, 強制: !!body.強制 },
       })
       return json({ ok: true })
     }
 
     if (op === 'unlock') {
-      const { error: dErr } = await db.from('locked_seat').delete().eq('車位編號', seat)
+      // 重機佔兩格：解其中一格就兩格一起解，不留下沒人持有的鎖。
+      let released = [seat]
+      if (plate) {
+        const { data: v } = await db.from('vehicle').select('車位編號').eq('車號', plate).maybeSingle()
+        const ids = seatIdsOf(v?.車位編號)
+        if (ids.includes(seat)) released = ids
+      }
+      const { error: dErr } = await db.from('locked_seat').delete().in('車位編號', released)
       if (dErr) return json({ error: dErr.message }, 400)
       if (plate) {
         await db
@@ -137,8 +178,8 @@ Deno.serve(async (req) => {
           .eq('車號', plate)
       }
       // 稽核：解除會一併清掉繳費狀態 → 誤解或爭議時要查得出是誰、何時解的。
-      await audit(db, 'seat.unlock', { body, target: String(seat), detail: { 車號: plate || '-' } })
-      return json({ ok: true })
+      await audit(db, 'seat.unlock', { body, target: released.join('、'), detail: { 車號: plate || '-' } })
+      return json({ ok: true, released })
     }
 
     return json({ error: '未知 op' }, 400)

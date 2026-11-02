@@ -1,4 +1,5 @@
 <script setup>
+import { HEAVY_WAIT_STATUS } from '../data/vehicleStatus.js'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { login } from '../store/db.js'
@@ -99,8 +100,9 @@ function logout() {
                 <td class="px-3 py-2 font-mono">{{ displaySeatIds(v.車位編號) || '—' }}<span v-if="v.車位類型" class="text-xs text-slate-400">（{{ v.車位類型 }}）</span></td>
                 <td class="px-3 py-2 text-sm">
                   <template v-if="v.配位狀態">
-                    <!-- 有車位＝已配/已選定（綠：已繳；琥珀：待繳）；有狀態沒車位＝落選/候補（紅） -->
-                    <span :class="v.車位編號 ? (v.已繳費 ? 'font-medium text-emerald-700' : 'font-medium text-amber-700') : 'text-rose-600'">{{ v.配位狀態 }}</span>
+                    <!-- 有車位＝已配/已選定（綠：已繳；琥珀：待繳）；重機待安排（藍）；其餘沒車位＝落選/候補（紅） -->
+                    <span :class="v.車位編號 ? (v.已繳費 ? 'font-medium text-emerald-700' : 'font-medium text-amber-700') : v.配位狀態 === HEAVY_WAIT_STATUS ? 'text-sky-700' : 'text-rose-600'">{{ v.配位狀態 }}</span>
+                    <span v-if="!v.車位編號 && v.配位狀態 === HEAVY_WAIT_STATUS" class="text-slate-500">· 非重機車位確定後，若有多餘機車位再行安排</span>
                     <span v-if="v.車位編號 && v.已繳費" class="text-slate-500">· 已繳費</span>
                     <span v-else-if="v.配位狀態 === '志願小位'" class="text-slate-500">· {{ feeFor(v.車種) }} 元 · 請至管理中心繳費確認</span>
                     <span v-else-if="v.車位編號" class="text-slate-500">· {{ feeFor(v.車種) }} 元 · 簽約 {{ v.簽約期限 || '公告後10日內' }}</span>
@@ -126,7 +128,7 @@ function logout() {
         🎲 抽籤結果尚未公布。配位完成後，這裡會顯示您各台車分到的車位、應繳金額與簽約期限。
       </div>
       <div v-else-if="!isAdminAccount(household)" class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-        ✅ 抽籤結果已公布（見上表「車位／結果」）。<b>分配</b>者請於簽約期限內到管理中心簽約繳費；<b>未中</b>者列候補，前位放棄即依序遞補。
+        ✅ 抽籤結果已公布（見上表「車位／結果」）。<b>分配</b>者請於簽約期限內到管理中心簽約繳費；<b>未中</b>者列候補，前位放棄即依序遞補；重機不參與抽籤，<b>待安排</b>者等候管理中心通知。
       </div>
     </div>
 

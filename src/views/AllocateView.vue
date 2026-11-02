@@ -143,7 +143,7 @@ function redraw() {
 const fmtTime = (iso) => (iso ? iso.slice(0, 19).replace('T', ' ') : '')
 
 // 配位結果分兩組：
-//   抽籤分發＝真的抽順序號的（一般/重機），依輪次→順序號排序 = 主結果。
+//   抽籤分發＝真的抽順序號的一般機車，依輪次→順序號排序 = 主結果。
 //   免抽已定＝志願小位 / 無障礙（登記時已選位繳費、抽籤前確定），另列、不混入。
 const lotteryRows = computed(() =>
   (result.value?.assigned ?? [])
@@ -247,11 +247,11 @@ function downloadResultCSV(pub = true) {
       <div class="mt-2 space-y-1.5 text-slate-600">
         <p>採「<b>填志願 + 統一分發</b>」（非隨機抽號碼）：電腦以固定種子抽<b>順序號</b>，依序號由小到大逐戶，分到「該戶志願中、目前仍剩的<b>最高志願</b>」。</p>
         <ul class="ml-4 list-disc space-y-1">
-          <li><b>無障礙位</b>：不抽籤。管理中心核驗身心障礙證明後於維護頁指派（列「免抽已定」）；勾了申請但未核驗者照一般抽籤。</li>
+          <li><b>無障礙位</b>：不抽籤。限持有身心障礙者專用機車之住戶申請，管理中心核驗證明後於維護頁指派（列「免抽已定」）；勾了申請但未核驗者照一般抽籤。</li>
           <li><b>Round 1 一戶一位</b>：志願小位者免抽、依登記序選小位；其餘第 1 輛抽順序號、依志願分發 → <b>保障每戶第 1 輛一位</b>。</li>
           <li><b>Round 2＋ 第二輛起</b>：用前輪剩餘車位依序取志願；耗盡則落選。</li>
         </ul>
-        <p><b>重機</b>排在<b>一般機車全部輪次之後</b>才抽（辦法肆五「機車位足額」；10/29 臨時管委會）、一台占<b>相鄰兩個大位</b>（不含小位、不得用無障礙位）：志願中可湊相鄰對者優先、否則全場最低號相鄰對；無相鄰對則落選交物業。<b>社宅戶</b>只配<b>公益位</b>（一般戶反之不配公益位）。<b>志願全落空者</b>：勾「<b>電腦選號</b>」→ 系統自動配<b>本棟靠電梯剩位</b>（引擎內、可重現）；沒勾 → 列「落選名單」交物業第二階段（候補）。</p>
+        <p><b>重機</b>只登記、<b>不參與抽籤</b>，列「待安排」、不算落選；所有非重機車位確定後，若有多餘機車位再行安排，一台占<b>相鄰兩個大位</b>（不含小位、不得用無障礙位）。<b>社宅戶</b>只配<b>公益位</b>（一般戶反之不配公益位）。<b>志願全落空者</b>：勾「<b>電腦選號</b>」→ 系統自動配<b>本棟靠電梯剩位</b>（引擎內、可重現）；沒勾 → 列「落選名單」交物業第二階段（候補）。</p>
         <p class="text-slate-500">固定種子 → 結果可重現；種子／時間／各輪過程全留存供監察。重抽＝換新種子重跑，歷次紀錄保留。</p>
       </div>
     </details>
@@ -292,6 +292,10 @@ function downloadResultCSV(pub = true) {
         <div class="rounded-lg border border-rose-200 bg-rose-50 p-3">
           <div class="text-xs text-rose-700">落選（待物業補位/候補）</div>
           <div class="text-xl font-semibold text-rose-800">{{ result.summary.落選 }}</div>
+        </div>
+        <div v-if="result.summary.待安排" class="rounded-lg border border-sky-200 bg-sky-50 p-3">
+          <div class="text-xs text-sky-700">重機待安排（不抽籤）</div>
+          <div class="text-xl font-semibold text-sky-800">{{ result.summary.待安排 }}</div>
         </div>
         <div class="rounded-lg border border-slate-200 bg-white p-3">
           <div class="text-xs text-slate-500">剩餘車位</div>
@@ -550,6 +554,31 @@ function downloadResultCSV(pub = true) {
                 <td class="px-3 py-1.5 font-mono text-xs">{{ l.車號 }}</td>
                 <td class="px-3 py-1.5">{{ l.第幾輛 }}</td>
                 <td class="px-3 py-1.5">{{ l.原因 }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 重機待安排：不參與抽籤、不算落選 -->
+      <div v-if="result.待安排?.length">
+        <div class="mb-2 text-sm font-medium text-sky-700">重機待安排（{{ result.待安排.length }}）— 不參與抽籤；非重機車位確定後，於維護頁指派相鄰兩個大位</div>
+        <div class="overflow-x-auto rounded-lg border border-sky-200">
+          <table class="w-full text-sm">
+            <thead class="bg-sky-50 text-sky-700">
+              <tr>
+                <th v-if="showHousehold" class="px-3 py-2 text-left font-medium">戶號</th>
+                <th class="px-3 py-2 text-left font-medium">車號</th>
+                <th class="px-3 py-2 text-left font-medium">第幾輛</th>
+                <th class="px-3 py-2 text-left font-medium">身分</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(w, i) in result.待安排" :key="i" class="border-t border-sky-100">
+                <td v-if="showHousehold" class="px-3 py-1.5 font-mono text-xs">{{ w.戶號 }}</td>
+                <td class="px-3 py-1.5 font-mono text-xs">{{ w.車號 }}</td>
+                <td class="px-3 py-1.5">{{ w.第幾輛 }}</td>
+                <td class="px-3 py-1.5">{{ w.工作人員 ? '工作人員' : '住戶' }}</td>
               </tr>
             </tbody>
           </table>
