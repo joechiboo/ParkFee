@@ -10,7 +10,7 @@
 > 這段是 11/15 前的唯一清單，每一步都寫完整，不用再翻其他段落。
 > 指令一律在 ParkFee 專案根目錄的 PowerShell 執行；PowerShell 擋 `npx`，所以要打 `npx.cmd`。
 
-### 一、部署六支後端函式（使用者執行，現在做）
+### 一、部署六支後端函式 ✅ 2026-11-02 17:46 完成
 
 push 到 main 只會發布前端（GitHub Pages）。後端 Edge Function 要手動上傳到 Supabase，少了這步，下列修正在線上都不會生效：登記時窗、櫃台不得蓋掉已鎖車位、批次鎖定只增減指定格。
 
@@ -26,7 +26,7 @@ npx.cmd --yes supabase functions deploy set-locked
 - 每行成功會印 `Deployed Functions`。不需要 Docker，`Docker is not running` 警告可忽略。
 - 出現 `AccessTokenRequiredError` 就先跑 `npx.cmd --yes supabase login`，按 Enter 後在瀏覽器按授權，再重跑。
 - 目前 `CLAIM_WINDOW` 開著（2026-10-01..2026-12-31），所以部署後住戶操作不會被擋，試玩不受影響。
-- ⬜ 部署後 Claude 打真 API 驗：登記、修改、志願、選小位正常；櫃台指派別人持有的格回 409（需管理員身分，由步驟二的 5、6 驗）。
+- [x] ✅ 2026-11-02 真 API 驗過：登記、修改、志願、選小位正常；錯車號 403；兩戶搶同格 409；大位 400；放棄後解鎖；`assign-seat`、`set-locked` 無憑證或錯密碼 403。測試戶已清，庫內維持 32 戶、47 車、46 鎖。⚠️ 櫃台被擋與批次略過需管理密碼，由步驟二的 5、6 驗。
 
 ### 二、志願小位搶位實測（使用者執行，步驟 1 完成後）
 
@@ -86,14 +86,14 @@ npx.cmd --yes supabase functions deploy set-locked
   > ✅ **部署** 2026-10-30 晚：`npx supabase login`（PowerShell 要用 `npx.cmd`）後 `functions deploy claim-seat` 成功。真 API 已驗 15 條：正常 claim／第二人同格 409 taken／公益小位・大位・已鎖無障礙 400／重機・工作人員・錯車號 403／無 op・無持有 release 400／換格釋放舊格／同格冪等／release 清欄＋解鎖；locked_seat 與 audit_log（seat.claim／seat.release）皆正確。⚠️ **「時窗外」路徑未實打**（改 secret 被權限擋），邏輯僅日期字串比對。
   > ⚠️ **時窗 secret 目前是 `CLAIM_WINDOW=2026-10-01..2026-12-31`（已設、現在就能選）**：函式預設 `2026-11-15..2026-11-30`。**11/15 前**要 `npx supabase secrets unset CLAIM_WINDOW` 讓正式時窗生效，否則 12/1 後仍可線上選位。
   > ⬜ **11/15 前清測試資料**：Z 棟／測試戶線上選定的小位要 release（維護頁解鎖該格＋清車）；併入既有「清場檢查點」。
-  > ✅ 2026-11-02 補兩個鎖定漏洞（程式已改、**函式未部署**）：`assign-seat` 指派已掛別台車的格改回 409（原本 upsert 會配給第二人）；`set-locked` 改只增減指定格，解除時略過已掛車的格（原本整批取代會洗掉住戶的鎖）。部署時兩支要一起上。`locked.js` 暫送完整清單相容舊版函式，部署後可移除。
+  > ✅ 2026-11-02 補兩個鎖定漏洞（已部署）：`assign-seat` 指派已掛別台車的格改回 409（原本 upsert 會配給第二人）；`set-locked` 改只增減指定格，解除時略過已掛車的格（原本整批取代會洗掉住戶的鎖）。`locked.js` 暫送完整清單相容舊版函式，部署後可移除。
 - [x] **重機限相鄰兩個大位、不開放無障礙位、排一般機車之後才抽** ✅ 2026-10-30：`HEAVY_PAIR_TYPES={大}`、`takeHeavy` 拿掉無障礙單格路徑、R0 排除重機、R1/R2+ 排除重機、新增獨立「重機」輪（R2+ 之後、電腦選位之前；依第幾輛分組、順序號接續）；`SelectView` 重機戶不再可點無障礙；`check-roster` 3.7 改驗兩格皆大位；docs/01、AllocateView 說明同步。測試 232 綠。
   > ⬜ **資料操作（維護頁）**：無障礙保留 108、194 **解鎖**（會議：不用再鎖，無障礙限身障者、由 R0 配）。docs/01 L76 保留格表待刪。
 - [x] **無障礙位只由櫃台指派** ✅ 2026-11-02（使用者定，現況無人使用）：`distribute` 拿掉 Round 0，身障旗標只是申請；未核驗照一般抽籤、志願指名無障礙不配；櫃台指派走 preset 記為無障礙。`check-roster` 第 2 項改列「尚未核驗指派」（標無志願）與超額預警。
   > ⚠️ 紙本表「※ 免填：…無障礙位」未改：未核驗又沒排志願會落選，表單措辭待使用者決定（也可靠 `check-roster` 名單由櫃台提醒）。
 - [ ] **社宅不參與抽籤 → 公益位整批鎖定**（會議：鎖起來最簡單）：維護頁批次鎖定 `1-7,92-104`（機車 20 格）；車種切自行車後鎖 `114-118`。引擎／選位頁本就排除鎖定格，不用改程式；引擎社宅分支維持 12/1 後再清。⚠️ 鎖之前先確認沒有社宅戶殘留登記（`check-roster` 第 1 項）。
-- [ ] **登記期限 11/15 00:00 – 11/30 23:59** 程式已改、**函式未部署**（2026-11-02 部署被權限擋，須使用者執行或放行）：`register`／`update-household`／`save-wishes`／`claim-seat` 共用 `_shared/window.ts`（`CLAIM_WINDOW` 覆蓋）；登入查詢不限。管理員帳號可在登記頁櫃台補登（截止後仍可）。
-  > ⬜ 部署：`register`、`update-household`、`save-wishes`、`claim-seat` 四支都要；部署後打真 API 驗開放期流程。⚠️ 時窗外未實打：`CLAIM_WINDOW` 開著。11/14 `secrets unset` 後要實測：一般戶 register／update／save-wishes／claim 應 403、admin 補登應成功。
+- [x] **登記期限 11/15 00:00 – 11/30 23:59** ✅ 2026-11-02 已部署：`register`／`update-household`／`save-wishes`／`claim-seat` 共用 `_shared/window.ts`（`CLAIM_WINDOW` 覆蓋）；登入查詢不限。管理員帳號可在登記頁櫃台補登（截止後仍可）。
+  > ⚠️ 時窗外未實打：`CLAIM_WINDOW` 開著。11/14 `secrets unset` 後要實測：一般戶 register／update／save-wishes／claim 應 403、admin 補登應成功。
 
 ## 📋 2026-10-20 經理新決策與待回覆（11/15 開放登記前要收）
 
