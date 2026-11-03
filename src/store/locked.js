@@ -34,9 +34,8 @@ export async function refreshLocked() {
   }
 }
 
-// 批次鎖定／解除，只增減指定格。管理員驗證由 adminAuth() 提供（密碼 or 車牌擁有權）。
+// 批次鎖定／解除，只增減指定格（set-locked 2026-11-02 起只認 op＋異動）。管理員驗證由 adminAuth() 提供（密碼 or 車牌擁有權）。
 // 回傳 skipped：已掛車而未解除的格。
-// 「車位編號」是給尚未更新的舊版函式用的完整清單（舊版只認它）；缺它舊版會清空全部鎖，部署完成後可移除。
 export async function batchLock(mode, ids) {
   const changes = [...new Set((ids || []).map(String))]
   const changeSet = new Set(changes)
@@ -45,7 +44,7 @@ export async function batchLock(mode, ids) {
   let skipped = []
   if (useSupabase) {
     const { data, error } = await (await client()).functions.invoke('set-locked', {
-      body: { op: mode, 異動: changes, 車位編號: next, ...adminAuth() },
+      body: { op: mode, 異動: changes, ...adminAuth() },
     })
     let msg = error?.message
     try {
