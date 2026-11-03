@@ -84,6 +84,9 @@ const seed = ref('2027樂菲莊園機車車位抽籤')
 const stage = ref('all')
 const onlyPaid = ref(false) // 第二輪：只分給已繳費者（未繳列「視同放棄」）
 const seqStart = ref(0) // 第二輪：順序號接續第一輪最後一號（第一輪結果 summary.順序號迄）
+// 第二輪：第 2 輛起的電腦補位先取小位。tower-priority 只排了大位，不開的話 400 台名冊演練重機只配到 1/18
+// （2026-11-03 scripts/simulate-two-stage.mjs）；開了 17/18、一般機車仍全部有位。待管委會定，先預設開。
+const extraSmallFirst = ref(true)
 const result = ref(null)
 // 自行車另跑一支引擎（辦法伍三：直接抽車位、不填志願）。刻意不與機車合併，
 // 讓 12/1 機車抽籤的程式路徑完全不受自行車影響 —— 見 distribute-bikes.js 檔頭。
@@ -100,6 +103,7 @@ function run() {
     stage: stage.value,
     onlyPaid: stage.value === '2' && onlyPaid.value,
     seqStart: stage.value === '2' ? Number(seqStart.value) || 0 : 0,
+    extraSmallFirst: stage.value === '2' && extraSmallFirst.value,
   })
   result.value = r
   // 種子由同一個輸入衍生 → 一組種子可重現兩邊，但兩邊的亂數流互不干擾。
@@ -285,6 +289,7 @@ function downloadResultCSV(pub = true) {
         <div v-if="stage === '2'" class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
           <label class="inline-flex items-center gap-1"><input v-model="onlyPaid" type="checkbox" /> 只分給已繳費者（未繳列「視同放棄」；收費流程待經理確認）</label>
           <label class="inline-flex items-center gap-1">順序號接續 <input v-model.number="seqStart" type="number" min="0" class="w-16 rounded border border-slate-300 px-1 py-0.5" /> 號之後</label>
+          <label class="inline-flex items-center gap-1"><input v-model="extraSmallFirst" type="checkbox" /> 第 2 輛起補位先取小位（把相鄰大位留給重機；關掉則重機幾乎排不到）</label>
           <span>名冊請用第一輪發佈後重新匯出的（中籤者帶車位編號＝免抽）；發佈只寫入本輪新配的，不動第一輪。</span>
         </div>
       </fieldset>

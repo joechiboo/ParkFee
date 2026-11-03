@@ -214,6 +214,9 @@ export function distribute({
   stage = 'all',
   onlyPaid = false, // stage 2 專用：只分給已繳費者，未繳列「視同放棄」（preset 未繳者只警告，釋出要在維護頁解除）
   seqStart = 0, // 順序號起算（stage 2 可接續第一輪最後一號；預設從 1 開始）
+  // stage 2 專用：第 2 輛起的電腦補位先取小位、再取大位（tower-priority 只排了大位，一般機車全往大位塞會把
+  //   重機要的相鄰兩大位用光）。第 1 輛補位不受影響，仍是本棟靠電梯。待管委會定，預設關。
+  extraSmallFirst = false,
 }) {
   const ADJ = adjacency ?? REAL_ADJ
   const STAGE = stage === 1 || stage === '1' ? 1 : stage === 2 || stage === '2' ? 2 : 'all'
@@ -334,8 +337,10 @@ export function distribute({
     say(`R1 一戶一位：抽籤 ${others.length}，剩餘 ${pool.remaining()}`)
     rounds.push({ round: 1, name: '一戶一位', draws, assignments: a })
   }
-  // stage 2：第 1 輛落空者（第一輪沒配到的）先由電腦補位，排在第 2 輛抽籤之前（繳了就要有位）。
-  if (STAGE === 2) runComputer({ force: true, nths: (n) => n === 1, name: '電腦補位（第 1 輛落空者）', round: '電腦1' })
+  // stage 1：與 'all' 相同，第 1 輛志願落空且勾「電腦選號」者在 12/1 就補位（docs/01：有勾就補、沒勾列落選）；沒勾者留到第二輪。
+  if (STAGE === 1) runComputer({ nths: (n) => n === 1, name: '電腦選位（第 1 輛，本棟靠電梯補位）', round: '電腦' })
+  // stage 2：第 1 輛落空者（第一輪沒配到的）先由電腦補位，排在第 2 輛抽籤之前（繳了就要有位；候選序用完就取任一可用位）。
+  if (STAGE === 2) runComputer({ force: true, fallback: true, nths: (n) => n === 1, name: '電腦補位（第 1 輛落空者）', round: '電腦1' })
 
   // ── Round 2+：第二位起（依序用前一輪剩餘；耗盡則自然全落選）──────────
   const generalExtra = pending.filter((e) => e.第幾輛 >= 2)
@@ -362,7 +367,9 @@ export function distribute({
   //    社宅戶＝「公益位由小到大」（僅 20 格、同一區，不需分棟排序；tower-priority 不含公益位）。
   //    保底一位優先：先第 1 輛、再第 2 輛+，同組依順序號。凍結位不在池中 → 自動略過。
   //    'all'：只救有勾「電腦選號」者，跑一次；stage 2：落空者一律補位（force），第 1 輛在第 2 輛抽之前先補。
-  function runComputer({ force = false, nths = null, name = '電腦選位（本棟靠電梯補位）', round = '電腦' } = {}) {
+  //    fallback：候選序（只有大位）用完後，改取全場最低號可用位（先小後大）——「繳了就要有位」只在 stage 2 強制補位時開。
+  //    smallFirst：先取全場最低號小位，取不到才走候選序（stage 2 第 2 輛起、extraSmallFirst 時）。
+  function runComputer({ force = false, nths = null, name = '電腦選位（本棟靠電梯補位）', round = '電腦', fallback = false, smallFirst = false } = {}) {
     const key = (x) => `${x.戶號}|${x.車號}|${x.第幾輛}`
     // 公益位候選序：優先用 tower-priority.json 的區順序（zones.公益，可手排），
     // 其後補上池中未列於該序的公益位（依編號）→ 測試 fixture／新解鎖格都吃得到。
@@ -391,13 +398,16 @@ export function distribute({
     for (const { l, e } of targets) {
       const ok = eligibleFor(e)
       let picked = null
-      for (const id of pickOrder(e.戶號, e)) {
-        const s0 = pool.seatOf(id)
-        if (s0 && pool.isAvail(id) && COMPAT.general.includes(s0.type) && ok(s0)) {
-          picked = pool.take(id)
-          break
+      if (smallFirst) picked = pool.takeLowest('小', ok)
+      if (!picked)
+        for (const id of pickOrder(e.戶號, e)) {
+          const s0 = pool.seatOf(id)
+          if (s0 && pool.isAvail(id) && COMPAT.general.includes(s0.type) && ok(s0)) {
+            picked = pool.take(id)
+            break
+          }
         }
-      }
+      if (!picked && fallback) picked = pool.takeLowest('小', ok) || pool.takeLowest('大', ok)
       if (!picked) continue // 本棟＋鄰棟皆無剩 → 維持落選
       record(e, [{ id: picked.id, type: picked.type }], VIA.COMPUTER, l.輪次, l.順序號)
       assignedHouse.add(e.戶號)
@@ -412,7 +422,8 @@ export function distribute({
     }
   }
   if (STAGE === 'all') runComputer()
-  if (STAGE === 2) runComputer({ force: true, nths: (n) => n >= 2, name: '電腦補位（第 2 輛起落空者）', round: '電腦2' })
+  if (STAGE === 2)
+    runComputer({ force: true, fallback: true, smallFirst: extraSmallFirst, nths: (n) => n >= 2, name: '電腦補位（第 2 輛起落空者）', round: '電腦2' })
 
   // ── stage 2：重機（一般機車全部確定後才抽；相鄰兩個大位，不得用無障礙位）────────
   if (heavyDraw.length) {
@@ -448,7 +459,7 @@ export function distribute({
     //    住戶申請第一個車位時工作人員須無條件讓出，先給了再收回徒增糾紛。
     //    （僅第 2、3 輛落選者不擋：辦法規定工作人員讓位順位在「一戶多位」住戶之前，
     //      即第二位以上之需求不優先於工作人員。）
-    const unplaced = lost.filter((l) => l.第幾輛 === 1 && !assignedHouse.has(l.戶號))
+    const unplaced = lost.filter((l) => l.第幾輛 === 1 && l.原因 !== REASON.HEAVY_SHORT && !assignedHouse.has(l.戶號))
     if (unplaced.length) {
       for (const e of [...staff, ...heavyStaff]) lose(e, '工作人員', REASON.STAFF_PENDING)
       say(`工作人員：${staff.length + heavyStaff.length} 台全數暫緩——尚有 ${unplaced.length} 戶未配到車位（住戶優先）`)

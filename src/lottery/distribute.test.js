@@ -616,17 +616,61 @@ describe('兩輪抽籤（stage 1＝12/1 只抽第 1 輛；stage 2＝12/15 補位
     expect(r.rounds.map((x) => x.round)).toEqual([1]) // 沒有 R2、電腦、工作人員輪
   })
 
-  it('stage 1：第 1 輛落空者維持落選（即使勾電腦選號），補位留到第二輪', () => {
+  it('stage 1：第 1 輛落空者有勾電腦選號 → 12/1 就補位；沒勾 → 落選留到第二輪', () => {
     const r = run(
       [
         { 戶號: 'A', 車號: 'A1', 第幾輛: 1, 車位志願: ['2'], 電腦選號: 'Y' },
         { 戶號: 'B', 車號: 'B1', 第幾輛: 1, 車位志願: ['2'], 電腦選號: 'Y' },
+        { 戶號: 'C', 車號: 'C1', 第幾輛: 1, 車位志願: ['2'] },
       ],
       { stage: 1, computerPickOrder: pick },
     )
-    expect(r.assigned).toHaveLength(1)
-    expect(r.落選).toHaveLength(1)
-    expect(r.rounds.some((x) => String(x.round).startsWith('電腦'))).toBe(false)
+    expect(r.assigned).toHaveLength(2) // 志願中者＋勾選補位者
+    expect(r.assigned.some((a) => a.配位方式 === VIA.COMPUTER)).toBe(true)
+    expect(r.落選.map((l) => l.車號)).toEqual(['C1'])
+    expect(r.rounds.map((x) => x.round)).toEqual([1, '電腦'])
+  })
+
+  it('stage 2：候選序只排了大位且用完 → 強制補位改取任一可用位（先小後大），繳了就要有位', () => {
+    const r = run(
+      [
+        { 戶號: 'A', 車號: 'A1', 第幾輛: 1, 車位志願: ['2'], 車位編號: '2', 已繳費: 'Y' },
+        { 戶號: 'B', 車號: 'B1', 第幾輛: 1, 車位志願: ['2'], 車位編號: '3', 已繳費: 'Y' },
+        { 戶號: 'C', 車號: 'C1', 第幾輛: 1, 車位志願: ['2'] },
+      ],
+      { stage: 2, computerPickOrder: () => ['2', '3'] }, // 候選序裡的大位都被第一輪拿走
+    )
+    const c = r.assigned.find((a) => a.車號 === 'C1')
+    expect(c.車位編號).toBe('1') // 最低號小位
+    expect(c.配位方式).toBe(VIA.COMPUTER)
+    expect(r.落選).toHaveLength(0)
+  })
+
+  it('stage 2 extraSmallFirst：第 2 輛起補位先取小位，大位留給重機', () => {
+    const roster = [
+      { 戶號: 'A', 車號: 'A1', 第幾輛: 1, 車位志願: ['1'], 車位編號: '1', 已繳費: 'Y' },
+      { 戶號: 'A', 車號: 'A2', 第幾輛: 2, 車位志願: ['9'] }, // 志願落空 → 補位
+      { 戶號: 'H', 車號: 'H1', 第幾輛: 1, 車種: '重機' },
+    ]
+    const off = run(roster, { stage: 2, computerPickOrder: () => ['2', '3', '4'] })
+    expect(off.assigned.find((a) => a.車號 === 'A2').車位編號).toBe('2') // 吃掉大位 → 重機湊不到對
+    expect(off.落選.map((l) => l.車號)).toEqual(['H1'])
+    const on = run(roster, { stage: 2, computerPickOrder: () => ['2', '3', '4'], extraSmallFirst: true })
+    expect(on.assigned.find((a) => a.車號 === 'A2').車位編號).toBe('4') // 先取小位
+    expect(on.assigned.find((a) => a.車號 === 'H1').車位編號).toBe('2、3')
+  })
+
+  it('stage 2：重機湊不到相鄰兩格不擋工作人員撿剩位（讓出單格也幫不了重機）', () => {
+    const r = run(
+      [
+        { 戶號: 'G', 車號: 'G1', 第幾輛: 1, 車位志願: ['2'] },
+        { 戶號: 'H', 車號: 'H1', 第幾輛: 1, 車種: '重機' },
+        { 戶號: '員工-S', 車號: 'S1', 第幾輛: 1, 車位志願: ['1'], 工作人員: 'Y' },
+      ],
+      { stage: 2, computerPickOrder: pick },
+    )
+    expect(r.assigned.find((a) => a.車號 === 'S1')?.車位編號).toBe('1')
+    expect(r.落選.map((l) => [l.車號, l.原因])).toEqual([['H1', REASON.HEAVY_SHORT]])
   })
 
   it('stage 1：重機照舊列待安排（HEAVY_WAIT）', () => {
