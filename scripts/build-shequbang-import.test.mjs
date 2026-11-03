@@ -4,6 +4,7 @@ import { describe, it, expect } from 'vitest'
 import {
   householdIdOf,
   feeByHousehold,
+  feeByRoster,
   fillMotorFee,
   addressIndex,
   buildStandaloneRows,
@@ -47,6 +48,28 @@ describe('householdIdOf — 門牌＋樓層 → 戶號', () => {
     expect(householdIdOf('', '2')).toBe(null)
     expect(householdIdOf('#A1-375', '')).toBe(null)
     expect(householdIdOf('亂碼', '2')).toBe(null)
+  })
+})
+
+describe('feeByRoster — 登記名冊 → 每戶應繳（有登記就算錢）', () => {
+  const base = { 第幾輛: '1', 身障: '否', 志願小位: '否', 登記時間: '2026-11-15 08:00:00', 聯絡電話: '0910000000', 車位志願: '', 志願落選保底: '是', 社宅: '否', 工作人員: 'N', 來源: '紙本', 車位編號: '', 已繳費: '' }
+  it('依車種計費逐台加總：一般 1,200、重機 3,600、自行車 0；沒配位也收', () => {
+    const { byHousehold } = feeByRoster([
+      { ...base, 戶號: 'A2-1', 車號: 'AAA-0001', 車種: '一般（≤250CC）', 第幾輛: '1' },
+      { ...base, 戶號: 'A2-1', 車號: 'AAA-0002', 車種: '重機（250CC↑）', 第幾輛: '2' },
+      { ...base, 戶號: 'A2-1', 車號: 'BIKE-1', 車種: '自行車', 第幾輛: '1' },
+    ])
+    expect(byHousehold.get('A2-1')).toEqual({ 金額: 4800, 台數: 3 })
+  })
+
+  it('社宅戶跳過不出帳並列入報告；工作人員照收', () => {
+    const { byHousehold, 社宅跳過 } = feeByRoster([
+      { ...base, 戶號: 'B3-2', 車號: 'BBB-0001', 車種: '一般', 社宅: '是' },
+      { ...base, 戶號: '員工-01', 車號: 'CCC-0001', 車種: '一般', 工作人員: 'Y' },
+    ])
+    expect(byHousehold.has('B3-2')).toBe(false)
+    expect(社宅跳過).toEqual(['B3-2'])
+    expect(byHousehold.get('員工-01').金額).toBe(1200)
   })
 })
 

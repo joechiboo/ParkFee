@@ -9,10 +9,14 @@
 // ⚠️ 只讀不寫原檔：管理費／汽車清潔費等欄一律照抄，我們只碰「機車清潔費」。
 //
 // 用法：
-//   node scripts/build-shequbang-import.mjs --fee <物業月結檔.csv> --result <配位結果.csv> [--out <輸出.csv>]
-//   node scripts/build-shequbang-import.mjs --fee ... --result ... --dry   # 只驗證不寫檔
+//   node scripts/build-shequbang-import.mjs --fee <範例檔或物業月結檔.csv> --roster <登記名冊.csv> --announce 2026-12-01 --due 2026-12-10 --out <輸出.csv>
+//       ↑ 「有登記就算錢」（經理 11/02 方向、12/2 一次出帳）：依登記名冊每台計費，不看配位結果
+//   node scripts/build-shequbang-import.mjs --fee ... --result <配位結果.csv> ...   # 依配位結果（只收有配到位的）
+//   加 --dry 只驗證不寫檔
 import { readFileSync, writeFileSync } from 'node:fs'
 import { parseCSVObjects } from '../src/data/csv.js'
+import { buildRoster } from '../src/data/registry.js'
+import { feeFor } from '../src/data/fee.js'
 import { encodeBig5, decodeBig5 } from './lib/big5.mjs'
 
 // ── 社區幫「新增繳費單 → 下載範例檔」欄位（2026-11-03 下載；順序即輸出順序，社區幫依欄位順序匯入）──
@@ -78,6 +82,27 @@ export function householdIdOf(門牌, 樓層) {
   const 樓 = Number(raw)
   if (樓 < 1) return null
   return `${m[1]}${樓}-${Number(m[2])}`
+}
+
+// 登記名冊 → 戶號 → 應繳總額（「有登記就算錢」：12/2 一次出帳，依登記車輛計費，不看配位結果）。
+//   經理 11/02 方向：第一輪只抽第 1 輛，但帳單按登記台數一次收；重機未抽亦收 3,600；自行車 0 元不出帳。
+//   社宅戶不登記（公益位由社宅單位自排、另開帳單），名冊內若有「社宅＝Y」者一律跳過並列入報告。
+//   名冊衝突（同戶重複登記等）由 buildRoster 已取最新一次，這裡只回報筆數供核對。
+export function feeByRoster(rosterRows) {
+  const { entries, conflicts } = buildRoster(rosterRows)
+  const acc = new Map()
+  const 社宅跳過 = new Set()
+  for (const e of entries) {
+    if (e.社宅 === 'Y') {
+      社宅跳過.add(e.戶號)
+      continue
+    }
+    const cur = acc.get(e.戶號) || { 金額: 0, 台數: 0 }
+    cur.金額 += feeFor(e.車種)
+    cur.台數 += 1
+    acc.set(e.戶號, cur)
+  }
+  return { byHousehold: acc, 社宅跳過: [...社宅跳過], 衝突數: conflicts.length, 登記台數: entries.length }
 }
 
 // 配位結果 → 戶號 → 應繳總額。
@@ -250,12 +275,18 @@ const isMain = process.argv[1] && import.meta.url.endsWith(process.argv[1].repla
 if (isMain) {
   const feePath = arg('fee')
   const resultPath = arg('result')
+  const rosterPath = arg('roster')
   const outPath = arg('out')
   const dry = process.argv.includes('--dry')
 
-  if (!feePath || !resultPath) {
+  if (!feePath || (!resultPath && !rosterPath) || (resultPath && rosterPath)) {
     console.error(`用法：
-  node scripts/build-shequbang-import.mjs --fee <物業月結檔.csv> --result <配位結果.csv> [選項]
+  node scripts/build-shequbang-import.mjs --fee <範例檔或物業月結檔.csv> --roster <登記名冊.csv> [選項]
+  node scripts/build-shequbang-import.mjs --fee <範例檔或物業月結檔.csv> --result <配位結果.csv> [選項]
+
+計費依據（二擇一）：
+  --roster <登記名冊.csv>   「有登記就算錢」：依名冊每台計費（一般 1,200／重機 3,600／自行車 0），社宅戶跳過
+  --result <配位結果.csv>   依配位結果：只收狀態 分配／已繳 者
 
 模式：
   --mode standalone   （預設）獨立出一張「機車位費用」帳單，其餘費用欄掛 0，只列有金額的戶
@@ -283,8 +314,14 @@ if (isMain) {
 
   // --fee 可給物業月結檔，也可給社區幫「下載範例檔」（全戶門牌齊、每格 ="值" 包法先剝掉）。
   const feeRows = parseCSVObjects(stripExcelWrap(decodeBig5(readFileSync(feePath))))
-  const resultRows = parseCSVObjects(readFileSync(resultPath, 'utf8'))
-  const byHousehold = feeByHousehold(resultRows)
+  let byHousehold
+  let rosterInfo = null
+  if (rosterPath) {
+    rosterInfo = feeByRoster(parseCSVObjects(readFileSync(rosterPath, 'utf8')))
+    byHousehold = rosterInfo.byHousehold
+  } else {
+    byHousehold = feeByHousehold(parseCSVObjects(readFileSync(resultPath, 'utf8')))
+  }
 
   const pad = (n) => String(n).padStart(6)
   let rows, report
@@ -342,6 +379,14 @@ if (isMain) {
     console.log(`出帳戶數          ${pad(report.出帳戶數)}`)
   }
 
+  if (rosterInfo) {
+    const 台數 = [...byHousehold.values()].reduce((s, v) => s + v.台數, 0)
+    console.log(`計費依據          登記名冊（有登記就算錢）：登記 ${rosterInfo.登記台數} 台 → 計費 ${台數} 台／${byHousehold.size} 戶`)
+    if (rosterInfo.衝突數) console.log(`                  ⚠ 名冊衝突 ${rosterInfo.衝突數} 筆（已取最新一次，請先跑 check-roster 核對）`)
+    if (rosterInfo.社宅跳過.length) console.log(`                  ⚠ 社宅戶 ${rosterInfo.社宅跳過.length} 戶不出帳（公益位由社宅單位另開帳單）：${rosterInfo.社宅跳過.join('、')}`)
+  } else {
+    console.log('計費依據          配位結果（只收狀態 分配／已繳）')
+  }
   console.log(`應收總額          ${pad(report.應收總額)}`)
   console.log(`輸出總額          ${pad(report.輸出總額)}`)
 
