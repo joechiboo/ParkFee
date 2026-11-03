@@ -39,5 +39,5 @@ v1 只處理 **戶號＋車號**，不存身分證號 — 簽約與身分查驗�
 
 ## 開發
 
-文檔索引見 [docs/README.md](docs/README.md)。架構/資料 schema 見 [docs/12](docs/12-機制合規與建置規劃.md)、決策見 [docs/10](docs/10-規則決策總表.md)、進度見 [docs/13](docs/13-功能流程與進度.md)。
+文檔索引見 [docs/README.md](docs/README.md)。架構/資料 schema 見 [docs/12](docs/12-機制合規與建置規劃.md)、決策見 [docs/10](docs/10-規則決策總表.md)、時程與進度見 [docs/00](docs/00-年度作業時間線.md)。
 （原始建置規格 HANDOFF 已整併歸檔於 `docs/archive/`。）
