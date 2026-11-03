@@ -584,3 +584,147 @@ describe('電腦選位 — 志願落空 + 勾電腦選號 → 自動配本棟靠
     expect(c.車位編號).toBe('274') // AB 棟靠電梯第 1 位
   })
 })
+
+describe('兩輪抽籤（stage 1＝12/1 只抽第 1 輛；stage 2＝12/15 補位、第 2 輛起、重機、工作人員）', () => {
+  const pick = () => ['3', '1', '4'] // 注入電腦選位候選序（測試不吃真實棟別）
+
+  it('預設 stage all：行為不變，summary 多出 待第二輪 0／未繳費 0、stage 為 all', () => {
+    const r = run([{ 戶號: 'A', 車號: 'A1', 第幾輛: 1, 車位志願: ['2'] }])
+    expect(r.stage).toBe('all')
+    expect(r.summary.待第二輪).toBe(0)
+    expect(r.summary.未繳費).toBe(0)
+    expect(r.assigned[0].車位編號).toBe('2')
+  })
+
+  it('stage 1：只抽第 1 輛；第 2 輛與工作人員列「待第二輪」、不算落選、不佔位', () => {
+    const r = run(
+      [
+        { 戶號: 'A', 車號: 'A1', 第幾輛: 1, 車位志願: ['2', '3'] },
+        { 戶號: 'A', 車號: 'A2', 第幾輛: 2, 車位志願: ['2', '3'] },
+        { 戶號: '員工-S', 車號: 'S1', 第幾輛: 1, 車位志願: ['3'], 工作人員: 'Y' },
+      ],
+      { stage: 1 },
+    )
+    expect(r.stage).toBe(1)
+    expect(r.assigned.map((a) => a.車號)).toEqual(['A1'])
+    expect(r.落選).toHaveLength(0)
+    expect(r.待安排.map((w) => [w.車號, w.原因])).toEqual([
+      ['A2', REASON.NEXT_STAGE],
+      ['S1', REASON.NEXT_STAGE],
+    ])
+    expect(r.summary.待第二輪).toBe(2)
+    expect(r.rounds.map((x) => x.round)).toEqual([1]) // 沒有 R2、電腦、工作人員輪
+  })
+
+  it('stage 1：第 1 輛落空者維持落選（即使勾電腦選號），補位留到第二輪', () => {
+    const r = run(
+      [
+        { 戶號: 'A', 車號: 'A1', 第幾輛: 1, 車位志願: ['2'], 電腦選號: 'Y' },
+        { 戶號: 'B', 車號: 'B1', 第幾輛: 1, 車位志願: ['2'], 電腦選號: 'Y' },
+      ],
+      { stage: 1, computerPickOrder: pick },
+    )
+    expect(r.assigned).toHaveLength(1)
+    expect(r.落選).toHaveLength(1)
+    expect(r.rounds.some((x) => String(x.round).startsWith('電腦'))).toBe(false)
+  })
+
+  it('stage 1：重機照舊列待安排（HEAVY_WAIT）', () => {
+    const r = run([{ 戶號: 'H', 車號: 'H1', 第幾輛: 1, 車種: '重機' }], { stage: 1 })
+    expect(r.待安排).toHaveLength(1)
+    expect(r.待安排[0].原因).toBe(REASON.HEAVY_WAIT)
+  })
+
+  it('stage 2：第一輪中籤者走 preset；第 1 輛落空者先電腦補位、再抽第 2 輛；第 2 輛落空也強制補位', () => {
+    const r = run(
+      [
+        { 戶號: 'A', 車號: 'A1', 第幾輛: 1, 車位志願: ['2', '3'], 車位編號: '2', 已繳費: 'Y' }, // 12/1 中籤
+        { 戶號: 'A', 車號: 'A2', 第幾輛: 2, 車位志願: ['2', '3'] },
+        { 戶號: 'B', 車號: 'B1', 第幾輛: 1, 車位志願: ['2'] }, // 12/1 落空、沒勾電腦選號
+      ],
+      { stage: 2, computerPickOrder: pick },
+    )
+    const by = Object.fromEntries(r.assigned.map((a) => [a.車號, a]))
+    expect(by.A1.車位編號).toBe('2')
+    expect(by.A1.輪次).toBe(0)
+    expect(by.B1.車位編號).toBe('3') // 第 1 輛落空者先補（候選序第一個可用＝3），排在 A2 之前
+    expect(by.B1.配位方式).toBe(VIA.COMPUTER)
+    expect(by.A2.車位編號).toBe('1') // 志願 2、3 都沒了 → 強制電腦補位，取候選序下一個
+    expect(by.A2.配位方式).toBe(VIA.COMPUTER)
+    expect(r.落選).toHaveLength(0)
+    expect(r.rounds.map((x) => x.round)).toEqual(['指派', 1, '電腦1', 2, '電腦2'])
+  })
+
+  it('stage 2：重機在一般機車之後抽，取相鄰兩大位、佔順序號、不再列待安排', () => {
+    const r = run([{ 戶號: 'H', 車號: 'H1', 第幾輛: 1, 車種: '重機' }], { stage: 2 })
+    expect(r.待安排).toHaveLength(0)
+    expect(r.assigned).toHaveLength(1)
+    expect(r.assigned[0].車位編號).toBe('2、3')
+    expect(r.assigned[0].輪次).toBe('重機')
+    expect(r.assigned[0].順序號).toBe(1)
+  })
+
+  it('stage 2：一般機車先拿走大位 → 重機湊不到相鄰兩大位 → 落選 HEAVY_SHORT', () => {
+    const r = run(
+      [
+        { 戶號: 'G', 車號: 'G1', 第幾輛: 1, 車位志願: ['2'] },
+        { 戶號: 'H', 車號: 'H1', 第幾輛: 1, 車種: '重機' },
+      ],
+      { stage: 2, computerPickOrder: pick },
+    )
+    expect(r.assigned.map((a) => a.車號)).toEqual(['G1'])
+    expect(r.落選[0]).toMatchObject({ 車號: 'H1', 原因: REASON.HEAVY_SHORT })
+  })
+
+  it('stage 2：工作人員排在重機之後；工作人員的重機最後取相鄰兩大位', () => {
+    const r = run(
+      [
+        { 戶號: '員工-S', 車號: 'S1', 第幾輛: 1, 車位志願: ['2'], 工作人員: 'Y' },
+        { 戶號: 'H', 車號: 'H1', 第幾輛: 1, 車種: '重機' },
+      ],
+      { stage: 2, computerPickOrder: pick },
+    )
+    const by = Object.fromEntries(r.assigned.map((a) => [a.車號, a]))
+    expect(by.H1.車位編號).toBe('2、3') // 重機先
+    expect(by.S1.車位編號).toBe('1') // 工作人員只剩小位可撿
+    const r2 = run([{ 戶號: '員工-S', 車號: 'S2', 第幾輛: 1, 車種: '重機', 工作人員: 'Y' }], { stage: 2 })
+    expect(r2.assigned[0]).toMatchObject({ 車號: 'S2', 車位編號: '2、3', 配位方式: VIA.STAFF, 順序號: null })
+  })
+
+  it('stage 2 onlyPaid：未繳費者列「視同放棄」不分配；preset 未繳只在 log 警告', () => {
+    const r = run(
+      [
+        { 戶號: 'A', 車號: 'A1', 第幾輛: 1, 車位志願: ['2'], 車位編號: '2', 已繳費: 'N' },
+        { 戶號: 'B', 車號: 'B1', 第幾輛: 1, 車位志願: ['3'], 已繳費: 'Y' },
+        { 戶號: 'C', 車號: 'C1', 第幾輛: 1, 車位志願: ['3'], 已繳費: 'N' },
+        { 戶號: 'H', 車號: 'H1', 第幾輛: 1, 車種: '重機', 已繳費: 'N' },
+      ],
+      { stage: 2, onlyPaid: true, computerPickOrder: pick },
+    )
+    expect(r.assigned.map((a) => a.車號).sort()).toEqual(['A1', 'B1'])
+    expect(r.待安排.map((w) => [w.車號, w.原因])).toEqual([
+      ['C1', REASON.UNPAID],
+      ['H1', REASON.UNPAID],
+    ])
+    expect(r.summary.未繳費).toBe(2)
+    expect(r.log.some((m) => m.includes('已指派但未繳費 1 台'))).toBe(true)
+  })
+
+  it('stage 2 seqStart：順序號接續第一輪最後一號', () => {
+    const r = run([{ 戶號: 'B', 車號: 'B1', 第幾輛: 1, 車位志願: ['2'] }], { stage: 2, seqStart: 40 })
+    expect(r.assigned[0].順序號).toBe(41)
+    expect(r.summary.順序號迄).toBe(41)
+  })
+
+  it('同 seed 兩階段皆可重現', () => {
+    const roster = [
+      { 戶號: 'A', 車號: 'A1', 第幾輛: 1, 車位志願: ['2'] },
+      { 戶號: 'B', 車號: 'B1', 第幾輛: 1, 車位志願: ['2'] },
+      { 戶號: 'B', 車號: 'B2', 第幾輛: 2, 車位志願: ['3'] },
+    ]
+    expect(run(roster, { stage: 1 }).assigned).toEqual(run(roster, { stage: 1 }).assigned)
+    expect(run(roster, { stage: 2, computerPickOrder: pick }).assigned).toEqual(
+      run(roster, { stage: 2, computerPickOrder: pick }).assigned,
+    )
+  })
+})

@@ -4,7 +4,7 @@ import { VIA, REASON } from '../lottery/distribute.js'
 //   供 AllocateView 下載配位結果 CSV，亦供 ResultView 顯示清單（同一份資料）。
 
 import { feeFor } from '../data/fee.js'
-import { HEAVY_WAIT_STATUS } from '../data/vehicleStatus.js'
+import { HEAVY_WAIT_STATUS, NEXT_STAGE_STATUS, FORFEIT_STATUS } from '../data/vehicleStatus.js'
 import { toCSV } from '../data/csv.js'
 import { displaySeatIds } from '../map/seat-id.js'
 
@@ -64,6 +64,9 @@ export function resultRows(result, { 公告日 = '', 公開版 = false } = {}) {
       備註: l.原因 || '',
     })
   }
+  // 待安排列：重機（待安排）／兩輪抽籤第一輪的第 2 輛起與工作人員（待第二輪）／第二輪未繳者（視同放棄）。
+  const waitStatus = (原因) =>
+    原因 === REASON.NEXT_STAGE ? NEXT_STAGE_STATUS : 原因 === REASON.UNPAID ? FORFEIT_STATUS : HEAVY_WAIT_STATUS
   for (const w of result.待安排 || []) {
     if (公開版 && w.工作人員) continue
     rows.push({
@@ -73,7 +76,7 @@ export function resultRows(result, { 公告日 = '', 公開版 = false } = {}) {
       車位類型: '',
       應繳金額: '',
       簽約期限: '',
-      狀態: HEAVY_WAIT_STATUS,
+      狀態: waitStatus(w.原因),
       備註: w.原因 || '',
     })
   }

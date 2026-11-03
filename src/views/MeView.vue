@@ -1,5 +1,5 @@
 <script setup>
-import { HEAVY_WAIT_STATUS } from '../data/vehicleStatus.js'
+import { HEAVY_WAIT_STATUS, NEXT_STAGE_STATUS } from '../data/vehicleStatus.js'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { login } from '../store/db.js'
@@ -101,8 +101,9 @@ function logout() {
                 <td class="px-3 py-2 text-sm">
                   <template v-if="v.配位狀態">
                     <!-- 有車位＝已配/已選定（綠：已繳；琥珀：待繳）；重機待安排（藍）；其餘沒車位＝落選/候補（紅） -->
-                    <span :class="v.車位編號 ? (v.已繳費 ? 'font-medium text-emerald-700' : 'font-medium text-amber-700') : v.配位狀態 === HEAVY_WAIT_STATUS ? 'text-sky-700' : 'text-rose-600'">{{ v.配位狀態 }}</span>
+                    <span :class="v.車位編號 ? (v.已繳費 ? 'font-medium text-emerald-700' : 'font-medium text-amber-700') : v.配位狀態 === HEAVY_WAIT_STATUS || v.配位狀態 === NEXT_STAGE_STATUS ? 'text-sky-700' : 'text-rose-600'">{{ v.配位狀態 }}</span>
                     <span v-if="!v.車位編號 && v.配位狀態 === HEAVY_WAIT_STATUS" class="text-slate-500">· 非重機車位確定後，若有多餘機車位再行安排</span>
+                    <span v-if="!v.車位編號 && v.配位狀態 === NEXT_STAGE_STATUS" class="text-slate-500">· 第 2 輛起於 12/15 第二輪再分配</span>
                     <span v-if="v.車位編號 && v.已繳費" class="text-slate-500">· 已繳費</span>
                     <span v-else-if="v.配位狀態 === '志願小位'" class="text-slate-500">· 一年 {{ feeFor(v.車種).toLocaleString() }} 元，請於 12/1 公告後 10 日內簽約繳費</span>
                     <span v-else-if="v.車位編號" class="text-slate-500">· {{ feeFor(v.車種) }} 元 · 簽約 {{ v.簽約期限 || '公告後10日內' }}</span>

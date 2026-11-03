@@ -1,7 +1,8 @@
-// POST /publish-result  { rows: [{車號, 車位編號, 車位類型, 狀態, 簽約期限}], password }
+// POST /publish-result  { rows: [{車號, 車位編號, 車位類型, 狀態, 簽約期限}], merge?, password }
 //   → { updated, notFound: [車號…] } | { error }
 // 物業發佈配位結果：回填到 vehicle（住戶登入即可看）。🔒 需管理員密碼（ADMIN_PASSWORD）。
-// 先清空所有 vehicle 的結果欄，再依 rows 寫入 → 重新發佈會覆蓋舊結果。
+// 預設先清空所有 vehicle 的結果欄，再依 rows 寫入 → 重新發佈會覆蓋舊結果。
+// merge=true（12/15 第二輪）：不清空，只寫入 rows 列出的車 → 第一輪已發佈的車位、狀態、簽約期限原封不動。
 // ⚠️ updated 用 .select() 取「實際更新到的列」＝真實命中數（避免 .eq() 配 0 列仍算成功的虛報）；
 //    車號不在 vehicle 者列入 notFound，讓物業知道哪些沒寫進（多半是匯入了非本 DB 的名冊）。
 import { corsHeaders, json, adminClient, verifyAdmin, audit } from '../_shared/http.ts'
@@ -16,13 +17,16 @@ Deno.serve(async (req) => {
     const db = adminClient()
     if (!(await verifyAdmin(db, body))) return json({ error: '管理員驗證失敗' }, 403)
     if (!Array.isArray(rows)) return json({ error: '缺少結果資料' }, 400)
+    const merge = body.merge === true
 
-    // 先清空舊結果（整表）。
-    const { error: clrErr } = await db
-      .from('vehicle')
-      .update({ 車位編號: null, 車位類型: null, 配位狀態: null, 簽約期限: null })
-      .neq('車號', '__none__')
-    if (clrErr) return json({ error: clrErr.message }, 400)
+    // 先清空舊結果（整表）；merge 模式略過，保留第一輪結果。
+    if (!merge) {
+      const { error: clrErr } = await db
+        .from('vehicle')
+        .update({ 車位編號: null, 車位類型: null, 配位狀態: null, 簽約期限: null })
+        .neq('車號', '__none__')
+      if (clrErr) return json({ error: clrErr.message }, 400)
+    }
 
     // 逐筆回填（依車號）。.select() 回實際更新到的列 → 真實命中；查無者列入 notFound。
     const updated: string[] = []
@@ -47,7 +51,7 @@ Deno.serve(async (req) => {
     // 稽核：發佈一出就定生死（住戶據此繳費），要能證明何時、發了幾筆、有幾筆對不上車號。
     await audit(db, 'result.publish', {
       body,
-      detail: { 送出: rows.length, 寫入: updated.length, 查無車號: notFound.length },
+      detail: { 送出: rows.length, 寫入: updated.length, 查無車號: notFound.length, merge },
     })
 
     return json({ updated: updated.length, notFound })

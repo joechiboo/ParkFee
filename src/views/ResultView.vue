@@ -6,7 +6,7 @@ import { computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { sessionHousehold, refreshHousehold } from '../store/session.js'
 import { feeFor } from '../data/fee.js'
-import { vehicleResultStatus } from '../data/vehicleStatus.js'
+import { vehicleResultStatus, NEXT_STAGE_STATUS } from '../data/vehicleStatus.js'
 import { displaySeatIds } from '../map/seat-id.js'
 import { displayVehicleLabel } from '../data/vehicle.js'
 
@@ -25,7 +25,7 @@ const CLS = {
 function labelOf(key, v) {
   if (key === 'paid') return '✅ 已繳費確認'
   if (key === 'pending') return '⚠️ 待繳費'
-  if (key === 'arranging') return '⏳ 重機待安排'
+  if (key === 'arranging') return v.配位狀態 === NEXT_STAGE_STATUS ? '⏳ 待第二輪（12/15）' : '⏳ 重機待安排'
   if (key === 'waitlist') return '❌ ' + v.配位狀態
   return '🔄 已登記·待配位'
 }

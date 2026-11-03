@@ -78,6 +78,12 @@ async function loadFromCloud() {
 
 // ── 抽籤狀態 ──
 const seed = ref('2027樂菲莊園機車車位抽籤')
+// 兩輪抽籤（2026-11-02 方向，收費流程待經理確認）：'all'＝一次跑完（每月演練、demo）；
+// '1'＝12/1 第一輪只抽每戶第 1 輛一般機車；'2'＝12/15 第二輪：第 1 輛落空者電腦補位 → 第 2 輛起 → 重機 → 工作人員。
+// 第二輪名冊要用第一輪發佈後重新匯出的（中籤者帶車位編號走 preset），發佈走 merge 不清第一輪。
+const stage = ref('all')
+const onlyPaid = ref(false) // 第二輪：只分給已繳費者（未繳列「視同放棄」）
+const seqStart = ref(0) // 第二輪：順序號接續第一輪最後一號（第一輪結果 summary.順序號迄）
 const result = ref(null)
 // 自行車另跑一支引擎（辦法伍三：直接抽車位、不填志願）。刻意不與機車合併，
 // 讓 12/1 機車抽籤的程式路徑完全不受自行車影響 —— 見 distribute-bikes.js 檔頭。
@@ -91,15 +97,22 @@ function run() {
     seats: seats.filter((s) => !lockedSeats.value.has(String(s.id))), // 扣掉鎖定車位
     seed: seed.value || 'parkfee',
     runAt,
+    stage: stage.value,
+    onlyPaid: stage.value === '2' && onlyPaid.value,
+    seqStart: stage.value === '2' ? Number(seqStart.value) || 0 : 0,
   })
   result.value = r
   // 種子由同一個輸入衍生 → 一組種子可重現兩邊，但兩邊的亂數流互不干擾。
-  bikeResult.value = distributeBikes({
-    registrations: registrations.value,
-    seats: bikeSeats().filter((s) => !lockedSeats.value.has(String(s.id))),
-    seed: (seed.value || 'parkfee') + '｜自行車',
-    runAt,
-  })
+  // 自行車只在第一輪（或一次跑完）抽；第二輪不再動自行車，避免 merge 發佈時重寫 12/1 的結果。
+  bikeResult.value =
+    stage.value === '2'
+      ? null
+      : distributeBikes({
+          registrations: registrations.value,
+          seats: bikeSeats().filter((s) => !lockedSeats.value.has(String(s.id))),
+          seed: (seed.value || 'parkfee') + '｜自行車',
+          runAt,
+        })
   history.value.unshift({
     seed: r.seed,
     seedHash: r.seedHash,
@@ -184,8 +197,11 @@ async function publishToBackend() {
   publishMsg.value = ''
   publishing.value = true
   try {
-    const rows = mergedResultRows([result.value, bikeResult.value], { 公告日: announceDate.value })
-    const { updated, notFound = [] } = await publishResult({ rows, ...adminAuth() })
+    // 第二輪：只寫入本輪新配的（輪次 0＝第一輪帶進來的 preset 不重送），後端 merge 不清空 → 第一輪結果不動。
+    const merge = result.value.stage === 2
+    const src = merge ? { ...result.value, assigned: result.value.assigned.filter((a) => a.輪次 !== 0) } : result.value
+    const rows = mergedResultRows([src, bikeResult.value], { 公告日: announceDate.value })
+    const { updated, notFound = [] } = await publishResult({ rows, merge, ...adminAuth() })
     const total = rows.filter((r) => r.車號).length
     if (notFound.length) {
       const show = notFound.slice(0, 10).join('、') + (notFound.length > 10 ? ` …等 ${notFound.length} 筆` : '')
@@ -252,12 +268,26 @@ function downloadResultCSV(pub = true) {
           <li><b>Round 2＋ 第二輛起</b>：用前輪剩餘車位依序取志願；耗盡則落選。</li>
         </ul>
         <p><b>重機</b>只登記、<b>不參與抽籤</b>，列「待安排」、不算落選；所有非重機車位確定後，若有多餘機車位再行安排，一台占<b>相鄰兩個大位</b>（不含小位、不得用無障礙位）。<b>社宅戶</b>只配<b>公益位</b>（一般戶反之不配公益位）。<b>志願全落空者</b>：勾「<b>電腦選號</b>」→ 系統自動配<b>本棟靠電梯剩位</b>（引擎內、可重現）；沒勾 → 列「落選名單」交物業第二階段（候補）。</p>
+        <p><b>兩輪抽籤</b>（2026-11-02 方向，收費流程待經理確認）：<b>12/1 第一輪</b>只抽每戶第 1 輛一般機車，第 2 輛起與工作人員列「待第二輪」、不算落選；<b>12/15 第二輪</b>用第一輪發佈後重新匯出的名冊（中籤者帶車位編號＝免抽），依序：第 1 輛落空者電腦補位 → 第 2 輛起依志願抽、落空者一律電腦補位 → 重機取相鄰兩大位 → 工作人員。第二輪發佈只寫入本輪新配的，不動第一輪。</p>
         <p class="text-slate-500">固定種子 → 結果可重現；種子／時間／各輪過程全留存供監察。重抽＝換新種子重跑，歷次紀錄保留。</p>
       </div>
     </details>
 
     <!-- 控制列 -->
     <div class="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
+      <fieldset class="w-full rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+        <legend class="px-1 text-xs font-medium text-slate-600">抽籤輪次</legend>
+        <div class="flex flex-wrap gap-x-4 gap-y-1">
+          <label class="inline-flex items-center gap-1"><input v-model="stage" type="radio" value="all" /> 一次跑完（每月演練）</label>
+          <label class="inline-flex items-center gap-1"><input v-model="stage" type="radio" value="1" /> 第一輪 12/1：只抽每戶第 1 輛一般機車</label>
+          <label class="inline-flex items-center gap-1"><input v-model="stage" type="radio" value="2" /> 第二輪 12/15：補位 → 第 2 輛起 → 重機 → 工作人員</label>
+        </div>
+        <div v-if="stage === '2'" class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
+          <label class="inline-flex items-center gap-1"><input v-model="onlyPaid" type="checkbox" /> 只分給已繳費者（未繳列「視同放棄」；收費流程待經理確認）</label>
+          <label class="inline-flex items-center gap-1">順序號接續 <input v-model.number="seqStart" type="number" min="0" class="w-16 rounded border border-slate-300 px-1 py-0.5" /> 號之後</label>
+          <span>名冊請用第一輪發佈後重新匯出的（中籤者帶車位編號＝免抽）；發佈只寫入本輪新配的，不動第一輪。</span>
+        </div>
+      </fieldset>
       <label class="block grow">
         <span class="text-sm font-medium text-slate-700">亂數種子（公開、可重現）</span>
         <input
@@ -293,9 +323,17 @@ function downloadResultCSV(pub = true) {
           <div class="text-xs text-rose-700">落選（待物業補位/候補）</div>
           <div class="text-xl font-semibold text-rose-800">{{ result.summary.落選 }}</div>
         </div>
-        <div v-if="result.summary.待安排" class="rounded-lg border border-sky-200 bg-sky-50 p-3">
+        <div v-if="result.summary.待安排 - result.summary.待第二輪 - result.summary.未繳費 > 0" class="rounded-lg border border-sky-200 bg-sky-50 p-3">
           <div class="text-xs text-sky-700">重機待安排（不抽籤）</div>
-          <div class="text-xl font-semibold text-sky-800">{{ result.summary.待安排 }}</div>
+          <div class="text-xl font-semibold text-sky-800">{{ result.summary.待安排 - result.summary.待第二輪 - result.summary.未繳費 }}</div>
+        </div>
+        <div v-if="result.summary.待第二輪" class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <div class="text-xs text-slate-600">待第二輪（12/15 再分配）</div>
+          <div class="text-xl font-semibold text-slate-800">{{ result.summary.待第二輪 }}</div>
+        </div>
+        <div v-if="result.summary.未繳費" class="rounded-lg border border-amber-200 bg-amber-50 p-3">
+          <div class="text-xs text-amber-700">未繳費視同放棄</div>
+          <div class="text-xl font-semibold text-amber-800">{{ result.summary.未繳費 }}</div>
         </div>
         <div class="rounded-lg border border-slate-200 bg-white p-3">
           <div class="text-xs text-slate-500">剩餘車位</div>
@@ -560,9 +598,9 @@ function downloadResultCSV(pub = true) {
         </div>
       </div>
 
-      <!-- 重機待安排：不參與抽籤、不算落選 -->
+      <!-- 待安排：重機（不參與抽籤、不算落選）／待第二輪（第一輪不抽的第 2 輛起）／未繳視同放棄 -->
       <div v-if="result.待安排?.length">
-        <div class="mb-2 text-sm font-medium text-sky-700">重機待安排（{{ result.待安排.length }}）— 不參與抽籤；非重機車位確定後，於維護頁指派相鄰兩個大位</div>
+        <div class="mb-2 text-sm font-medium text-sky-700">待安排（{{ result.待安排.length }}）— 重機：非重機車位確定後於維護頁指派相鄰兩個大位；待第二輪：12/15 再分配；視同放棄：未繳費</div>
         <div class="overflow-x-auto rounded-lg border border-sky-200">
           <table class="w-full text-sm">
             <thead class="bg-sky-50 text-sky-700">
@@ -571,6 +609,7 @@ function downloadResultCSV(pub = true) {
                 <th class="px-3 py-2 text-left font-medium">車號</th>
                 <th class="px-3 py-2 text-left font-medium">第幾輛</th>
                 <th class="px-3 py-2 text-left font-medium">身分</th>
+                <th class="px-3 py-2 text-left font-medium">原因</th>
               </tr>
             </thead>
             <tbody>
@@ -578,7 +617,8 @@ function downloadResultCSV(pub = true) {
                 <td v-if="showHousehold" class="px-3 py-1.5 font-mono text-xs">{{ w.戶號 }}</td>
                 <td class="px-3 py-1.5 font-mono text-xs">{{ w.車號 }}</td>
                 <td class="px-3 py-1.5">{{ w.第幾輛 }}</td>
-                <td class="px-3 py-1.5">{{ w.工作人員 ? '工作人員' : '住戶' }}</td>
+                <td class="px-3 py-1.5">{{ w.工作人員 ? '工作人員' : '住戶' }}{{ w.車種 === '重機' ? '・重機' : '' }}</td>
+                <td class="px-3 py-1.5 text-xs text-slate-600">{{ w.原因 }}</td>
               </tr>
             </tbody>
           </table>

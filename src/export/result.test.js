@@ -155,3 +155,20 @@ describe('重機待安排', () => {
     expect(resultRows(r, { 公開版: true }).map((x) => x.車號)).toEqual(['HV-1'])
   })
 })
+
+describe('兩輪抽籤的待安排列狀態', () => {
+  const r = {
+    assigned: [],
+    落選: [],
+    待安排: [
+      { 戶號: 'A1-1', 車號: 'N-1', 車種: '一般', 第幾輛: 2, 工作人員: false, 原因: REASON.NEXT_STAGE },
+      { 戶號: 'B1-1', 車號: 'U-1', 車種: '一般', 第幾輛: 1, 工作人員: false, 原因: REASON.UNPAID },
+      { 戶號: 'C1-1', 車號: 'HV-1', 車種: '重機', 第幾輛: 1, 工作人員: false, 原因: REASON.HEAVY_WAIT },
+    ],
+  }
+  it('依原因分別列 待第二輪／視同放棄／待安排，都不出金額與期限', () => {
+    const rows = resultRows(r, { 公告日: '2026-12-01' })
+    expect(rows.map((x) => x.狀態)).toEqual(['待第二輪', '視同放棄', '待安排'])
+    expect(rows.every((x) => x.應繳金額 === '' && x.簽約期限 === '')).toBe(true)
+  })
+})
