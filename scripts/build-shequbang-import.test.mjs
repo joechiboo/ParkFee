@@ -12,6 +12,16 @@ import {
   normalizeDate,
 } from './build-shequbang-import.mjs'
 import { encodeBig5, decodeBig5 } from './lib/big5.mjs'
+import { TEMPLATE_COLUMNS, TEMPLATE_ITEMS, stripExcelWrap } from './build-shequbang-import.mjs'
+
+describe('社區幫下載檔的 Excel 包法', () => {
+  it('剝掉 ="值" 後是一般 CSV，數字格不受影響', () => {
+    // 社區幫下載檔原樣：每格 "=""值"""，數字格不包
+    const q3 = '"'.repeat(3)
+    const raw = `"=""住戶住址(門牌號)${q3},"=""住戶住址(樓層)${q3},管理費\r\n"=""#A1-375${q3},2,0\r\n`
+    expect(stripExcelWrap(raw)).toBe('"住戶住址(門牌號)","住戶住址(樓層)",管理費\r\n"#A1-375",2,0\r\n')
+  })
+})
 
 describe('householdIdOf — 門牌＋樓層 → 戶號', () => {
   it('社區幫的中間數字是「單元」，戶號的是「樓層」，兩者對調', () => {
@@ -150,17 +160,20 @@ describe('獨立帳單模式', () => {
     expect(idx.get('H5-6')['住戶住址(門牌號)']).toBe('#H6-293')
   })
 
-  it('只出「機車清潔費」，其餘費用欄一律 0', () => {
+  it('照 2026-11-03 範例檔欄位：金額填「汽/機車清潔費」，管理費／郵資／附加費用一律 0', () => {
     const { rows } = buildStandaloneRows(
       new Map([['A2-1', { 金額: 4800, 台數: 2 }]]),
       addressIndex(feeRows),
       opts
     )
     expect(rows).toHaveLength(1)
-    expect(rows[0].機車清潔費).toBe('4800')
+    expect(rows[0]['汽/機車清潔費']).toBe('4800')
     expect(rows[0].管理費).toBe('0')
-    expect(rows[0].汽車清潔費).toBe('0')
+    expect(rows[0].郵資).toBe('0')
     expect(rows[0].附加費用).toBe('0')
+    expect(rows[0]['細項(列舉參考欄位)']).toBe(TEMPLATE_ITEMS)
+    expect(Object.keys(rows[0])).toEqual(TEMPLATE_COLUMNS) // 欄位順序＝範例檔
+    expect(rows[0]).not.toHaveProperty('機車清潔費') // 舊欄位不得殘留
     expect(rows[0].收費類別).toBe('2027年度機車位清潔費')
     expect(rows[0]['繳費期限(YYYY/MM/DD)']).toBe('2026/12/11')
   })

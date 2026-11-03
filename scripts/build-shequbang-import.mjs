@@ -15,7 +15,32 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { parseCSVObjects } from '../src/data/csv.js'
 import { encodeBig5, decodeBig5 } from './lib/big5.mjs'
 
-// ── 物業月結檔欄位（順序即輸出順序，不可更動：社區幫依欄位順序匯入）──
+// ── 社區幫「新增繳費單 → 下載範例檔」欄位（2026-11-03 下載；順序即輸出順序，社區幫依欄位順序匯入）──
+//   與 9/17 的物業月結檔不同：備註移到期限後、多「郵資」、汽車與機車清潔費合併成「汽/機車清潔費」。
+//   獨立帳單模式照這組輸出；merge 模式仍沿用舊物業月結檔欄位（下方 FEE_COLUMNS）。
+export const TEMPLATE_COLUMNS = [
+  '住戶住址(門牌號)',
+  '住戶住址(樓層)',
+  '住戶住址(之)',
+  '收費類別',
+  '細項(列舉參考欄位)',
+  '立帳通知日期(YYYY/MM/DD)',
+  '繳費期限(YYYY/MM/DD)',
+  '備註',
+  '管理費',
+  '郵資',
+  '汽/機車清潔費',
+  '附加費用',
+]
+export const TEMPLATE_TARGET_COL = '汽/機車清潔費'
+export const TEMPLATE_ITEMS = '#管理費#郵資#汽/機車清潔費#附加費用'
+
+// 社區幫下載的 CSV 每格包成 ="值" 防 Excel 吃掉前導 0；當 --fee 門牌來源前先剝掉。
+export function stripExcelWrap(text) {
+  return String(text).replace(/"=""/g, '"').replace(/"""/g, '"')
+}
+
+// ── 物業月結檔欄位（merge 模式；順序即輸出順序）──
 const FEE_COLUMNS = [
   '住戶住址(門牌號)',
   '住戶住址(樓層)',
@@ -132,7 +157,8 @@ export function addressIndex(feeRows) {
   return idx
 }
 
-// 獨立帳單模式：只出「機車位費用」一張帳，管理費／汽車清潔費／附加費用全掛 0。
+// 獨立帳單模式：只出「機車位費用」一張帳，管理費／郵資／附加費用全掛 0，金額填「汽/機車清潔費」。
+//   欄位照 TEMPLATE_COLUMNS（2026-11-03 範例檔）。
 //   相對於併入物業月結檔，好處是不受物業出檔時程綁住、沒有多列戶問題、帳單品名清楚。
 //   **只列有金額的戶**——全 655 戶都出一列會產生 400 多張 0 元帳單。
 export function buildStandaloneRows(byHousehold, addrIdx, opts = {}) {
@@ -140,7 +166,7 @@ export function buildStandaloneRows(byHousehold, addrIdx, opts = {}) {
     收費類別 = '',
     立帳通知日期 = '',
     繳費期限 = '',
-    細項 = '#管理費#汽車清潔費#機車清潔費#附加費用',
+    細項 = TEMPLATE_ITEMS,
     備註 = '',
   } = opts
   const rows = []
@@ -155,13 +181,13 @@ export function buildStandaloneRows(byHousehold, addrIdx, opts = {}) {
     rows.push({
       ...addr,
       收費類別,
-      備註,
       '細項(列舉參考欄位)': 細項,
       '立帳通知日期(YYYY/MM/DD)': 立帳通知日期,
       '繳費期限(YYYY/MM/DD)': 繳費期限,
+      備註,
       管理費: '0',
-      汽車清潔費: '0',
-      [TARGET_COL]: String(due.金額),
+      郵資: '0',
+      [TEMPLATE_TARGET_COL]: String(due.金額),
       附加費用: '0',
     })
   }
@@ -174,7 +200,7 @@ export function buildStandaloneRows(byHousehold, addrIdx, opts = {}) {
     report: {
       出帳戶數: rows.length,
       查無門牌,
-      輸出總額: rows.reduce((s, r) => s + Number(r[TARGET_COL] || 0), 0),
+      輸出總額: rows.reduce((s, r) => s + Number(r[TEMPLATE_TARGET_COL] || 0), 0),
       應收總額: [...byHousehold.values()].reduce((s, v) => s + v.金額, 0),
     },
   }
@@ -204,13 +230,13 @@ export function addDays(公告日, n) {
 }
 
 // 輸出 CSV 字串（欄位順序固定；社區幫檔無引號跳脫需求，但仍走同一套規則保險）。
-function toFeeCSV(rows) {
+function toFeeCSV(rows, columns = TEMPLATE_COLUMNS) {
   const esc = (v) => {
     const s = String(v ?? '')
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
   }
-  const lines = [FEE_COLUMNS.join(',')]
-  for (const r of rows) lines.push(FEE_COLUMNS.map((c) => esc(r[c])).join(','))
+  const lines = [columns.join(',')]
+  for (const r of rows) lines.push(columns.map((c) => esc(r[c])).join(','))
   return lines.join('\r\n') + '\r\n'
 }
 
@@ -255,7 +281,8 @@ if (isMain) {
     process.exit(1)
   }
 
-  const feeRows = parseCSVObjects(decodeBig5(readFileSync(feePath)))
+  // --fee 可給物業月結檔，也可給社區幫「下載範例檔」（全戶門牌齊、每格 ="值" 包法先剝掉）。
+  const feeRows = parseCSVObjects(stripExcelWrap(decodeBig5(readFileSync(feePath))))
   const resultRows = parseCSVObjects(readFileSync(resultPath, 'utf8'))
   const byHousehold = feeByHousehold(resultRows)
 
@@ -332,7 +359,7 @@ if (isMain) {
     console.log('\n--dry：不寫檔。')
   } else if (outPath) {
     const bad = new Set()
-    const buf = encodeBig5(toFeeCSV(rows), { onUnmappable: (c) => bad.add(c) })
+    const buf = encodeBig5(toFeeCSV(rows, mode === 'merge' ? FEE_COLUMNS : TEMPLATE_COLUMNS), { onUnmappable: (c) => bad.add(c) })
     if (bad.size) console.log(`\n⚠ 有 ${bad.size} 個字元無法以 Big5 編碼，已代換為 '?'：${[...bad].join('')}`)
     writeFileSync(outPath, buf)
     console.log(`\n已寫出 ${outPath}（Big5、無 BOM、${rows.length} 列）`)
