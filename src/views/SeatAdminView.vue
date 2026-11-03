@@ -19,7 +19,7 @@ const isLocked = (id) => lockedSeats.value.has(String(id))
 const saving = ref(false)
 const err = ref('')
 
-const assignments = ref([]) // 管理員專屬：[{車位編號,戶號,車號,車種,配位狀態,已繳費}]
+const assignments = ref([]) // 管理員專屬：[{車位編號,戶號,車號,車種,配位狀態,已繳費,繳費來源,簽約期限}]
 const assignMap = computed(() => {
   const m = new Map()
   for (const a of assignments.value) m.set(String(a.車位編號), a)
@@ -482,7 +482,7 @@ function decorate(s) {
                   <span v-if="a.戶號" class="ml-1 text-slate-600">{{ a.戶號 }}</span>
                   <span v-if="a.車號" class="ml-1 font-mono text-slate-400">{{ a.車號 }}</span>
                   <span v-if="a.配位狀態" class="ml-1 text-slate-400">·{{ a.配位狀態 }}</span>
-                  <span v-if="a.已繳費" class="ml-1 text-emerald-600">✓繳</span>
+                  <span v-if="a.已繳費" class="ml-1 text-emerald-600" :title="a.繳費來源 || ''">✓繳<template v-if="a.繳費來源">·{{ a.繳費來源 }}</template></span>
                   <span v-else-if="a.車號" class="ml-1 text-amber-500">未繳</span>
                 </button>
                 <button v-if="a.locked" class="text-slate-400 hover:text-rose-600" @click="doUnlock(a.車位編號)">✕</button>

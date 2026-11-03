@@ -39,6 +39,16 @@ export const TEMPLATE_COLUMNS = [
 export const TEMPLATE_TARGET_COL = '汽/機車清潔費'
 export const TEMPLATE_ITEMS = '#管理費#郵資#汽/機車清潔費#附加費用'
 
+// 社區幫「管理費列表 → 下載檔案」的住戶地址把門牌與樓層合併：'H3-297-6樓' → { 門牌:'#H3-297', 樓層:'6' }。
+//   之後接 householdIdOf() 得戶號。對不上格式回 null（例如空白或未來改版）。
+export function parseBillAddress(addr) {
+  const m = String(addr ?? '')
+    .trim()
+    .match(/^#?([A-Z]+\d+-\d+)-(\d+)樓$/i)
+  if (!m) return null
+  return { 門牌: `#${m[1].toUpperCase()}`, 樓層: m[2] }
+}
+
 // 社區幫下載的 CSV 每格包成 ="值" 防 Excel 吃掉前導 0；當 --fee 門牌來源前先剝掉。
 export function stripExcelWrap(text) {
   return String(text).replace(/"=""/g, '"').replace(/"""/g, '"')
