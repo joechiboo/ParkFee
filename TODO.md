@@ -83,7 +83,7 @@ npx.cmd --yes supabase functions deploy set-locked
 登記、修改、排志願、選小位全部關到 11/15 00:00。經理試玩與所有實測都要在 11/10 前結束。
 
 1. **關時窗**：`npx.cmd --yes supabase secrets unset CLAIM_WINDOW`。之後到 11/15 00:00 前，住戶操作都應被擋。
-2. **驗時窗外**：關完等一分鐘讓 secret 生效，跑 `$env:ADMIN_PASSWORD='管理密碼'; node scripts/verify-window.mjs`（✅ 2026-11-03 新增；開放狀態下已用 `--expect open` 驗過腳本本身 7 項全過，不留髒資料）。腳本會用 `Z99` 登入、送新戶登記、改登記、排志願、選小位，四項都應回 403「尚未開放（2026/11/15 起）」；再用管理密碼補登 `Z98` 應成功。全過會印「0 項不符」。要看畫面的話再用瀏覽器以 `Z99` 點一次，應顯示同一句話。
+2. **驗時窗外**：關完等一分鐘讓 secret 生效，跑 `$env:ADMIN_PASSWORD='管理密碼'; node scripts/verify-window.mjs`（✅ 2026-11-03 新增；開放與關閉兩種狀態都在正式站驗過，不留髒資料）。腳本會用 `Z99` 登入、送新戶登記、改登記、排志願、選小位，四項都應回 403「尚未開放（2026/11/15 起）」；再用管理密碼補登 `Z98` 應成功。全過會印「0 項不符」。要看畫面的話再用瀏覽器以 `Z99` 點一次，應顯示同一句話。
 3. **清測試資料（2026-11-02 使用者：預計提前到 11/10，時窗驗完再清，因為驗證要用 `Z99`，腳本補登的 `Z98` 也會一起清掉）**：在 Supabase Dashboard 的 SQL Editor 執行下方「🧹 清除測試／mock 資料」段的 SQL，或用 CLI：`npx.cmd --yes supabase db query --remote --yes "<SQL>"`（✅ 2026-11-03 使用者定：`員工-Z99` 一起刪，SQL 已加 `戶號 like '員工-Z%'`）。乾跑可隨時用 `--read-only` 跑同條件的 select 確認名單。乾跑結果（2026-11-03）：現有 32 戶清完剩 `A5-12`、`D2-8`、`H3-6`，沒有測試戶持有車位。
 
 ### 六、11/14（週六）當天，照順序
@@ -163,7 +163,7 @@ npx.cmd --yes supabase functions deploy set-locked
 ## 📋 2026-10-30 會後需求（使用者口述；程式已改、資料操作與部署待做）
 
 - [x] **志願小位線上選定＝當場鎖格** ✅ 2026-10-30：新 Edge Function `claim-seat`（op claim／release；鎖＝`locked_seat` 主鍵互斥 23505、同時寫 `vehicle.車位編號/配位狀態=志願小位`；擁有權驗證同 save-wishes；伺服器端小位清單 `_shared/seat-types.ts` 由 `scripts/build-seat-types-shared.mjs` 產、有一致性測試）。`SelectView` 加「志願小位」模式（第 1 輛一般機車、非社宅／工作人員；點一格 → 選定並鎖定；未繳費可換格／放棄；已鎖＝綠）。`distribute.js` R1 **拿掉志願小位自動配位分支**（只認 preset 的 車位編號）。`MeView` 狀態色改依「有位／已繳」判。
-  > ✅ **部署** 2026-10-30 晚：`npx supabase login`（PowerShell 要用 `npx.cmd`）後 `functions deploy claim-seat` 成功。真 API 已驗 15 條：正常 claim／第二人同格 409 taken／公益小位・大位・已鎖無障礙 400／重機・工作人員・錯車號 403／無 op・無持有 release 400／換格釋放舊格／同格冪等／release 清欄＋解鎖；locked_seat 與 audit_log（seat.claim／seat.release）皆正確。⚠️ **「時窗外」路徑未實打**（改 secret 被權限擋），邏輯僅日期字串比對。
+  > ✅ **部署** 2026-10-30 晚：`npx supabase login`（PowerShell 要用 `npx.cmd`）後 `functions deploy claim-seat` 成功。真 API 已驗 15 條：正常 claim／第二人同格 409 taken／公益小位・大位・已鎖無障礙 400／重機・工作人員・錯車號 403／無 op・無持有 release 400／換格釋放舊格／同格冪等／release 清欄＋解鎖；locked_seat 與 audit_log（seat.claim／seat.release）皆正確。✅ 2026-11-03 「時窗外」路徑已實打（使用者暫設 secret 為預設值，`verify-window.mjs` 四項皆 403「尚未開放」，再設回開放）。
   > ⚠️ **時窗 secret 目前是 `CLAIM_WINDOW=2026-10-01..2026-12-31`（已設、現在就能選）**：函式預設 `2026-11-15..2026-11-30`。**11/10 關**（🚦 第五步，2026-11-02 定），否則 12/1 後仍可線上選位。
   > ⬜ **11/15 前清測試資料**：Z 棟／測試戶線上選定的小位要 release（維護頁解鎖該格＋清車）；併入既有「清場檢查點」。
   > ✅ 2026-11-02 補兩個鎖定漏洞（已部署）：`assign-seat` 指派已掛別台車的格改回 409（原本 upsert 會配給第二人）；`set-locked` 改只增減指定格，解除時略過已掛車的格（原本整批取代會洗掉住戶的鎖）。`locked.js` 相容舊版的完整清單欄位 ✅ 2026-11-03 已移除。
@@ -173,7 +173,7 @@ npx.cmd --yes supabase functions deploy set-locked
   > ⚠️ 紙本表「※ 免填：…無障礙位」未改：未核驗又沒排志願會落選，表單措辭待使用者決定（也可靠 `check-roster` 名單由櫃台提醒）。
 - [ ] **社宅不參與抽籤 → 公益位整批鎖定**（會議：鎖起來最簡單）：維護頁批次鎖定 `1-7,92-104`（機車 20 格）；車種切自行車後鎖 `114-118`。引擎／選位頁本就排除鎖定格，不用改程式；引擎社宅分支維持 12/1 後再清。⚠️ 鎖之前先確認沒有社宅戶殘留登記（`check-roster` 第 1 項）。
 - [x] **登記期限 11/15 00:00 – 11/30 23:59** ✅ 2026-11-02 已部署：`register`／`update-household`／`save-wishes`／`claim-seat` 共用 `_shared/window.ts`（`CLAIM_WINDOW` 覆蓋）；登入查詢不限。管理員帳號可在登記頁櫃台補登（截止後仍可）。
-  > ⚠️ 時窗外未實打：`CLAIM_WINDOW` 開著。11/10 `secrets unset` 後要實測：一般戶 register／update／save-wishes／claim 應 403、admin 補登應成功。
+  > ✅ 2026-11-03 時窗外已實打：register／update／save-wishes／claim 皆 403「尚未開放（2026/11/15 起）」；admin 補登 11/10 跑腳本時帶 ADMIN_PASSWORD 一併驗。`CLAIM_WINDOW` 已設回 2026-10-01..2026-12-31，11/10 再 unset。
 
 ## 📋 2026-10-20 經理新決策與待回覆（11/15 開放登記前要收）
 
