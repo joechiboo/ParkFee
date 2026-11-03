@@ -58,6 +58,59 @@ const selectedAssign = computed(() => (selected.value ? assignMap.value.get(Stri
 const selectedIsLottery = computed(() => !!selectedAssign.value && !selectedAssign.value.locked)
 
 const STATUS_OPTIONS = ['志願小位', '無障礙', '保留', '維修', '分配']
+
+// ── 未繳費／逾期批次解除（12/10 繳費截止後，把第一輪中籤與志願小位沒繳的釋出，第二輪才配得到）──
+// 一台車只列一次（重機兩格同車號）；解除走 unlockSeat（後端一併清車位、繳費、簽約期限並稽核）。
+const todayStr = computed(() => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10))
+const unpaid = computed(() => {
+  const seen = new Set()
+  const out = []
+  for (const a of [...assignments.value].sort((x, y) => compareSeatId(x.車位編號, y.車位編號))) {
+    if (!a.車號 || a.已繳費 || seen.has(a.車號)) continue
+    seen.add(a.車號)
+    out.push(a)
+  }
+  return out
+})
+const overdueOnly = ref(true)
+const isOverdue = (a) => !!a.簽約期限 && a.簽約期限 < todayStr.value
+const unpaidShown = computed(() => (overdueOnly.value ? unpaid.value.filter(isOverdue) : unpaid.value))
+const unpaidPicked = ref(new Set())
+const releaseMsg = ref('')
+function toggleUnpaid(plate) {
+  const next = new Set(unpaidPicked.value)
+  if (next.has(plate)) next.delete(plate)
+  else next.add(plate)
+  unpaidPicked.value = next
+}
+function pickAllUnpaid() {
+  unpaidPicked.value = new Set(unpaidShown.value.map((a) => a.車號))
+}
+function clearUnpaid() {
+  unpaidPicked.value = new Set()
+}
+async function releaseUnpaid() {
+  const targets = unpaidShown.value.filter((a) => unpaidPicked.value.has(a.車號))
+  if (!targets.length) return
+  if (!confirm(`確定解除 ${targets.length} 台未繳費車輛的車位？車位會回到可配池，該車的繳費狀態與簽約期限一併清除，無法復原。`)) return
+  err.value = ''
+  releaseMsg.value = ''
+  saving.value = true
+  let done = 0
+  const failed = []
+  for (const a of targets) {
+    try {
+      await unlockSeat(a.車位編號, a.車號)
+      done++
+    } catch (e) {
+      failed.push(`${a.車號}：${e?.message || '失敗'}`)
+    }
+  }
+  await reloadAssignments()
+  unpaidPicked.value = new Set()
+  releaseMsg.value = `已解除 ${done} 台${failed.length ? `；失敗 ${failed.length} 台：${failed.join('、')}` : ''}`
+  saving.value = false
+}
 function defaultStatus(s) {
   if (s.type === '無障礙') return '無障礙'
   if (s.type === '小') return '志願小位'
@@ -376,6 +429,41 @@ function decorate(s) {
               <span v-if="parsedValid.length" class="text-xs text-slate-500">解析到 {{ parsedValid.length }} 格</span>
               <span v-if="batchMsg" class="text-xs text-slate-700">{{ batchMsg }}</span>
             </div>
+          </div>
+
+          <!-- 未繳費／逾期批次解除：12/10 繳費截止後釋出，第二輪才配得到 -->
+          <div v-if="unpaid.length" class="rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div class="font-semibold text-amber-800">未繳費 <span class="text-amber-600">({{ unpaid.length }} 台)</span></div>
+            <p class="mt-1 text-xs text-amber-700">
+              繳費截止後，勾選要釋出的車輛按「批次解除」：車位回到可配池（第二輪可用），該車的繳費狀態與簽約期限清空。
+              解除無法復原，請先核對社區幫入帳。
+            </p>
+            <label class="mt-2 inline-flex items-center gap-1 text-xs text-amber-800">
+              <input v-model="overdueOnly" type="checkbox" class="size-3.5" /> 只列簽約期限已過（今天 {{ todayStr }}）
+            </label>
+            <div class="mt-2 max-h-56 space-y-1 overflow-y-auto">
+              <label v-for="a in unpaidShown" :key="a.車號" class="flex items-center gap-2 rounded bg-white px-2 py-1 text-xs">
+                <input type="checkbox" class="size-3.5" :checked="unpaidPicked.has(a.車號)" @change="toggleUnpaid(a.車號)" />
+                <span class="font-mono font-semibold">{{ displaySeatId(a.車位編號) }}</span>
+                <span class="text-slate-600">{{ a.戶號 }}</span>
+                <span class="font-mono text-slate-500">{{ a.車號 }}</span>
+                <span v-if="a.配位狀態" class="text-slate-400">·{{ a.配位狀態 }}</span>
+                <span class="ml-auto" :class="isOverdue(a) ? 'text-rose-600' : 'text-slate-400'">{{ a.簽約期限 ? '期限 ' + a.簽約期限 : '無期限' }}</span>
+              </label>
+              <p v-if="!unpaidShown.length" class="text-xs text-slate-500">沒有符合的車輛。</p>
+            </div>
+            <div class="mt-2 flex flex-wrap items-center gap-2">
+              <button class="rounded border border-amber-400 px-2 py-1 text-xs text-amber-800 hover:bg-amber-100" @click="pickAllUnpaid">全選列出的</button>
+              <button class="rounded border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100" @click="clearUnpaid">清除勾選</button>
+              <button
+                class="rounded bg-rose-600 px-3 py-1 text-xs font-medium text-white hover:bg-rose-700 disabled:opacity-40"
+                :disabled="saving || !unpaidPicked.size"
+                @click="releaseUnpaid"
+              >
+                批次解除選取（{{ unpaidPicked.size }}）
+              </button>
+            </div>
+            <p v-if="releaseMsg" class="mt-2 text-xs text-slate-700">{{ releaseMsg }}</p>
           </div>
 
           <!-- 已指派清單 -->

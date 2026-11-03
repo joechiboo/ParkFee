@@ -33,8 +33,9 @@ export function signDeadline(公告日) {
 //   opts.公開版=true → 略過工作人員列（2026-08-26）：工作人員配的是住戶配畢後的剩餘位、
 //     免費且隨時可收回，與住戶的承租結果性質不同；且其識別為「員工-NN」或姓名，
 //     公告揭露無實益。物業內部版仍完整保留。
-export function resultRows(result, { 公告日 = '', 公開版 = false } = {}) {
-  const 期限 = signDeadline(公告日)
+//   opts.簽約期限（'YYYY-MM-DD'）→ 直接指定期限，蓋過公告日+10（公告寫 12/10 而公告日+10 算出 12/11 時用）。
+export function resultRows(result, { 公告日 = '', 公開版 = false, 簽約期限 = '' } = {}) {
+  const 期限 = 簽約期限 || signDeadline(公告日)
   const rows = []
   for (const a of result.assigned || []) {
     if (公開版 && a.配位方式 === VIA.STAFF) continue

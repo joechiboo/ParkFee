@@ -191,6 +191,8 @@ const bikeLostRows = computed(() =>
 
 // 下載配位結果 CSV（公告日 → 簽約期限=公告+10；加 BOM 供 Excel 中文正確）。
 const announceDate = ref('')
+// 簽約期限直接指定：公告寫 12/10、第二輪 12/25，而公告日+10 會算出 12/11；填了就以這個為準。
+const signDeadlineOverride = ref('')
 
 // 發佈結果（回填 vehicle）＝寫真實資料 → 只有管理員看得到此鈕，後端再驗 ADMIN_PASSWORD。
 const admin = computed(() => isAdmin(sessionHousehold.value))
@@ -204,7 +206,7 @@ async function publishToBackend() {
     // 第二輪：只寫入本輪新配的（輪次 0＝第一輪帶進來的 preset 不重送），後端 merge 不清空 → 第一輪結果不動。
     const merge = result.value.stage === 2
     const src = merge ? { ...result.value, assigned: result.value.assigned.filter((a) => a.輪次 !== 0) } : result.value
-    const rows = mergedResultRows([src, bikeResult.value], { 公告日: announceDate.value })
+    const rows = mergedResultRows([src, bikeResult.value], { 公告日: announceDate.value, 簽約期限: signDeadlineOverride.value })
     const { updated, notFound = [] } = await publishResult({ rows, merge, ...adminAuth() })
     const total = rows.filter((r) => r.車號).length
     if (notFound.length) {
@@ -226,7 +228,7 @@ function downloadResultCSV(pub = true) {
   const withHH = showHousehold.value
   const csv =
     '﻿' +
-    mergedResultCSV([result.value, bikeResult.value], { 公告日: announceDate.value, 公開版: pub, 含戶號: withHH })
+    mergedResultCSV([result.value, bikeResult.value], { 公告日: announceDate.value, 簽約期限: signDeadlineOverride.value, 公開版: pub, 含戶號: withHH })
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -365,6 +367,14 @@ function downloadResultCSV(pub = true) {
           <span class="text-sm font-medium text-slate-700">公告日（→ 簽約期限＝公告+10）</span>
           <input
             v-model="announceDate"
+            type="date"
+            class="mt-1 rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          />
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">簽約期限（填了就以此為準，如公告寫 12/10）</span>
+          <input
+            v-model="signDeadlineOverride"
             type="date"
             class="mt-1 rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
           />

@@ -111,6 +111,16 @@ const TONE = {
         掃（或輸入）<b>車牌</b> → 顯示該車<b>應停的車位</b> → 你<b>用眼睛核對</b>車是否真的停在那一格。
         車位號看地面即可、不必掃。
       </p>
+      <details class="mt-2 rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-600">
+        <summary class="cursor-pointer font-medium text-slate-700">這頁做什麼／怎麼用（物業）</summary>
+        <ul class="ml-4 mt-2 list-disc space-y-1">
+          <li><b>用途</b>：巡場時核對「這台車有沒有停在自己配到的位」。資料來自已發佈的配位結果與維護頁的指派，只讀，不會改任何東西。</li>
+          <li><b>怎麼查</b>：輸入車牌或用相機掃（電動車兩行牌也可），按查詢。畫面會告訴你這台車應停哪一格、有沒有繳費；查無＝沒登記或還沒配位。</li>
+          <li><b>查無怎麼辦</b>：先到登記頁用戶號查是否有登記、是否還在待安排；確認是外車或未登記車才依辦法陸一處理。</li>
+          <li><b>離線</b>：進頁時會把已配位車輛載到手機，地下室沒訊號也能查；結果重新發佈或指派有變動後按「重新載入」。</li>
+          <li><b>個資</b>：畫面只顯示車位與繳費狀態，不顯示戶號與電話。</li>
+        </ul>
+      </details>
 
       <!-- 參考表狀態 -->
       <div class="mt-3 flex items-center gap-2 text-xs text-slate-500">

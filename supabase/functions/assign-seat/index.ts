@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
 
       const { data: vs } = await db
         .from('vehicle')
-        .select('車號, 戶號, 車種, 車位編號, 配位狀態, 已繳費')
+        .select('車號, 戶號, 車種, 車位編號, 配位狀態, 已繳費, 簽約期限')
         .not('車位編號', 'is', null)
 
       // 一台車的車位編號可能是「150、151」(重機雙位) → 逐位攤平到 seat→vehicle。
@@ -48,6 +48,7 @@ Deno.serve(async (req) => {
           車種: v?.車種 ?? null,
           配位狀態: v?.配位狀態 ?? null,
           已繳費: v?.已繳費 ?? false,
+          簽約期限: v?.簽約期限 ?? null, // 未繳費批次解除用：期限已過＝逾期
           locked: lockedIds.has(id), // true＝物業鎖定(可解鎖)；false＝抽籤分配(僅顯示、不可解鎖)
         }
       })
