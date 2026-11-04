@@ -22,7 +22,7 @@ RED = RGBColor(0xC1, 0x12, 0x1F)
 B_SIZE = 11.5
 B_LINE = 14
 B_GAP = 9.5
-OUTPUT = '35-抽籤辦法說明表-A4橫式-11-4v4-有空白.docx'
+OUTPUT = '35-抽籤辦法說明表-A4橫式-11-4v5-有空白.docx'
 SIGNATURE = [('樂菲莊園管理委員會', 14), ('電話 02-2218-6136', 12)]
 # 經理以空白手動斷行、要接回前一段的段落開頭
 CONTINUATIONS = ('由秘書協助登記', '序、免抽籤', '驗證明後指派', '位再行安排處理')
@@ -70,7 +70,7 @@ def signature(table):
         pf.alignment = WD_ALIGN_PARAGRAPH.CENTER
         pf.left_indent = Pt(276)
         pf.right_indent = Pt(112)
-        pf.space_before = Pt(14 if i == 0 else 0)
+        pf.space_before = Pt(28 if i == 0 else 0)
         pf.space_after = Pt(0)
         pf.line_spacing_rule = WD_LINE_SPACING.EXACTLY
         pf.line_spacing = Pt(size + 3)
