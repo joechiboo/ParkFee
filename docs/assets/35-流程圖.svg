@@ -59,13 +59,13 @@
 
   <path d="M112 120L186 154L112 188L38 154Z" fill="#fff" stroke="#1d5fa8" stroke-width="1.6"/>
   <text x="112" y="152" text-anchor="middle" font-size="12" font-weight="bold">志願選小車位？</text>
-  <text x="112" y="167" text-anchor="middle" font-size="10" font-weight="bold">限每戶第一部機車</text>
+  <text x="112" y="167" text-anchor="middle" font-size="10" font-weight="bold" fill="#c1121f">限每戶第一部機車</text>
 
   <rect x="208" y="126" width="118" height="54" rx="3" fill="#fff" stroke="#1d5fa8" stroke-width="1.6"/>
   <g text-anchor="middle" font-size="10.5" font-weight="bold">
     <text x="267" y="143">登記時直接選定小車位</text>
-    <text x="267" y="158">依登記順序，免抽籤</text>
-    <text x="267" y="173">號碼已被選者請改選</text>
+    <text x="267" y="158" fill="#c1121f">依登記順序，免抽籤</text>
+    <text x="267" y="173" fill="#c1121f">號碼已被選者請改選</text>
   </g>
 
   <rect x="37" y="296" width="150" height="42" rx="3" fill="#1d5fa8"/>
