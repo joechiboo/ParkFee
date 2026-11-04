@@ -3,13 +3,14 @@
 # 流程圖來源 docs/assets/35-流程圖.svg；列高固定，虛線才對得上表格橫線。
 #
 # 用法：python scripts/build-explainer-variants.py <經理版.docx> <輸出資料夾>
+import copy
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 from docx import Document
-from docx.enum.text import WD_LINE_SPACING
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Pt, RGBColor
@@ -21,7 +22,8 @@ RED = RGBColor(0xC1, 0x12, 0x1F)
 B_SIZE = 11.5
 B_LINE = 14
 B_GAP = 9.5
-OUTPUT = '35-抽籤辦法說明表-A4橫式-11-4v2-有空白.docx'
+OUTPUT = '35-抽籤辦法說明表-A4橫式-11-4v4-有空白.docx'
+SIGNATURE = [('樂菲莊園管理委員會', 14), ('電話 02-2218-6136', 12)]
 # 經理以空白手動斷行、要接回前一段的段落開頭
 CONTINUATIONS = ('由秘書協助登記', '序、免抽籤', '驗證明後指派', '位再行安排處理')
 
@@ -56,6 +58,29 @@ def flow_bottom_border(table):
     borders.append(bottom)
     for key, val in (('val', 'single'), ('sz', '6'), ('space', '0'), ('color', '777777')):
         bottom.set(qn(f'w:{key}'), val)
+
+
+def signature(table):
+    # 11/04 主委要求：最後一列 QR 左側署名，格式同經理版（管委會／電話兩行置中）。右縮排讓開 QR
+    cell = table.rows[-1].cells[DESC_COL]
+    sample = next(r for r in cell.paragraphs[0].runs if r.text and r.font.color.rgb is None)
+    for i, (text, size) in enumerate(SIGNATURE):
+        par = cell.add_paragraph()
+        pf = par.paragraph_format
+        pf.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        pf.left_indent = Pt(276)
+        pf.right_indent = Pt(112)
+        pf.space_before = Pt(14 if i == 0 else 0)
+        pf.space_after = Pt(0)
+        pf.line_spacing_rule = WD_LINE_SPACING.EXACTLY
+        pf.line_spacing = Pt(size + 3)
+        par._p.append(copy.deepcopy(sample._r))
+        run = par.runs[0]
+        run.text = text
+        run.font.size = Pt(size)
+        size_cs = run._r.rPr.find(qn('w:szCs'))
+        if size_cs is not None:
+            size_cs.set(qn('w:val'), str(size * 2))
 
 
 def join_manual_breaks(table):
@@ -101,6 +126,7 @@ def build(src, out_dir):
     set_row_heights(table)
     red_etag(table)
     spaced(table)
+    signature(table)
     flow_bottom_border(table)
     tail = doc.paragraphs[-1].paragraph_format  # 表格後的空段落縮到最小，否則被擠到第二頁
     tail.line_spacing_rule = WD_LINE_SPACING.EXACTLY
