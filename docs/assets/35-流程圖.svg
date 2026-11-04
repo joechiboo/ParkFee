@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 330 798.5" font-family="Microsoft JhengHei, PingFang TC, sans-serif" font-size="12">
-  <!-- 抽籤辦法說明表（A4 橫式 Word 版）左欄流程圖。以 11-3v1 的流程圖為底（docs/35 橫式 html 的 svg），座標單位同原圖，圖寬 330＝Word 205pt。
-       2026-11-04 主委選回 v1，只改：白底上的淺色小字改黑粗體、藍框內小字放大加粗、第二輪改為直線往下、虛線對齊表格橫線。
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 330 798.5" font-family="Microsoft JhengHei, PingFang TC, sans-serif" font-size="13.5" font-weight="bold">
+  <!-- 抽籤辦法說明表（A4 橫式 Word 版）左欄流程圖。以 11-3v1 的流程圖為底，座標單位同原圖，圖寬 330＝Word 205pt。
+       2026-11-04 主委選回 v1 後的調整：所有字與「線上登記」同大小、粗體；第二輪直線往下；三行說明改紅字；虛線對齊表格橫線。
        虛線 y＝表格列分界距圖頂的距離，列高由 scripts/build-explainer-variants.py 固定，改列高要重量。 -->
   <defs>
     <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -15,92 +15,101 @@
   </g>
 
   <g stroke="#333" stroke-width="1.5" fill="none" marker-end="url(#ah)">
-    <line x1="112" y1="38" x2="112" y2="52"/>
-    <line x1="112" y1="106" x2="112" y2="120"/>
-    <line x1="186" y1="154" x2="208" y2="154"/>
-    <line x1="112" y1="188" x2="112" y2="296"/>
-    <line x1="112" y1="338" x2="112" y2="350"/>
-    <line x1="174" y1="373" x2="266" y2="373"/>
-    <line x1="112" y1="396" x2="112" y2="418"/>
-    <line x1="112" y1="460" x2="112" y2="490"/>
-    <line x1="112" y1="534" x2="112" y2="548"/>
-    <line x1="174" y1="574" x2="208" y2="574"/>
-    <line x1="112" y1="600" x2="112" y2="645"/>
-    <line x1="112" y1="689" x2="112" y2="730"/>
+    <line x1="101" y1="30" x2="101" y2="40"/>
+    <line x1="101" y1="92" x2="101" y2="102"/>
+    <line x1="198" y1="150" x2="224" y2="150"/>
+    <line x1="101" y1="198" x2="101" y2="293"/>
+    <line x1="101" y1="333" x2="101" y2="340"/>
+    <line x1="173" y1="360" x2="274" y2="360"/>
+    <line x1="101" y1="380" x2="101" y2="398"/>
+    <line x1="101" y1="438" x2="101" y2="488"/>
+    <line x1="101" y1="528" x2="101" y2="536"/>
+    <line x1="179" y1="558" x2="224" y2="558"/>
+    <line x1="101" y1="580" x2="101" y2="640"/>
+    <line x1="101" y1="680" x2="101" y2="715"/>
   </g>
-  <path d="M267 180V474H112" stroke="#333" stroke-width="1.5" fill="none"/>
-  <circle cx="112" cy="474" r="2.6" fill="#333"/>
+  <path d="M275 201V472H101" stroke="#333" stroke-width="1.5" fill="none"/>
+  <circle cx="101" cy="472" r="2.6" fill="#333"/>
 
-  <g font-size="11.5" fill="#c1121f" font-weight="bold">
-    <text x="190" y="149" fill="#1a7f37">是</text>
-    <text x="118" y="244">否</text>
-    <text x="190" y="368" fill="#1a7f37">是</text>
-    <text x="118" y="411">否</text>
-    <text x="178" y="569">否</text>
-    <text x="118" y="619" fill="#1a7f37">是</text>
+  <g fill="#c1121f">
+    <text x="207" y="145" fill="#1a7f37">是</text>
+    <text x="107" y="248">否</text>
+    <text x="183" y="355" fill="#1a7f37">是</text>
+    <text x="107" y="394">否</text>
+    <text x="194" y="553">否</text>
+    <text x="107" y="606" fill="#1a7f37">是</text>
   </g>
-  <rect x="222" y="238" width="90" height="46" fill="#fbfcfe"/>
-  <g text-anchor="middle" font-size="10.5" font-weight="bold">
-    <text x="267" y="250">免抽籤</text>
-    <text x="267" y="264">12/1 公告後</text>
-    <text x="267" y="278">10 日內簽約繳費</text>
+  <rect x="228" y="212" width="94" height="70" fill="#fbfcfe"/>
+  <g text-anchor="middle">
+    <text x="275" y="227">免抽籤</text>
+    <text x="275" y="243">12/1 公告後</text>
+    <text x="275" y="259">10 日內</text>
+    <text x="275" y="275">簽約繳費</text>
   </g>
-  <text x="118" y="471" font-size="10.5" font-weight="bold">配到者</text>
+  <text x="107" y="460">配到者</text>
 
-  <rect x="67" y="10" width="90" height="28" rx="14" fill="#fff" stroke="#333" stroke-width="1.5"/>
-  <text x="112" y="28.5" text-anchor="middle" font-size="12.5" font-weight="bold">開始</text>
+  <rect x="61" y="6" width="80" height="24" rx="12" fill="#fff" stroke="#333" stroke-width="1.5"/>
+  <text x="101" y="23" text-anchor="middle">開始</text>
 
-  <rect x="37" y="52" width="150" height="54" rx="3" fill="#1d5fa8"/>
-  <g text-anchor="middle" fill="#fff" font-weight="bold">
-    <text x="112" y="70" font-size="13.5">線上登記</text>
-    <text x="112" y="85" font-size="11">115/11/15 – 11/30・掃 QR</text>
-    <text x="112" y="99" font-size="11">需協助者由秘書／經理協助</text>
-  </g>
-
-  <path d="M112 120L186 154L112 188L38 154Z" fill="#fff" stroke="#1d5fa8" stroke-width="1.6"/>
-  <text x="112" y="152" text-anchor="middle" font-size="12" font-weight="bold">志願選小車位？</text>
-  <text x="112" y="167" text-anchor="middle" font-size="10" font-weight="bold" fill="#c1121f">限每戶第一部機車</text>
-
-  <rect x="208" y="126" width="118" height="54" rx="3" fill="#fff" stroke="#1d5fa8" stroke-width="1.6"/>
-  <g text-anchor="middle" font-size="10.5" font-weight="bold">
-    <text x="267" y="143">登記時直接選定小車位</text>
-    <text x="267" y="158" fill="#c1121f">依登記順序，免抽籤</text>
-    <text x="267" y="173" fill="#c1121f">號碼已被選者請改選</text>
+  <rect x="6" y="40" width="190" height="52" rx="3" fill="#1d5fa8"/>
+  <g text-anchor="middle" fill="#fff">
+    <text x="101" y="55">線上登記</text>
+    <text x="101" y="71">115/11/15 – 11/30・掃 QR</text>
+    <text x="101" y="87">需協助者由秘書／經理協助</text>
   </g>
 
-  <rect x="37" y="296" width="150" height="42" rx="3" fill="#1d5fa8"/>
-  <g text-anchor="middle" fill="#fff" font-weight="bold">
-    <text x="112" y="314" font-size="13.5">電腦抽籤</text>
-    <text x="112" y="330" font-size="11">第一輪 12/1 公告</text>
+  <path d="M101 102L198 150L101 198L4 150Z" fill="#fff" stroke="#1d5fa8" stroke-width="1.6"/>
+  <text x="101" y="146" text-anchor="middle">志願選小車位？</text>
+  <text x="101" y="164" text-anchor="middle" fill="#c1121f">限每戶第一部機車</text>
+
+  <rect x="224" y="99" width="102" height="102" rx="3" fill="#fff" stroke="#1d5fa8" stroke-width="1.6"/>
+  <g text-anchor="middle">
+    <text x="275" y="115">登記時直接</text>
+    <text x="275" y="131">選定小車位</text>
+    <g fill="#c1121f">
+      <text x="275" y="147">依登記順序，</text>
+      <text x="275" y="163">免抽籤</text>
+      <text x="275" y="179">號碼已被選者</text>
+      <text x="275" y="195">請改選</text>
+    </g>
   </g>
 
-  <path d="M112 350L174 373L112 396L50 373Z" fill="#fff" stroke="#1d5fa8" stroke-width="1.6"/>
-  <text x="112" y="377.5" text-anchor="middle" font-size="12" font-weight="bold">配到車位？</text>
-
-  <rect x="37" y="418" width="150" height="42" rx="3" fill="#1d5fa8"/>
-  <g text-anchor="middle" fill="#fff" font-weight="bold">
-    <text x="112" y="436" font-size="13.5">電腦抽籤</text>
-    <text x="112" y="452" font-size="11">第二輪 12/15 公告</text>
+  <rect x="6" y="293" width="190" height="40" rx="3" fill="#1d5fa8"/>
+  <g text-anchor="middle" fill="#fff">
+    <text x="101" y="309">電腦抽籤</text>
+    <text x="101" y="326">第一輪 12/1 公告</text>
   </g>
 
-  <rect x="37" y="490" width="150" height="44" rx="3" fill="#1d5fa8"/>
-  <g text-anchor="middle" fill="#fff" font-weight="bold">
-    <text x="112" y="509" font-size="13.5">簽約・繳費</text>
-    <text x="112" y="526" font-size="11">公告後 10 日內</text>
+  <path d="M101 340L173 360L101 380L29 360Z" fill="#fff" stroke="#1d5fa8" stroke-width="1.6"/>
+  <text x="101" y="365" text-anchor="middle">配到車位？</text>
+
+  <rect x="6" y="398" width="190" height="40" rx="3" fill="#1d5fa8"/>
+  <g text-anchor="middle" fill="#fff">
+    <text x="101" y="414">電腦抽籤</text>
+    <text x="101" y="431">第二輪 12/15 公告</text>
   </g>
 
-  <path d="M112 548L174 574L112 600L50 574Z" fill="#fff" stroke="#1d5fa8" stroke-width="1.6"/>
-  <text x="112" y="578" text-anchor="middle" font-size="12" font-weight="bold">期限內完成？</text>
-
-  <rect x="208" y="560" width="118" height="28" rx="14" fill="#fff" stroke="#c1121f" stroke-width="1.5"/>
-  <text x="267" y="578.5" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#c1121f">視同放棄・禁止使用</text>
-
-  <rect x="37" y="645" width="150" height="44" rx="3" fill="#1d5fa8"/>
-  <g text-anchor="middle" fill="#fff" font-weight="bold">
-    <text x="112" y="664" font-size="13.5">使用車位</text>
-    <text x="112" y="681" font-size="11">116/1/1 – 12/31</text>
+  <rect x="6" y="488" width="190" height="40" rx="3" fill="#1d5fa8"/>
+  <g text-anchor="middle" fill="#fff">
+    <text x="101" y="504">簽約・繳費</text>
+    <text x="101" y="521">公告後 10 日內</text>
   </g>
 
-  <rect x="67" y="730" width="90" height="28" rx="14" fill="#fff" stroke="#333" stroke-width="1.5"/>
-  <text x="112" y="748.5" text-anchor="middle" font-size="12.5" font-weight="bold">結束</text>
+  <path d="M101 536L179 558L101 580L23 558Z" fill="#fff" stroke="#1d5fa8" stroke-width="1.6"/>
+  <text x="101" y="563" text-anchor="middle">期限內完成？</text>
+
+  <rect x="224" y="539" width="102" height="38" rx="14" fill="#fff" stroke="#c1121f" stroke-width="1.5"/>
+  <g text-anchor="middle" fill="#c1121f">
+    <text x="275" y="555">視同放棄</text>
+    <text x="275" y="571">禁止使用</text>
+  </g>
+
+  <rect x="6" y="640" width="190" height="40" rx="3" fill="#1d5fa8"/>
+  <g text-anchor="middle" fill="#fff">
+    <text x="101" y="656">使用車位</text>
+    <text x="101" y="673">116/1/1 – 12/31</text>
+  </g>
+
+  <rect x="61" y="715" width="80" height="24" rx="12" fill="#fff" stroke="#333" stroke-width="1.5"/>
+  <text x="101" y="732" text-anchor="middle">結束</text>
 </svg>

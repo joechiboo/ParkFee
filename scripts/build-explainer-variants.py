@@ -1,7 +1,6 @@
-# 由經理版說明表 Word 產出兩個給主委挑的版本（2026-11-04）：
-#   A 無空白：右欄字級不動
-#   B 有空白：右欄改 11.5pt、項目間留白（經理手動斷行的段落先接回，字變小才不會斷在句中）
-# 兩版列高相同，共用一張流程圖（docs/assets/35-流程圖.svg），虛線才都對得上表格橫線。
+# 由經理版說明表 Word 產出有空白行的版本（2026-11-04 定）：
+# 右欄改 11.5pt、項目間留白、黑字全粗體（經理手動斷行的段落先接回，字變小才不會斷在句中）。
+# 流程圖來源 docs/assets/35-流程圖.svg；列高固定，虛線才對得上表格橫線。
 #
 # 用法：python scripts/build-explainer-variants.py <經理版.docx> <輸出資料夾>
 import subprocess
@@ -11,6 +10,8 @@ from pathlib import Path
 
 from docx import Document
 from docx.enum.text import WD_LINE_SPACING
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 from docx.shared import Pt, RGBColor
 
 # pt；Word 另加 7.8pt（儲存格上下邊距與框線），實際列高 184／120／93／107，svg 虛線依實際值
@@ -20,6 +21,7 @@ RED = RGBColor(0xC1, 0x12, 0x1F)
 B_SIZE = 11.5
 B_LINE = 14
 B_GAP = 9.5
+OUTPUT = '35-抽籤辦法說明表-A4橫式-11-4v2-有空白.docx'
 # 經理以空白手動斷行、要接回前一段的段落開頭
 CONTINUATIONS = ('由秘書協助登記', '序、免抽籤', '驗證明後指派', '位再行安排處理')
 
@@ -42,6 +44,18 @@ def red_etag(table):
                 run.bold = True
             return
     raise SystemExit('找不到 eTag 那行')
+
+
+def flow_bottom_border(table):
+    # 流程圖是跨列合併，下框線看最後一列的延續格；經理版該格沒設，所以框線不見
+    tc = table._tbl.tr_lst[-1].tc_lst[1]
+    tc_pr = tc.get_or_add_tcPr()
+    borders = OxmlElement('w:tcBorders')
+    tc_pr.find(qn('w:vMerge')).addnext(borders)  # tcPr 子元素有固定順序
+    bottom = OxmlElement('w:bottom')
+    borders.append(bottom)
+    for key, val in (('val', 'single'), ('sz', '6'), ('space', '0'), ('color', '777777')):
+        bottom.set(qn(f'w:{key}'), val)
 
 
 def join_manual_breaks(table):
@@ -72,6 +86,8 @@ def spaced(table):
         if pf.space_after != Pt(0):
             pf.space_after = Pt(B_GAP)
         for run in par.runs:
+            if run.font.color.rgb in (None, RGBColor(0, 0, 0)):
+                run.bold = True
             if run.font.size:
                 run.font.size = Pt(B_SIZE)
                 size_cs = run._r.rPr.find('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}szCs')
@@ -79,13 +95,13 @@ def spaced(table):
                     size_cs.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val', str(int(B_SIZE * 2)))
 
 
-def build(src, out_dir, name, edit=None):
+def build(src, out_dir):
     doc = Document(src)
     table = doc.tables[0]
     set_row_heights(table)
     red_etag(table)
-    if edit:
-        edit(table)
+    spaced(table)
+    flow_bottom_border(table)
     tail = doc.paragraphs[-1].paragraph_format  # 表格後的空段落縮到最小，否則被擠到第二頁
     tail.line_spacing_rule = WD_LINE_SPACING.EXACTLY
     tail.line_spacing = Pt(1)
@@ -93,14 +109,13 @@ def build(src, out_dir, name, edit=None):
     with tempfile.TemporaryDirectory() as tmp:
         mid = Path(tmp) / 'mid.docx'
         doc.save(mid)
-        out = Path(out_dir) / name
+        out = Path(out_dir) / OUTPUT
         subprocess.run([sys.executable, 'scripts/build-explainer-flow.py', str(mid), str(out)], check=True)
 
 
 def main(src, out_dir):
     Path(out_dir).mkdir(parents=True, exist_ok=True)
-    build(src, out_dir, '35-抽籤辦法說明表-A4橫式-11-4-A無空白.docx')
-    build(src, out_dir, '35-抽籤辦法說明表-A4橫式-11-4-B有空白.docx', spaced)
+    build(src, out_dir)
 
 
 if __name__ == '__main__':
