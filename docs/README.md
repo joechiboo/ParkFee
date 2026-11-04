@@ -81,7 +81,7 @@
 
 | 位置 | 規則 |
 |---|---|
-| `public/forms/紙本登記表.doc` | **由 `build-bylaw.mjs` 自 `docs/forms/登記表-紙本.doc` 複製**，不要手動放；改表單只改 `docs/forms/` 再 build |
+| `public/forms/紙本登記確認表.pdf` | **由 `build-bylaw.mjs` 自 `docs/forms/登記確認表-紙本.pdf` 複製**，不要手動放；改表單見 `docs/04` |
 | `docs/pdf/` | **只留每份文件的最新一版**；被取代的移到 `docs/pdf/_archive/`（同樣不進版控）。要給人的檔一律從這層拿 |
 | `public/print/` | 只留 `b1-map-a3.pdf`（網站連結用）；舊盤點圖、舊版面已移 `public/print/archive/`（gitignored＝下架） |
 | `private/notices/`、`private/reference/` | 公告原檔、經理／主委提供的參考稿；**不是**現行版，只供查證 |
