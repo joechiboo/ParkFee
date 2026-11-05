@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>車位登記 秘書櫃台講義</title>
+<style>
+  @page{size:A4;margin:11mm 12mm}
+  *{box-sizing:border-box}
+  body{font-family:"Microsoft JhengHei",sans-serif;color:#111;margin:0;background:#fff;font-size:15px;line-height:1.5}
+  .sheet{max-width:794px;margin:0 auto;padding:14px 12px;page-break-after:always;break-after:page}
+  .sheet:last-child{page-break-after:auto;break-after:auto}
+  h1{font-size:25px;margin:0;letter-spacing:1px}
+  .sub{font-size:14.5px;color:#444;margin:2px 0 11px}
+  .tag{float:right;font-size:13px;color:#555;margin-top:9px}
+  h2{font-size:17px;margin:10px 0 5px;padding:3px 9px;background:#1d5fa8;color:#fff;border-radius:3px}
+  h2.warn{background:#c1121f}
+  ol,ul{margin:0;padding-left:1.35em}
+  li{margin:0 0 3px}
+  b.r{color:#c1121f}
+  mark{background:#fff0a8;padding:0 2px}
+  table{width:100%;border-collapse:collapse}
+  th,td{border:1px solid #888;padding:6px 8px;text-align:left;vertical-align:top}
+  th{background:#e8eef6}
+  .note{background:#f3f5f8;border-left:4px solid #777;padding:6px 10px;margin:8px 0;font-size:14px}
+  .warnbox{background:#fff1f0;border:2px solid #c1121f;border-radius:5px;padding:6px 11px;margin:8px 0;font-size:14.5px}
+  .foot{margin-top:9px;border-top:1px solid #bbb;padding-top:4px;font-size:12px;color:#555;text-align:center}
+
+  /* 流程圖 */
+  .b{border:2px solid #111;border-radius:6px;padding:7px 10px;text-align:center;font-weight:bold;background:#fff;font-size:15.5px;line-height:1.4}
+  .b small{display:block;font-weight:normal;font-size:13.5px}
+  .b.start{background:#dfeafa;border-radius:22px}
+  .b.me{background:#fff0a8}
+  .b.q{border-style:double;border-width:4px;background:#f4f4f4}
+  .down{text-align:center;font-size:18px;line-height:1.15;font-weight:bold}
+  .row{display:flex;gap:10px;align-items:stretch;justify-content:center}
+  .row>.b{flex:1}
+  .lanes{border:2px solid #1d5fa8;border-radius:7px;padding:6px}
+  .lane{display:grid;grid-template-columns:172px 1fr 22px 1.25fr;gap:6px;align-items:stretch;margin-bottom:6px}
+  .lane:last-child{margin-bottom:0}
+  .lane .b{font-size:14px;padding:5px 7px;display:flex;flex-direction:column;justify-content:center}
+  .lane .b small{font-size:13px}
+  .lane .who{background:#dfeafa}
+  .lane .arr{align-self:center;text-align:center;font-weight:bold;font-size:17px}
+  .lanehead{display:grid;grid-template-columns:172px 1fr 22px 1.25fr;gap:6px;font-weight:bold;text-align:center;font-size:13.5px;color:#1d5fa8;margin-bottom:3px}
+  .legend{font-size:13.5px;margin:0 0 6px}
+  .swatch{display:inline-block;width:15px;height:12px;background:#fff0a8;border:1.5px solid #111;vertical-align:-1px;margin-right:3px}
+
+  /* 時程表 */
+  .time td:first-child{white-space:nowrap;font-weight:bold;width:112px}
+  .time tr.key td{background:#fff8d6}
+  .time td,.time th{padding:7px 8px;font-size:14.5px}
+
+  /* 協助事項 */
+  .help{font-size:16px;line-height:1.55}
+  .help h2{font-size:17.5px;margin:13px 0 6px;padding:3px 9px}
+  .help li{margin:0 0 4px}
+  .help .sub{font-size:15.5px}
+  .help .warnbox,.help .note{font-size:15.5px;margin:13px 0 0;padding:7px 11px}
+
+  /* 問答 */
+  .qa td,.qa th{font-size:14px;padding:5px 8px}
+  .qa td:first-child{width:37%;font-weight:bold}
+  .fee{font-size:14.5px}
+  .fee td,.fee th{text-align:center;padding:4px 8px}
+
+  @media print{ .sheet{max-width:none;padding:0} }
+</style>
+</head>
+<body>
+
+<!-- 第 1 頁：流程圖。文字對齊經理 11/03 說明表（private/給經理-20261103/），規則以 docs/05 為準。 -->
+<div class="sheet">
+  <span class="tag">秘書櫃台講義 第 1 頁／共 4 頁</span>
+  <h1>流程圖</h1>
+  <p class="sub">116 年度機車・自行車車位，一戶從登記到開始使用</p>
+  <p class="legend"><span class="swatch"></span>黃底＝秘書會碰到的地方，其他步驟由住戶或系統完成。</p>
+
+  <div class="b start">開始：住戶要登記　<small>115/11/15–11/30，每戶限登記一次，機車、自行車一次填齊</small></div>
+  <div class="down">↓</div>
+  <div class="row">
+    <div class="b">自己會用手機<small>掃 QR code 線上登記</small></div>
+    <div class="b me">不方便用手機<small>到管理中心，秘書協助登記</small></div>
+  </div>
+  <div class="down">↓　依車輛分成六種情況　↓</div>
+
+  <div class="lanes">
+    <div class="lanehead"><div>哪一種車</div><div>登記時要做什麼</div><div></div><div>怎麼拿到車位</div></div>
+
+    <div class="lane">
+      <div class="b who">第 1 部機車<small>想要小車位</small></div>
+      <div class="b">在地圖上選一格小車位並鎖定</div>
+      <div class="arr">→</div>
+      <div class="b">免抽籤，先選先得<small>別人已選的格子不能再選</small></div>
+    </div>
+    <div class="lane">
+      <div class="b who">第 1 部機車<small>沒有要選小車位</small></div>
+      <div class="b">排車位志願<small>志願全被選走時由電腦選號</small></div>
+      <div class="arr">→</div>
+      <div class="b">12/1 第一輪抽籤<small>沒配到就進 12/15 第二輪</small></div>
+    </div>
+    <div class="lane">
+      <div class="b who">第 2 部以上機車</div>
+      <div class="b">全戶共用同一份志願</div>
+      <div class="arr">→</div>
+      <div class="b">12/15 第二輪抽籤<small>先抽第二部，再抽第三部</small></div>
+    </div>
+    <div class="lane">
+      <div class="b who">無障礙機車位<small>持身心障礙者專用機車</small></div>
+      <div class="b me">勾選申請，帶證明到管理中心</div>
+      <div class="arr">→</div>
+      <div class="b me">秘書核驗後指派車位<small>未核驗就照一般抽籤</small></div>
+    </div>
+    <div class="lane">
+      <div class="b who">重機<small>250cc 以上</small></div>
+      <div class="b">只登記</div>
+      <div class="arr">→</div>
+      <div class="b">不抽籤<small>一般機車位確定後，有多餘再安排相鄰兩個大位</small></div>
+    </div>
+    <div class="lane">
+      <div class="b who">自行車</div>
+      <div class="b">填特徵（如車色、廠牌），不排志願</div>
+      <div class="arr">→</div>
+      <div class="b">12/1 系統隨機配位<small>免費</small></div>
+    </div>
+  </div>
+  <p class="note" style="margin:6px 0 0"><b>社會住宅戶不走這張圖：</b>不登記、不抽籤，由社宅單位自行安排。</p>
+
+  <div class="down">↓</div>
+  <div class="b">公告結果<small>第一輪 12/1、第二輪 12/15</small></div>
+  <div class="down">↓</div>
+  <div class="b me">簽約繳費：公告後 10 日內<small>管理中心製發繳費單，以繳管理費方式繳納，一次繳一年</small></div>
+  <div class="down">↓</div>
+  <div class="row">
+    <div class="b start" style="border-radius:6px">期限內辦好<small>116/1/1–116/12/31 使用</small></div>
+    <div class="b" style="border-color:#c1121f;color:#c1121f">期限內沒辦好<small style="color:#c1121f">視同放棄，車位由候補遞補</small></div>
+  </div>
+</div>
+
+<!-- 第 2 頁：時程表。日期來源 docs/00 第一節與經理 11/03 說明表。 -->
+<div class="sheet">
+  <span class="tag">秘書櫃台講義 第 2 頁／共 4 頁</span>
+  <h1>時程表</h1>
+  <p class="sub">黃底是櫃台最忙、最需要留意的日子</p>
+
+  <table class="time">
+    <tr><th>日期</th><th>發生什麼事</th><th>秘書要做什麼</th></tr>
+    <tr><td>11/14 以前</td><td>系統尚未開放，住戶按送出會被擋下</td><td>住戶來問就回答：「11/15 開始登記。」</td></tr>
+    <tr class="key"><td>11/15（日）</td><td>00:00 開放線上登記、排志願、選小車位</td><td>開始協助登記（第 3 頁 A、B）</td></tr>
+    <tr class="key"><td>11/15–11/30</td><td>登記期間。小車位先選先得，越接近截止櫃台可能越忙</td><td>協助登記、核驗無障礙並指派、登打紙本（第 3 頁 A–D）</td></tr>
+    <tr class="key"><td>11/30（一）</td><td><b class="r">23:59 截止</b>，之後住戶不能再登記或修改</td><td><b class="r">當天收的紙本當天打完。</b>截止後志願和小車位就打不進去了</td></tr>
+    <tr><td>12/1（二）</td><td>第一輪抽籤並公告：每戶第一部機車、自行車</td><td>告訴住戶到網站「結果」或「我的登記」查詢，或看公告</td></tr>
+    <tr class="key"><td>12/2–12/10</td><td>12/2 繳費單發出，第一輪中籤者與小車位者簽約繳費，<b>12/10（四）截止</b></td><td>辦簽約：核對證件、簽承諾書、發自行車識別貼紙（第 3 頁 E）</td></tr>
+    <tr><td>12/11–12/14</td><td>財委核對已繳名單，釋出未繳者的車位</td><td>住戶問起未繳的後果，回答「逾期視同放棄」；<b>不要自己解除車位</b></td></tr>
+    <tr><td>12/15（二）</td><td>第二輪抽籤並公告：第一輪沒配到的、第二部以上機車</td><td>同 12/1，告訴住戶查詢方式</td></tr>
+    <tr class="key"><td>12/16–12/25</td><td>12/16 繳費單發出，第二輪中籤者簽約繳費，<b>12/25（五）截止</b></td><td>同 12/2–12/10</td></tr>
+    <tr><td>12/16–12/31</td><td>eTag 名單送閘門系統，最晚 116/1/15</td><td>提醒住戶：已登錄的 eTag 繳費後可繼續用；沒有的要購買並登錄</td></tr>
+    <tr><td>116/1/1（五）</td><td>新年度車位開始使用，至 116/12/31</td><td>未簽約繳費者禁止使用停車位</td></tr>
+  </table>
+
+  <div class="note" style="margin-top:12px">
+    <b>記住三個數字就夠了：</b><br>
+    <b>11/15–11/30</b> 登記　　<b>12/1、12/15</b> 兩輪抽籤　　<b>公告後 10 日內</b> 簽約繳費
+  </div>
+  <div class="note">
+    網址（可加入櫃台電腦書籤）：<b>joechiboo.github.io/ParkFee/#/</b>　・　管理中心電話：<b>02-2218-6136</b>
+  </div>
+</div>
+
+<!-- 第 3 頁：秘書協助事項。按鈕名稱對照 RegisterView／SelectView／SeatAdminView 實際文字，改畫面要回頭同步。 -->
+<div class="sheet help">
+  <span class="tag">秘書櫃台講義 第 3 頁／共 4 頁</span>
+  <h1>秘書要協助的事</h1>
+  <p class="sub" style="margin-bottom:5px">原則：<b>住戶自己按、自己確認，秘書在旁邊說明。</b>登記不用看證件、不收錢，只要帶戶號、電話、車號。</p>
+
+  <h2>A. 協助線上登記（最常見）</h2>
+  <ol>
+    <li>開網站，<b>不用登入</b>，點「登記」。</li>
+    <li>填<b>戶號</b>（棟＋樓－戶，例 H3-6；店面 S1-6）、電話、每台車的車號與車種。自行車按「＋自行車」。<b>想選小車位的那台要排第 1 台。</b></li>
+    <li>按「送出登記」，看到綠色「登記完成」後，按「<b>下一步：選車位志願序</b>」。</li>
+    <li>在地圖上依想要的順序點車位，<b>按「儲存志願序」，看到「✓ 已儲存」才算完成。</b>沒想法的住戶可以不選、不用儲存，系統會當作同意電腦選號。</li>
+    <li><b class="r">一定要登出：</b>按畫面右上角「登出」。沒登出，下一位會看到這一戶的資料。</li>
+  </ol>
+
+  <h2>B. 志願小車位（限每戶第 1 部一般機車）</h2>
+  <p style="margin:0">登記完進選位頁 → 按「← 我要選小位」→ 點一格<b>紫色</b>小位 → 按「<b>選定並鎖定</b>」→ 看到「您已鎖定小位」。被選走的格子不能選，請住戶改選別格。</p>
+
+  <h2>C. 無障礙機車位：核驗後指派（共 8 格：105–108、194–197；108、194 地圖上是鎖定，一樣可以指派）</h2>
+  <ol>
+    <li>住戶先照 A 登記並勾「需無障礙位」，也要排志願，帶證明正本到櫃台，秘書核驗。</li>
+    <li>管理員登入：右上角登入，戶號填 <b>admin</b>，車號欄填管理密碼（另外交付，不外流），進「管理」。</li>
+    <li>點無障礙車位 → 填車號（<b>含連字號</b>，例 ABC-1234）→ 類型選「無障礙」→「已繳費」不勾 → 按「指派並鎖定」。</li>
+    <li><b class="r">檢查「已佔用」清單：該格要同時顯示戶號和車號。</b>沒有戶號代表車號打錯，按「解除」重做。完成後登出。</li>
+  </ol>
+
+  <h2>D. 收到紙本登記表（紙本是否續收，待經理確認）</h2>
+  <p style="margin:0">照 A、B 的步驟登打（<b>不要用管理員登入打</b>，志願才存得進去），登打前先確認已登出管理員。「電腦選號」保持打勾。小車位由系統確認沒人選，再填表上的核對欄；打完勾「已登錄系統」並填登錄人員。</p>
+
+  <h2>E. 簽約繳費（公告後 10 日內）</h2>
+  <p style="margin:0">核對身分證明文件及行照或車牌照片（是否續行，待經理確認）→ 簽機車停車位使用承諾書 → 自行車戶簽使用承諾書並領識別貼紙。收到現金要在社區幫銷帳，<b>繳費狀態以社區幫為準</b>。</p>
+
+  <div class="warnbox"><b>這些不要碰：</b>管理頁的「批次鎖定／解除」「未繳費批次解除」，以及「配位」「進階」。按錯會影響整批車位。不確定就先問陳經理。</div>
+</div>
+
+<!-- 第 4 頁：住戶常問與待確認。定案後把第 4 頁下方與第 2、3 頁的待確認字樣一起改掉。 -->
+<div class="sheet">
+  <span class="tag">秘書櫃台講義 第 4 頁／共 4 頁</span>
+  <h1>住戶常問</h1>
+  <p class="sub">住戶這樣問，就這樣答；畫面跳出錯誤訊息也查這裡</p>
+
+  <table class="qa">
+    <tr><th>住戶問／畫面顯示</th><th>怎麼回答、怎麼處理</th></tr>
+    <tr><td>登記完想修改</td><td>11/30 前用「戶號＋任一已登記車號」登入後修改；截止後請找陳經理</td></tr>
+    <tr><td>「戶號已登記過」</td><td>家人可能登記過了，改用登入查看或修改。一戶只能登記一次</td></tr>
+    <tr><td>「車號已被其他戶登記」</td><td>先核對車號。確實沒打錯就記下戶號和車號，交給陳經理</td></tr>
+    <tr><td>只登記自行車，怎麼查？</td><td>自行車沒有車牌，無法自己上網查。電話必填；要修改請找陳經理</td></tr>
+    <tr><td>沒有想要的車位怎麼辦？</td><td>可以不選。沒選志願或志願都被選走時，由電腦配本棟靠電梯的剩餘車位</td></tr>
+    <tr><td>第一輪沒配到</td><td>12/15 第二輪會再分配，查詢方式相同</td></tr>
+    <tr><td>重機怎麼排？</td><td>只登記、不抽籤。一般機車位確定後，有多餘的才安排相鄰兩個大位</td></tr>
+    <tr><td>社宅戶要登記嗎？</td><td>不用，由社宅單位自行安排</td></tr>
+    <tr><td>工作人員要登記嗎？</td><td>要。勾「社區工作人員」，戶號欄打姓名；以一輛為原則，排在全體住戶之後配位，費用比照住戶</td></tr>
+    <tr><td>繳費後想換車位</td><td>可申請換到沒人選的車位，每次 100 元，臨櫃辦理</td></tr>
+    <tr><td>繳了但網站還是顯示未繳</td><td>系統 12/11 才統一更新（第二輪 12/26），以社區幫紀錄為準</td></tr>
+    <tr><td>網站打不開或其他錯誤</td><td>先拍下畫面，記下戶號和時間，交給陳經理。不要重複送出</td></tr>
+  </table>
+
+  <h2>費用（一次繳一年）</h2>
+  <table class="fee">
+    <tr><th>一般機車（250cc 以下）</th><th>重機（250cc 以上）</th><th>自行車</th></tr>
+    <tr><td><b>1,200 元</b></td><td><b>3,600 元</b></td><td><b>免費</b></td></tr>
+  </table>
+
+  <h2 class="warn">還沒定案：先別對住戶講死，請以經理最新說明為準</h2>
+  <ol style="font-size:14px">
+    <li><b>無障礙要看哪一種證明：</b>待經理確認，確認前請先問經理再指派。</li>
+    <li><b>紙本登記表是否續收、簽約要看哪些證件：</b>待經理確認。</li>
+    <li><b>12/25 逾期釋出的車位怎麼遞補：</b>登記表寫「由候補遞補」，但目前沒有第三輪。</li>
+    <li><b>重機何時安排：</b>和第二輪一起（12/15），或 12/25 車位確定後。</li>
+  </ol>
+  <p class="foot">本講義如與《社區地下室停車場管理辦法》或管理中心公告不符，以辦法和公告為準。　2026-11-05 版</p>
+</div>
+
+</body>
+</html>

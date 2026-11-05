@@ -486,6 +486,14 @@ describe('電腦選位 — 志願落空 + 勾電腦選號 → 自動配本棟靠
     expect(r.落選).toHaveLength(0) // 已被電腦選位救回
   })
 
+  it('沒填志願 + 勾電腦選號 → 也配到剩位（只登記的戶預設同意，migration 0015）', () => {
+    const r = run([{ 戶號: 'B', 車號: 'B1', 第幾輛: 1, 電腦選號: 'Y' }], {
+      computerPickOrder: () => ['3'],
+    })
+    expect(r.assigned.find((x) => x.配位方式 === VIA.COMPUTER)?.車位編號).toBe('3')
+    expect(r.落選).toHaveLength(0)
+  })
+
   it('沒勾電腦選號 → 維持落選、不自動配', () => {
     const r = run([{ 戶號: 'B', 車號: 'B1', 第幾輛: 1, 車位志願: ['99'] }], {
       computerPickOrder: () => ['3'],

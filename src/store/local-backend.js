@@ -101,7 +101,7 @@ export function register({ 戶號, 電話, 社宅, 工作人員, vehicles }) {
     if (db.vehicles[v.車號]) throw new RegistrationError(`車號 ${v.車號} 已被其他戶登記`)
   }
 
-  db.households[hid] = { 戶號: hid, 電話: String(電話 ?? '').trim(), 社宅: !!社宅, 工作人員: !!工作人員, createdAt: new Date().toISOString() }
+  db.households[hid] = { 戶號: hid, 電話: String(電話 ?? '').trim(), 社宅: !!社宅, 工作人員: !!工作人員, 志願落選保底: true, createdAt: new Date().toISOString() }
   for (const v of cleaned) db.vehicles[v.車號] = v
   save(db)
   return getHousehold(hid)
