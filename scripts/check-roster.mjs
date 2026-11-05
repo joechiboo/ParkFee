@@ -330,7 +330,7 @@ if (wrongNormal.length)
   add('info', '一般戶志願指到公益車位', '公益位為社宅戶專用，該志願不會配出。可提醒住戶改志願。', wrongNormal)
 
 // 9) 沒填志願也沒勾電腦選號：還有一般機車沒配位的話，抽籤必落選。
-//    線上只登記、沒進選位頁的人就是這種（電腦選號後端預設 false）。重機不抽籤，不算。
+//    2026-11-05 起新戶預設同意（migration 0015），正常應為 0 戶。重機不抽籤，不算。
 const noWishNoPick = all.filter(
   (h) => !h.工作人員 && !h.社宅 && !h.志願.length && !h.保底 && h.cars.some((c) => !isBikeCar(c) && c.車種 !== '重機' && !c.車位編號),
 )
