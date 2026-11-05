@@ -1,27 +1,27 @@
-// 12/11 繳費回查：讀社區幫「管理費列表 → 下載檔案」匯出檔，把已繳的戶批次標進系統（vehicle.已繳費）。
+// 繳費回查（第一輪 12/11、第二輪 12/26）：讀社區幫「管理費列表 → 下載檔案」匯出檔，把已繳的戶批次標進系統（vehicle.已繳費）。
 // 作業流程見 docs/37 §2；資料格式見 docs/24 §5。
 //
 // 判斷規則：
-//   - 只看收費類別**包含** --category（預設「機車位」）的帳單：一戶跨月合繳時社區幫會把多個類別用逗號串在同一列。
+//   - 只看收費類別**包含**該輪類別（--round 1＝機車位清潔費第一輪）的帳單：一戶跨月合繳時社區幫會把多個類別用逗號串在同一列。
 //   - 繳費狀態 ≠「未繳費」且非空 ＝ 已繳（已繳者該欄顯示繳費方式：虛擬帳號／信用卡／超商繳款…，2026-11-03 實測）。
 //   - 住戶地址 'H3-297-6樓' → parseBillAddress → householdIdOf → 戶號 'H6-3'。
 //
-// 預設只印不寫（乾跑）；加 --apply 才打後端 assign-seat op=pay，後端按戶把全部機車標已繳、
-// 記 繳費來源＝「社區幫 <日期>」與 繳費時間，稽核 pay.batch 只記筆數。要撤回整批：--apply --undo。
+// 預設只印不寫（乾跑）；加 --apply 才打後端 assign-seat op=pay，後端把該戶已配到位、還沒繳的機車標已繳、
+// 記 繳費來源＝「社區幫第一輪 <日期>」與 繳費時間，稽核 pay.batch 只記筆數。撤回：--apply --undo --source 當時的來源字串。
 //
 // 用法：
-//   node scripts/import-paid-from-shequbang.mjs --file private/shequbang/payment-20261211-big5.csv
-//   $env:ADMIN_PASSWORD='…'; node scripts/import-paid-from-shequbang.mjs --file <匯出.csv> --apply
-//   選項：--category 機車位   --source "社區幫 2026-12-11"（預設「社區幫 <今天>」）   --undo（與 --apply 併用，整批改回未繳）
+//   node scripts/import-paid-from-shequbang.mjs --round 1 --file private/shequbang/payment-20261211-big5.csv
+//   $env:ADMIN_PASSWORD='…'; node scripts/import-paid-from-shequbang.mjs --round 1 --file <匯出.csv> --apply
+//   選項：--category <字串>（蓋過 --round）  --source "社區幫第一輪 2026-12-11"（預設帶今天）  --undo（與 --apply 併用，只撤回這個來源標的）
 import { readFileSync } from 'node:fs'
 import { parseCSVObjects } from '../src/data/csv.js'
 import { decodeBig5 } from './lib/big5.mjs'
-import { householdIdOf, parseBillAddress, stripExcelWrap } from './build-shequbang-import.mjs'
+import { householdIdOf, parseBillAddress, roundCategory, stripExcelWrap } from './build-shequbang-import.mjs'
 
 export const UNPAID = '未繳費'
 
 // 匯出列 → { 已繳戶號:[], 未繳戶號:[], 略過:[{列, 原因}] }。純函式，測試用。
-export function paidHouseholdsFrom(rows, { category = '機車位' } = {}) {
+export function paidHouseholdsFrom(rows, { category = roundCategory(1) } = {}) {
   const paid = new Set()
   const unpaid = new Set()
   const skipped = []
@@ -59,18 +59,23 @@ const isMain = process.argv[1] && import.meta.url.endsWith(process.argv[1].repla
 if (isMain) {
   const file = arg('file')
   if (!file) {
-    console.error('用法：node scripts/import-paid-from-shequbang.mjs --file <社區幫匯出.csv> [--category 機車位] [--source "社區幫 2026-12-11"] [--apply] [--undo]')
+    console.error('用法：node scripts/import-paid-from-shequbang.mjs --round <1|2> --file <社區幫匯出.csv> [--category 字串] [--source "社區幫第一輪 2026-12-11"] [--apply] [--undo]')
     process.exit(2)
   }
-  const category = arg('category', '機車位')
+  const round = arg('round')
+  if (!arg('category') && round !== '1' && round !== '2') {
+    console.error('要指定 --round 1 或 2：兩輪帳單分開，混在一起會把只繳第一輪的戶判成部分繳')
+    process.exit(2)
+  }
+  const category = arg('category', roundCategory(round))
   const today = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10)
-  const source = arg('source', `社區幫 ${today}`)
+  const source = arg('source', `社區幫第${round === '2' ? '二' : '一'}輪 ${today}`)
   const apply = process.argv.includes('--apply')
   const undo = process.argv.includes('--undo')
 
   const rows = readExport(file)
   const r = paidHouseholdsFrom(rows, { category })
-  const targets = undo ? r.未繳戶號.concat(r.已繳戶號) : r.已繳戶號
+  const targets = r.已繳戶號
 
   console.log(`=== 社區幫繳費回查（${apply ? (undo ? '套用：整批改回未繳' : '套用') : '乾跑，不寫'}）===`)
   console.log(`匯出檔          ${file}（${rows.length} 列）`)
@@ -121,5 +126,5 @@ if (isMain) {
     process.exit(1)
   }
   console.log(`\n✅ 已${undo ? '撤回' : '標記'} ${data.戶數} 戶／${data.台數} 台（來源「${source}」）`)
-  if (data.查無戶號?.length) console.log(`⚠ 系統查無這些戶的機車（社區幫有帳、系統沒登記？）：${data.查無戶號.join('、')}`)
+  if (data.查無戶號?.length) console.log(`⚠ 這些戶系統裡沒有已配位的機車（社區幫有帳，但車位已解除或沒登記？）：${data.查無戶號.join('、')}`)
 }

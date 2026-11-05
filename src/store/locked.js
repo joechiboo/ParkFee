@@ -117,12 +117,13 @@ export async function assignSeat(rec) {
 }
 
 // 解鎖一個車位；帶車號則一併清掉該車指派（重機兩格一起解，以後端回傳的 released 為準）。
-export async function unlockSeat(seatId, plate) {
+// 放棄=true：逾期未繳，該車狀態留「視同放棄」，第二輪不再分配；一般解除（換位、改指派）不帶。
+export async function unlockSeat(seatId, plate, { 放棄 = false } = {}) {
   const seat = String(seatId ?? '').trim()
   if (!seat) return
   let released = [seat]
   if (useSupabase) {
-    const data = await callAssign({ op: 'unlock', 車位編號: seat, 車號: plate || '', ...adminAuth() })
+    const data = await callAssign({ op: 'unlock', 車位編號: seat, 車號: plate || '', 放棄, ...adminAuth() })
     released = (data?.released || released).map(String)
   }
   const next = new Set(lockedSeats.value)

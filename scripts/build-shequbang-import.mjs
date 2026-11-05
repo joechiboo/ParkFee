@@ -9,14 +9,12 @@
 // ⚠️ 只讀不寫原檔：管理費／汽車清潔費等欄一律照抄，我們只碰「機車清潔費」。
 //
 // 用法：
-//   node scripts/build-shequbang-import.mjs --fee <範例檔或物業月結檔.csv> --roster <登記名冊.csv> --announce 2026-12-01 --due 2026-12-10 --out <輸出.csv>
-//       ↑ 「有登記就算錢」（經理 11/02 方向、12/2 一次出帳）：依登記名冊每台計費，不看配位結果
-//   node scripts/build-shequbang-import.mjs --fee ... --result <配位結果.csv> ...   # 依配位結果（只收有配到位的）
+//   兩輪分開收費（2026-11-05：抽中才繳）。第一輪 12/2 出帳、12/10 止；第二輪 12/16 出帳、12/25 止：
+//   node scripts/build-shequbang-import.mjs --fee <範例檔.csv> --result <第一輪結果.csv> --round 1 --announce 2026-12-01 --due 2026-12-10 --out <輸出.csv>
+//   node scripts/build-shequbang-import.mjs --fee <範例檔.csv> --result <第二輪結果.csv> --round 2 --billed <第一輪結果.csv> --announce 2026-12-15 --due 2026-12-25 --out <輸出.csv>
 //   加 --dry 只驗證不寫檔
 import { readFileSync, writeFileSync } from 'node:fs'
 import { parseCSVObjects } from '../src/data/csv.js'
-import { buildRoster } from '../src/data/registry.js'
-import { feeFor } from '../src/data/fee.js'
 import { encodeBig5, decodeBig5 } from './lib/big5.mjs'
 
 // ── 社區幫「新增繳費單 → 下載範例檔」欄位（2026-11-03 下載；順序即輸出順序，社區幫依欄位順序匯入）──
@@ -94,37 +92,35 @@ export function householdIdOf(門牌, 樓層) {
   return `${m[1]}${樓}-${Number(m[2])}`
 }
 
-// 登記名冊 → 戶號 → 應繳總額（「有登記就算錢」：12/2 一次出帳，依登記車輛計費，不看配位結果）。
-//   經理 11/02 方向：第一輪只抽第 1 輛，但帳單按登記台數一次收；重機未抽亦收 3,600；自行車 0 元不出帳。
-//   社宅戶不登記（公益位由社宅單位自排、另開帳單），名冊內若有「社宅＝Y」者一律跳過並列入報告。
-//   名冊衝突（同戶重複登記等）由 buildRoster 已取最新一次，這裡只回報筆數供核對。
-export function feeByRoster(rosterRows) {
-  const { entries, conflicts } = buildRoster(rosterRows)
-  const acc = new Map()
-  const 社宅跳過 = new Set()
-  for (const e of entries) {
-    if (e.社宅 === 'Y') {
-      社宅跳過.add(e.戶號)
-      continue
-    }
-    const cur = acc.get(e.戶號) || { 金額: 0, 台數: 0 }
-    cur.金額 += feeFor(e.車種)
-    cur.台數 += 1
-    acc.set(e.戶號, cur)
-  }
-  return { byHousehold: acc, 社宅跳過: [...社宅跳過], 衝突數: conflicts.length, 登記台數: entries.length }
+// 兩輪帳單用不同收費類別：回查時才分得出這筆繳的是哪一輪，同戶第一輪繳了、第二輪沒繳也不會混。
+export function roundCategory(round, 民國年度 = '') {
+  return `${民國年度 ? `${民國年度}年度` : ''}機車位清潔費第${round === 2 || round === '2' ? '二' : '一'}輪`
 }
 
-// 配位結果 → 戶號 → 應繳總額。
-//   只計入實際配到位的（狀態 分配／已繳）；「未中」沒有車位、不出帳。
+// 配位結果中「這輪出過帳」的車號：第二輪結果會帶著第一輪的車位，不排除就重複收費。
+export function billedPlates(resultRows) {
+  const plates = new Set()
+  for (const r of resultRows) {
+    const 狀態 = (r.狀態 || '').trim()
+    if (狀態 !== '分配') continue
+    const p = (r.車號 || '').trim().toUpperCase()
+    if (p) plates.add(p)
+  }
+  return plates
+}
+
+// 配位結果 → 戶號 → 本次應繳總額。
+//   只收實際配到位且還沒繳的（狀態 分配）：「未中」「待第二輪」「待安排」沒有車位不出帳，
+//   「已繳」已在櫃台收過，再出帳就重複收費。opts.已出帳 傳第一輪的車號，第二輪才不會重收。
 //   一戶多台逐台加總（docs/24 §2「一戶多位：逐位加總」）。
 //   自行車 feeFor 為 0，加總後不影響金額，但會讓該戶進入 matched 名單——
 //   這是對的：純自行車戶應出現在對帳表上並顯示 0，而非被當成「沒登記」。
-export function feeByHousehold(resultRows) {
+export function feeByHousehold(resultRows, { 已出帳 = new Set() } = {}) {
   const acc = new Map()
   for (const r of resultRows) {
     const 狀態 = (r.狀態 || '').trim()
-    if (狀態 !== '分配' && 狀態 !== '已繳') continue
+    if (狀態 !== '分配') continue
+    if (已出帳.has((r.車號 || '').trim().toUpperCase())) continue
     const id = (r.戶號 || '').trim()
     if (!id) continue
     const amt = Number(r.應繳金額)
@@ -285,18 +281,19 @@ const isMain = process.argv[1] && import.meta.url.endsWith(process.argv[1].repla
 if (isMain) {
   const feePath = arg('fee')
   const resultPath = arg('result')
-  const rosterPath = arg('roster')
+  const billedPath = arg('billed')
+  const round = arg('round')
   const outPath = arg('out')
   const dry = process.argv.includes('--dry')
 
-  if (!feePath || (!resultPath && !rosterPath) || (resultPath && rosterPath)) {
+  if (!feePath || !resultPath) {
     console.error(`用法：
-  node scripts/build-shequbang-import.mjs --fee <範例檔或物業月結檔.csv> --roster <登記名冊.csv> [選項]
-  node scripts/build-shequbang-import.mjs --fee <範例檔或物業月結檔.csv> --result <配位結果.csv> [選項]
+  node scripts/build-shequbang-import.mjs --fee <範例檔或物業月結檔.csv> --result <配位結果.csv> --round 1 [選項]
+  node scripts/build-shequbang-import.mjs --fee <範例檔或物業月結檔.csv> --result <第二輪結果.csv> --round 2 --billed <第一輪結果.csv> [選項]
 
-計費依據（二擇一）：
-  --roster <登記名冊.csv>   「有登記就算錢」：依名冊每台計費（一般 1,200／重機 3,600／自行車 0），社宅戶跳過
-  --result <配位結果.csv>   依配位結果：只收狀態 分配／已繳 者
+只收配到位且還沒繳的車（狀態 分配）：
+  --round <1|2>            第幾輪帳單，決定收費類別（兩輪分開才回查得出繳的是哪輪）
+  --billed <第一輪結果.csv> 第二輪必給：第一輪出過帳的車不再收
 
 模式：
   --mode standalone   （預設）獨立出一張「機車位費用」帳單，其餘費用欄掛 0，只列有金額的戶
@@ -307,7 +304,7 @@ if (isMain) {
   --due <YYYY-MM-DD>       繳費期限（絕對日期，優先於 --due-days）
   --due-days <N>           繳費期限＝公告日 + N 日（預設 10，對齊辦法伍二（六）「逾 10 日視同放棄」）
   --bill-date <YYYY/M/D>   立帳通知日期（預設＝匯出當日；社區幫的立帳日是建帳那天）
-  --category <字串>        收費類別（預設「<民國年>年度機車位清潔費」，例 116年度機車位清潔費）
+  --category <字串>        收費類別（預設依 --round，例 116年度機車位清潔費第一輪）
   --items <字串>           細項(列舉參考欄位)，預設沿用物業檔的固定字串
 
 共用：
@@ -324,14 +321,16 @@ if (isMain) {
 
   // --fee 可給物業月結檔，也可給社區幫「下載範例檔」（全戶門牌齊、每格 ="值" 包法先剝掉）。
   const feeRows = parseCSVObjects(stripExcelWrap(decodeBig5(readFileSync(feePath))))
-  let byHousehold
-  let rosterInfo = null
-  if (rosterPath) {
-    rosterInfo = feeByRoster(parseCSVObjects(readFileSync(rosterPath, 'utf8')))
-    byHousehold = rosterInfo.byHousehold
-  } else {
-    byHousehold = feeByHousehold(parseCSVObjects(readFileSync(resultPath, 'utf8')))
+  if (mode === 'standalone' && !arg('category') && round !== '1' && round !== '2') {
+    console.error('獨立帳單要指定 --round 1 或 2（決定收費類別），或用 --category 自訂')
+    process.exit(1)
   }
+  if (round === '2' && !billedPath) {
+    console.error('第二輪要給 --billed <第一輪結果.csv>，否則第一輪的車會重複收費')
+    process.exit(1)
+  }
+  const 已出帳 = billedPath ? billedPlates(parseCSVObjects(readFileSync(billedPath, 'utf8'))) : new Set()
+  const byHousehold = feeByHousehold(parseCSVObjects(readFileSync(resultPath, 'utf8')), { 已出帳 })
 
   const pad = (n) => String(n).padStart(6)
   let rows, report
@@ -368,7 +367,7 @@ if (isMain) {
     // 與抽籤公告日無關——公告後可能隔幾天才產檔上傳，用公告日會讓帳單顯示的立帳日早於實際建帳日。
     const 立帳日 = arg('bill-date') || todayStr()
     const opts = {
-      收費類別: arg('category', 民國年度 ? `${民國年度}年度機車位清潔費` : ''),
+      收費類別: arg('category', roundCategory(round, 民國年度)),
       立帳通知日期: 立帳日,
       繳費期限: dueAbs || (announce ? addDays(announce, dueDays) : ''),
       備註: '',
@@ -389,14 +388,8 @@ if (isMain) {
     console.log(`出帳戶數          ${pad(report.出帳戶數)}`)
   }
 
-  if (rosterInfo) {
-    const 台數 = [...byHousehold.values()].reduce((s, v) => s + v.台數, 0)
-    console.log(`計費依據          登記名冊（有登記就算錢）：登記 ${rosterInfo.登記台數} 台 → 計費 ${台數} 台／${byHousehold.size} 戶`)
-    if (rosterInfo.衝突數) console.log(`                  ⚠ 名冊衝突 ${rosterInfo.衝突數} 筆（已取最新一次，請先跑 check-roster 核對）`)
-    if (rosterInfo.社宅跳過.length) console.log(`                  ⚠ 社宅戶 ${rosterInfo.社宅跳過.length} 戶不出帳（公益位由社宅單位另開帳單）：${rosterInfo.社宅跳過.join('、')}`)
-  } else {
-    console.log('計費依據          配位結果（只收狀態 分配／已繳）')
-  }
+  const 台數 = [...byHousehold.values()].reduce((s, v) => s + v.台數, 0)
+  console.log(`計費依據          配位結果（只收狀態 分配）：${台數} 台／${byHousehold.size} 戶${billedPath ? `；排除第一輪已出帳 ${已出帳.size} 台` : ''}`)
   console.log(`應收總額          ${pad(report.應收總額)}`)
   console.log(`輸出總額          ${pad(report.輸出總額)}`)
 

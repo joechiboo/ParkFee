@@ -78,11 +78,10 @@ async function loadFromCloud() {
 
 // ── 抽籤狀態 ──
 const seed = ref('2027樂菲莊園機車車位抽籤')
-// 兩輪抽籤（2026-11-02 方向，收費流程待經理確認）：'all'＝一次跑完（每月演練、demo）；
+// 兩輪抽籤、兩輪收費（2026-11-05）：'all'＝一次跑完（每月演練、demo）；
 // '1'＝12/1 第一輪只抽每戶第 1 輛一般機車；'2'＝12/15 第二輪：第 1 輛落空者電腦補位 → 第 2 輛起 → 重機 → 工作人員。
 // 第二輪名冊要用第一輪發佈後重新匯出的（中籤者帶車位編號走 preset），發佈走 merge 不清第一輪。
 const stage = ref('all')
-const onlyPaid = ref(false) // 第二輪：只分給已繳費者（未繳列「視同放棄」）
 const seqStart = ref(0) // 第二輪：順序號接續第一輪最後一號（第一輪結果 summary.順序號迄）
 // 第二輪：第 2 輛起的電腦補位先取小位。tower-priority 只排了大位，不開的話 400 台名冊演練重機只配到 1/18
 // （2026-11-03 scripts/simulate-two-stage.mjs）；開了 17/18、一般機車仍全部有位。待管委會定，先預設開。
@@ -101,7 +100,6 @@ function run() {
     seed: seed.value || 'parkfee',
     runAt,
     stage: stage.value,
-    onlyPaid: stage.value === '2' && onlyPaid.value,
     seqStart: stage.value === '2' ? Number(seqStart.value) || 0 : 0,
     extraSmallFirst: stage.value === '2' && extraSmallFirst.value,
   })
@@ -274,7 +272,7 @@ function downloadResultCSV(pub = true) {
           <li><b>Round 2＋ 第二輛起</b>：用前輪剩餘車位依序取志願；耗盡則落選。</li>
         </ul>
         <p><b>重機</b>只登記、<b>不參與抽籤</b>，列「待安排」、不算落選；所有非重機車位確定後，若有多餘機車位再行安排，一台占<b>相鄰兩個大位</b>（不含小位、不得用無障礙位）。<b>社宅戶</b>只配<b>公益位</b>（一般戶反之不配公益位）。<b>志願全落空者</b>：勾「<b>電腦選號</b>」→ 系統自動配<b>本棟靠電梯剩位</b>（引擎內、可重現）；沒勾 → 列「落選名單」交物業第二階段（候補）。</p>
-        <p><b>兩輪抽籤</b>（2026-11-02 方向，收費流程待經理確認）：<b>12/1 第一輪</b>只抽每戶第 1 輛一般機車，第 2 輛起與工作人員列「待第二輪」、不算落選；<b>12/15 第二輪</b>用第一輪發佈後重新匯出的名冊（中籤者帶車位編號＝免抽），依序：第 1 輛落空者電腦補位 → 第 2 輛起依志願抽、落空者一律電腦補位 → 重機取相鄰兩大位 → 工作人員。第二輪發佈只寫入本輪新配的，不動第一輪。</p>
+        <p><b>兩輪抽籤</b>（2026-11-05 定：兩輪分開收費，抽中才繳）：<b>12/1 第一輪</b>只抽每戶第 1 輛一般機車，第 2 輛起與工作人員列「待第二輪」、不算落選；<b>12/15 第二輪</b>用第一輪發佈後重新匯出的名冊（中籤者帶車位編號＝免抽），依序：第 1 輛落空者電腦補位 → 第 2 輛起依志願抽、落空者一律電腦補位 → 重機取相鄰兩大位 → 工作人員。第二輪發佈只寫入本輪新配的，不動第一輪。</p>
         <p class="text-slate-500">固定種子 → 結果可重現；種子／時間／各輪過程全留存供監察。重抽＝換新種子重跑，歷次紀錄保留。</p>
       </div>
     </details>
@@ -289,10 +287,9 @@ function downloadResultCSV(pub = true) {
           <label class="inline-flex items-center gap-1"><input v-model="stage" type="radio" value="2" /> 第二輪 12/15：補位 → 第 2 輛起 → 重機 → 工作人員</label>
         </div>
         <div v-if="stage === '2'" class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
-          <label class="inline-flex items-center gap-1"><input v-model="onlyPaid" type="checkbox" /> 只分給已繳費者（未繳列「視同放棄」；收費流程待經理確認）</label>
           <label class="inline-flex items-center gap-1">順序號接續 <input v-model.number="seqStart" type="number" min="0" class="w-16 rounded border border-slate-300 px-1 py-0.5" /> 號之後</label>
           <label class="inline-flex items-center gap-1"><input v-model="extraSmallFirst" type="checkbox" /> 第 2 輛起補位先取小位（把相鄰大位留給重機；關掉則重機幾乎排不到）</label>
-          <span>名冊請用第一輪發佈後重新匯出的（中籤者帶車位編號＝免抽）；發佈只寫入本輪新配的，不動第一輪。</span>
+          <span>請先到維護頁「未繳費」解除第一輪逾期者，再重新匯出名冊（中籤者帶車位編號＝免抽，視同放棄者不再分配）；發佈只寫入本輪新配的，不動第一輪。</span>
         </div>
       </fieldset>
       <label class="block grow">
@@ -339,7 +336,7 @@ function downloadResultCSV(pub = true) {
           <div class="text-xl font-semibold text-slate-800">{{ result.summary.待第二輪 }}</div>
         </div>
         <div v-if="result.summary.未繳費" class="rounded-lg border border-amber-200 bg-amber-50 p-3">
-          <div class="text-xs text-amber-700">未繳費視同放棄</div>
+          <div class="text-xs text-amber-700">第一輪逾期視同放棄</div>
           <div class="text-xl font-semibold text-amber-800">{{ result.summary.未繳費 }}</div>
         </div>
         <div class="rounded-lg border border-slate-200 bg-white p-3">
@@ -615,7 +612,7 @@ function downloadResultCSV(pub = true) {
 
       <!-- 待安排：重機（不參與抽籤、不算落選）／待第二輪（第一輪不抽的第 2 輛起）／未繳視同放棄 -->
       <div v-if="result.待安排?.length">
-        <div class="mb-2 text-sm font-medium text-sky-700">待安排（{{ result.待安排.length }}）— 重機：非重機車位確定後於維護頁指派相鄰兩個大位；待第二輪：12/15 再分配；視同放棄：未繳費</div>
+        <div class="mb-2 text-sm font-medium text-sky-700">待安排（{{ result.待安排.length }}）— 重機：非重機車位確定後於維護頁指派相鄰兩個大位；待第二輪：12/15 再分配；視同放棄：第一輪逾期未繳，已解除</div>
         <div class="overflow-x-auto rounded-lg border border-sky-200">
           <table class="w-full text-sm">
             <thead class="bg-sky-50 text-sky-700">

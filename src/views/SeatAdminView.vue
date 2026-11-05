@@ -92,7 +92,7 @@ function clearUnpaid() {
 async function releaseUnpaid() {
   const targets = unpaidShown.value.filter((a) => unpaidPicked.value.has(a.車號))
   if (!targets.length) return
-  if (!confirm(`確定解除 ${targets.length} 台未繳費車輛的車位？車位會回到可配池，該車的繳費狀態與簽約期限一併清除，無法復原。`)) return
+  if (!confirm(`確定解除 ${targets.length} 台未繳費車輛的車位？車位回到可配池，這些車視同放棄、第二輪不再分配，無法復原。`)) return
   err.value = ''
   releaseMsg.value = ''
   saving.value = true
@@ -100,7 +100,7 @@ async function releaseUnpaid() {
   const failed = []
   for (const a of targets) {
     try {
-      await unlockSeat(a.車位編號, a.車號)
+      await unlockSeat(a.車位編號, a.車號, { 放棄: true })
       done++
     } catch (e) {
       failed.push(`${a.車號}：${e?.message || '失敗'}`)
@@ -435,7 +435,7 @@ function decorate(s) {
           <div v-if="unpaid.length" class="rounded-lg border border-amber-200 bg-amber-50 p-4">
             <div class="font-semibold text-amber-800">未繳費 <span class="text-amber-600">({{ unpaid.length }} 台)</span></div>
             <p class="mt-1 text-xs text-amber-700">
-              繳費截止後，勾選要釋出的車輛按「批次解除」：車位回到可配池（第二輪可用），該車的繳費狀態與簽約期限清空。
+              繳費截止後，勾選要釋出的車輛按「批次解除」：車位回到可配池，這些車列「視同放棄」，第二輪不再分配。
               解除無法復原，請先核對社區幫入帳。
             </p>
             <label class="mt-2 inline-flex items-center gap-1 text-xs text-amber-800">

@@ -31,6 +31,7 @@
 
 import { mulberry32, hashSeed, seededShuffle } from './rng.js'
 import { KIND } from '../map/seat-id.js'
+import { FORFEIT_STATUS } from '../data/vehicleStatus.js'
 import { motorSeats } from '../map/seats.js'
 import towerPriority from '../map/tower-priority.json' with { type: 'json' }
 import seatAdjacency from '../map/seat-adjacency.json' with { type: 'json' }
@@ -104,6 +105,7 @@ function toEntry(r, index) {
     車位志願: Array.isArray(r.車位志願) ? r.車位志願.map((x) => String(x)) : [], // 戶層級
     車位編號: String(r.車位編號 ?? '').trim(), // 物業抽籤前已指派（空＝待抽）；重機兩位頓號分隔
     已繳費: r.已繳費 === true || r.已繳費 === 'Y' || r.已繳費 === 'y',
+    配位狀態: String(r.配位狀態 ?? '').trim(), // 第二輪只看「視同放棄」；其餘（未中、待第二輪）照常分配
     社宅: r.社宅 === true || r.社宅 === 'Y' || r.社宅 === 'y', // 社會住宅住戶 → 只配公益位
     // 社區工作人員（辦法伍二（十二））：與住戶一起登記選位，但**配位排在最後**、只撿剩餘位。
     // 辦法限制的是配位時點（「停車資格程序完結後如有剩餘車位」），不限制登記時點。
@@ -206,13 +208,13 @@ export function distribute({
   // 車位實體相鄰表 { 車位id: [鄰格id…] }。預設讀 seat-adjacency.json（由座標產生）。
   // 測試用合成車位（id 與真實地圖撞號但幾何無關）時注入自己的，否則會被真實幾何否決。
   adjacency = null,
-  // 兩輪抽籤（2026-11-02 方向，收費流程待經理確認）：
+  // 兩輪抽籤、兩輪收費（2026-11-05：抽中才繳，第一輪 12/10 止、第二輪 12/25 止）：
   //   stage 1（12/1）：只抽每戶第 1 輛一般機車；第 2 輛起與工作人員列「待第二輪」、不算落選；重機列待安排。
-  //   stage 2（12/15）：名冊重新匯出後，第一輪中籤者帶車位編號走 preset。順序：第 1 輛落空者先由電腦補位
-  //     → 第 2 輛起依志願抽、落空者一律電腦補位（不論有無勾選，繳了就要有位）→ 重機（相鄰兩大位）→ 工作人員。
+  //   stage 2（12/15）：名冊重新匯出後，第一輪中籤者帶車位編號走 preset；第一輪逾期被解除的（配位狀態＝視同放棄）
+  //     不再分配。第二輪的車此時還沒收費，所以不看已繳費。順序：第 1 輛落空者先由電腦補位
+  //     → 第 2 輛起依志願抽、落空者一律電腦補位（登記確認表：不填或志願被選走即同意電腦配位）→ 重機（相鄰兩大位）→ 工作人員。
   //   'all'（預設）：一次跑完，供每月演練與既有測試；行為與加 stage 前完全相同。
   stage = 'all',
-  onlyPaid = false, // stage 2 專用：只分給已繳費者，未繳列「視同放棄」（preset 未繳者只警告，釋出要在維護頁解除）
   seqStart = 0, // 順序號起算（stage 2 可接續第一輪最後一號；預設從 1 開始）
   // stage 2 專用：第 2 輛起的電腦補位先取小位、再取大位（tower-priority 只排了大位，一般機車全往大位塞會把
   //   重機要的相鄰兩大位用光）。第 1 輛補位不受影響，仍是本棟靠電梯。待管委會定，預設關。
@@ -234,7 +236,7 @@ export function distribute({
   // 工作人員抽離住戶輪次（R1/R2+/電腦選位），另於最後一輪撿剩位。
   let staff = drawable.filter((e) => e.工作人員)
   let pending = drawable.filter((e) => !e.工作人員)
-  // 本輪不處理的車（stage 1 的第 2 輛起／工作人員；stage 2 onlyPaid 的未繳者）→ 列「待安排」帶原因，不算落選。
+  // 本輪不處理的車（stage 1 的第 2 輛起／工作人員；stage 2 的視同放棄者）→ 列「待安排」帶原因，不算落選。
   const deferred = []
   if (STAGE === 1) {
     for (const e of pending.filter((x) => x.第幾輛 !== 1)) deferred.push({ e, 原因: REASON.NEXT_STAGE })
@@ -242,11 +244,13 @@ export function distribute({
     pending = pending.filter((x) => x.第幾輛 === 1)
     staff = []
   }
-  if (STAGE === 2 && onlyPaid) {
-    for (const e of [...pending, ...staff, ...heavyWaiting].filter((x) => !x.已繳費)) deferred.push({ e, 原因: REASON.UNPAID })
-    pending = pending.filter((x) => x.已繳費)
-    staff = staff.filter((x) => x.已繳費)
-    heavyWaiting = heavyWaiting.filter((x) => x.已繳費)
+  if (STAGE === 2) {
+    // 中籤逾期未繳，已在維護頁解除：車位清空但留下狀態。不擋掉的話會被當成「第一輪沒配到」重新抽到。
+    const forfeited = (x) => x.配位狀態 === FORFEIT_STATUS
+    for (const e of [...pending, ...staff, ...heavyWaiting].filter(forfeited)) deferred.push({ e, 原因: REASON.UNPAID })
+    pending = pending.filter((x) => !forfeited(x))
+    staff = staff.filter((x) => !forfeited(x))
+    heavyWaiting = heavyWaiting.filter((x) => !forfeited(x))
   }
   // stage 2：重機在一般機車之後抽；住戶依第幾輛分組抽順序號，工作人員的重機併入工作人員輪最後。
   const heavyDraw = STAGE === 2 ? heavyWaiting.filter((e) => !e.工作人員) : []
@@ -308,10 +312,10 @@ export function distribute({
     }
     say(`已指派（物業抽籤前確定）：${preset.length} 台，免抽、直接記入結果`)
     rounds.push({ round: '指派', name: '物業指派（免抽）', draws: [], assignments: a })
-    if (STAGE === 2 && onlyPaid) {
+    if (STAGE === 2) {
       const unpaid = preset.filter((e) => !e.已繳費)
       if (unpaid.length)
-        say(`⚠️ 已指派但未繳費 ${unpaid.length} 台（第一輪中籤逾期？）仍占位——要釋出請先到維護頁解除再重跑`)
+        say(`⚠️ 已指派但未繳費 ${unpaid.length} 台（第一輪中籤逾期？）仍占位——要釋出請先到維護頁「未繳費」解除再重跑`)
     }
   }
 
@@ -339,7 +343,7 @@ export function distribute({
   }
   // stage 1：與 'all' 相同，第 1 輛志願落空且勾「電腦選號」者在 12/1 就補位（docs/01：有勾就補、沒勾列落選）；沒勾者留到第二輪。
   if (STAGE === 1) runComputer({ nths: (n) => n === 1, name: '電腦選位（第 1 輛，本棟靠電梯補位）', round: '電腦' })
-  // stage 2：第 1 輛落空者（第一輪沒配到的）先由電腦補位，排在第 2 輛抽籤之前（繳了就要有位；候選序用完就取任一可用位）。
+  // stage 2：第 1 輛落空者（第一輪沒配到的）先由電腦補位，排在第 2 輛抽籤之前（登記確認表：志願被選走即同意電腦配位；候選序用完就取任一可用位）。
   if (STAGE === 2) runComputer({ force: true, fallback: true, nths: (n) => n === 1, name: '電腦補位（第 1 輛落空者）', round: '電腦1' })
 
   // ── Round 2+：第二位起（依序用前一輪剩餘；耗盡則自然全落選）──────────
@@ -367,7 +371,7 @@ export function distribute({
   //    社宅戶＝「公益位由小到大」（僅 20 格、同一區，不需分棟排序；tower-priority 不含公益位）。
   //    保底一位優先：先第 1 輛、再第 2 輛+，同組依順序號。凍結位不在池中 → 自動略過。
   //    'all'：只救有勾「電腦選號」者，跑一次；stage 2：落空者一律補位（force），第 1 輛在第 2 輛抽之前先補。
-  //    fallback：候選序（只有大位）用完後，改取全場最低號可用位（先小後大）——「繳了就要有位」只在 stage 2 強制補位時開。
+  //    fallback：候選序（只有大位）用完後，改取全場最低號可用位（先小後大）——只在 stage 2 強制補位時開。
   //    smallFirst：先取全場最低號小位，取不到才走候選序（stage 2 第 2 輛起、extraSmallFirst 時）。
   function runComputer({ force = false, nths = null, name = '電腦選位（本棟靠電梯補位）', round = '電腦', fallback = false, smallFirst = false } = {}) {
     const key = (x) => `${x.戶號}|${x.車號}|${x.第幾輛}`

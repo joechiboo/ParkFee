@@ -7,7 +7,7 @@
 // 防呆：已繳費旗標為真但沒有車位編號（異常資料）不算 paid，落到 registered。
 export const HEAVY_WAIT_STATUS = '待安排'
 export const NEXT_STAGE_STATUS = '待第二輪' // 兩輪抽籤 stage 1 發佈後，第 2 輛起與工作人員的狀態
-export const FORFEIT_STATUS = '視同放棄' // 兩輪抽籤 stage 2 onlyPaid：未繳費者
+export const FORFEIT_STATUS = '視同放棄' // 中籤逾期未繳，維護頁批次解除後留下；第二輪不再分配
 
 export function vehicleResultStatus(v) {
   if (v?.已繳費 && v?.車位編號) return 'paid'

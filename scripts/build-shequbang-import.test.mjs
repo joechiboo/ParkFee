@@ -4,7 +4,8 @@ import { describe, it, expect } from 'vitest'
 import {
   householdIdOf,
   feeByHousehold,
-  feeByRoster,
+  billedPlates,
+  roundCategory,
   fillMotorFee,
   addressIndex,
   buildStandaloneRows,
@@ -51,25 +52,43 @@ describe('householdIdOf — 門牌＋樓層 → 戶號', () => {
   })
 })
 
-describe('feeByRoster — 登記名冊 → 每戶應繳（有登記就算錢）', () => {
-  const base = { 第幾輛: '1', 身障: '否', 志願小位: '否', 登記時間: '2026-11-15 08:00:00', 聯絡電話: '0910000000', 車位志願: '', 志願落選保底: '是', 社宅: '否', 工作人員: 'N', 來源: '紙本', 車位編號: '', 已繳費: '' }
-  it('依車種計費逐台加總：一般 1,200、重機 3,600、自行車 0；沒配位也收', () => {
-    const { byHousehold } = feeByRoster([
-      { ...base, 戶號: 'A2-1', 車號: 'AAA-0001', 車種: '一般（≤250CC）', 第幾輛: '1' },
-      { ...base, 戶號: 'A2-1', 車號: 'AAA-0002', 車種: '重機（250CC↑）', 第幾輛: '2' },
-      { ...base, 戶號: 'A2-1', 車號: 'BIKE-1', 車種: '自行車', 第幾輛: '1' },
-    ])
-    expect(byHousehold.get('A2-1')).toEqual({ 金額: 4800, 台數: 3 })
+describe('兩輪分開收費', () => {
+  const round1 = [
+    { 戶號: 'A2-1', 車號: 'AAA-1', 應繳金額: '1200', 狀態: '分配' },
+    { 戶號: 'A2-1', 車號: 'AAA-2', 應繳金額: '', 狀態: '待第二輪' },
+    { 戶號: 'B3-2', 車號: 'BBB-1', 應繳金額: '', 狀態: '未中' },
+    { 戶號: 'H5-1', 車號: 'HHH-1', 應繳金額: '', 狀態: '待安排' },
+  ]
+  const round2 = [
+    { 戶號: 'A2-1', 車號: 'AAA-1', 應繳金額: '1200', 狀態: '已繳' }, // 第一輪繳了
+    { 戶號: 'A2-1', 車號: 'AAA-2', 應繳金額: '1200', 狀態: '分配' },
+    { 戶號: 'B3-2', 車號: 'BBB-1', 應繳金額: '1200', 狀態: '分配' },
+    { 戶號: 'H5-1', 車號: 'HHH-1', 應繳金額: '3600', 狀態: '分配' },
+    { 戶號: 'C4-1', 車號: 'CCC-1', 應繳金額: '1200', 狀態: '分配' }, // 第一輪中籤，逾期但還沒解除
+  ]
+
+  it('第一輪只收配到位的第 1 輛；待第二輪、未中、重機待安排都不出帳', () => {
+    const acc = feeByHousehold(round1)
+    expect([...acc.keys()]).toEqual(['A2-1'])
+    expect(acc.get('A2-1')).toEqual({ 金額: 1200, 台數: 1 })
   })
 
-  it('社宅戶跳過不出帳並列入報告；工作人員照收', () => {
-    const { byHousehold, 社宅跳過 } = feeByRoster([
-      { ...base, 戶號: 'B3-2', 車號: 'BBB-0001', 車種: '一般', 社宅: '是' },
-      { ...base, 戶號: '員工-01', 車號: 'CCC-0001', 車種: '一般', 工作人員: 'Y' },
-    ])
-    expect(byHousehold.has('B3-2')).toBe(false)
-    expect(社宅跳過).toEqual(['B3-2'])
-    expect(byHousehold.get('員工-01').金額).toBe(1200)
+  it('第二輪排除第一輪已出帳的車，不重複收費；重機配到才收 3,600', () => {
+    const 已出帳 = billedPlates([...round1, { 戶號: 'C4-1', 車號: 'CCC-1', 應繳金額: '1200', 狀態: '分配' }])
+    const acc = feeByHousehold(round2, { 已出帳 })
+    expect(acc.get('A2-1')).toEqual({ 金額: 1200, 台數: 1 })
+    expect(acc.get('B3-2').金額).toBe(1200)
+    expect(acc.get('H5-1').金額).toBe(3600)
+    expect(acc.has('C4-1')).toBe(false)
+  })
+
+  it('已繳（櫃台收過）不再出帳', () => {
+    expect(feeByHousehold([{ 戶號: 'C2-3', 車號: 'X', 應繳金額: '1200', 狀態: '已繳' }]).size).toBe(0)
+  })
+
+  it('兩輪收費類別不同，回查才分得出繳的是哪輪', () => {
+    expect(roundCategory(1, 116)).toBe('116年度機車位清潔費第一輪')
+    expect(roundCategory('2', 116)).toBe('116年度機車位清潔費第二輪')
   })
 })
 
@@ -89,11 +108,6 @@ describe('feeByHousehold — 配位結果 → 每戶應繳', () => {
     ])
     expect(acc.get('B3-2').金額).toBe(1200)
     expect(acc.get('B3-2').台數).toBe(1)
-  })
-
-  it('已繳（物業抽籤前已指派）同樣計入 — 出帳表要完整反映應收', () => {
-    const acc = feeByHousehold([{ 戶號: 'C2-3', 應繳金額: '1200', 狀態: '已繳' }])
-    expect(acc.get('C2-3').金額).toBe(1200)
   })
 
   it('純自行車戶金額 0 但仍入列 — 對帳表要看得到它顯示 0，而非當成沒登記', () => {

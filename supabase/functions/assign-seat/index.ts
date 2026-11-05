@@ -5,9 +5,9 @@
 // op：
 //   list   → 回傳目前鎖定清單 + 各位指派（管理員專屬讀，含個資）。
 //   assign → 鎖定該位；若帶車號則把該車指派到此位（寫 vehicle）。重機要再帶 配對車位，一次佔兩格。
-//   unlock → 解鎖該位；若帶車號則清掉該車的指派（重機兩格一起解）。
-//   pay    → 批次標繳費（12/11 社區幫對帳）：按戶號把該戶全部機車 已繳費 設為 true/false，
-//            並記 繳費來源（例「社區幫 2026-12-11」）與 繳費時間；稽核 pay.batch 只記筆數。
+//   unlock → 解鎖該位；若帶車號則清掉該車的指派（重機兩格一起解）。帶 放棄:true 時該車留「視同放棄」。
+//   pay    → 批次標繳費（12/11、12/26 社區幫對帳）：按戶號把該戶已配到位的機車 已繳費 設為 true/false，
+//            並記 繳費來源（例「社區幫第一輪 2026-12-11」）與 繳費時間；稽核 pay.batch 只記筆數。
 import { corsHeaders, json, adminClient, verifyAdmin, audit } from '../_shared/http.ts'
 import { normalizeHousehold } from '../_shared/normalize.ts'
 import { holderOf, planAssign, seatIdsOf } from '../_shared/seat-holder.ts'
@@ -60,22 +60,25 @@ Deno.serve(async (req) => {
     }
 
     if (op === 'pay') {
-      // 批次標繳費：按戶（社區幫是一戶一張帳單），該戶所有機車一起標；自行車 0 元不收費、不動。
-      // 來源字串必填（例「社區幫 2026-12-11」），寫進每台車的 繳費來源 → 維護頁看得出是批次標的。
+      // 批次標繳費：社區幫一戶一張帳單，帳單上的車＝該戶已配到位的機車，所以只標有車位編號者。
+      // 兩輪分開收費（2026-11-05）：第一輪繳了不可連帶把還沒配位的第 2 台標成已繳，否則第二輪會漏收。
+      // 只動狀態不同的車：已繳者保留原本的來源與時間（櫃台指派、第一輪），撤回只撤這個來源標的。
+      // 來源字串必填（例「社區幫第一輪 2026-12-11」），寫進每台車的 繳費來源 → 維護頁看得出是批次標的。
       const 來源 = String(body.來源 ?? '').trim()
-      if (!來源) return json({ error: '缺少 來源（例：社區幫 2026-12-11）' }, 400)
+      if (!來源) return json({ error: '缺少 來源（例：社區幫第一輪 2026-12-11）' }, 400)
       const raw = Array.isArray(body.戶號列表) ? body.戶號列表 : []
       const ids = [...new Set(raw.map((h: unknown) => normalizeHousehold(h)).filter(Boolean))]
       if (!ids.length) return json({ error: '戶號列表為空' }, 400)
       if (ids.length > 800) return json({ error: '一次最多 800 戶' }, 400)
       const paid = body.已繳費 !== false // 預設標已繳；帶 已繳費:false 可整批撤回（例如標錯來源重跑）
 
-      // 先查哪些戶有機車，才能回報「查無戶號」給腳本印出來核對。
+      // 先查哪些戶有已配位的機車，才能回報對不上的戶給腳本印出來核對。
       const { data: vs, error: qErr } = await db
         .from('vehicle')
         .select('戶號, 車號')
         .in('戶號', ids)
         .neq('車種', '自行車')
+        .not('車位編號', 'is', null)
       if (qErr) return json({ error: qErr.message }, 400)
       const found = new Set((vs || []).map((v: { 戶號: string }) => v.戶號))
       const hit = ids.filter((h) => found.has(h))
@@ -83,7 +86,7 @@ Deno.serve(async (req) => {
 
       let 台數 = 0
       if (hit.length) {
-        const { data: upd, error: uErr } = await db
+        const base = db
           .from('vehicle')
           .update({
             已繳費: paid,
@@ -92,7 +95,9 @@ Deno.serve(async (req) => {
           })
           .in('戶號', hit)
           .neq('車種', '自行車')
-          .select('車號')
+          .not('車位編號', 'is', null)
+        const scoped = paid ? base.eq('已繳費', false) : base.eq('繳費來源', 來源)
+        const { data: upd, error: uErr } = await scoped.select('車號')
         if (uErr) return json({ error: uErr.message }, 400)
         台數 = (upd || []).length
       }
@@ -216,6 +221,7 @@ Deno.serve(async (req) => {
     }
 
     if (op === 'unlock') {
+      const 放棄 = body.放棄 === true
       // 重機佔兩格：解其中一格就兩格一起解，不留下沒人持有的鎖。
       let released = [seat]
       if (plate) {
@@ -228,11 +234,12 @@ Deno.serve(async (req) => {
       if (plate) {
         await db
           .from('vehicle')
-          .update({ 車位編號: null, 車位類型: null, 配位狀態: null, 已繳費: false, 繳費來源: null, 繳費時間: null, 簽約期限: null })
+          // 放棄＝逾期未繳：留下狀態，第二輪才不會把這台當成沒配到而重新抽到。
+          .update({ 車位編號: null, 車位類型: null, 配位狀態: 放棄 ? '視同放棄' : null, 已繳費: false, 繳費來源: null, 繳費時間: null, 簽約期限: null })
           .eq('車號', plate)
       }
       // 稽核：解除會一併清掉繳費狀態 → 誤解或爭議時要查得出是誰、何時解的。
-      await audit(db, 'seat.unlock', { body, target: released.join('、'), detail: { 車號: plate || '-' } })
+      await audit(db, 'seat.unlock', { body, target: released.join('、'), detail: { 車號: plate || '-', 放棄 } })
       return json({ ok: true, released })
     }
 

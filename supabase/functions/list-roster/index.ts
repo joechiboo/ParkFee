@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
 
     const { data: vehicles, error: ve } = await db
       .from('vehicle')
-      .select('車號, 戶號, 車種, 第幾輛, 身障, 志願小位, 車位編號, 已繳費')
+      .select('車號, 戶號, 車種, 第幾輛, 身障, 志願小位, 車位編號, 已繳費, 配位狀態')
       .order('戶號')
       .order('第幾輛')
     if (ve) return json({ error: ve.message }, 400)
@@ -59,6 +59,7 @@ Deno.serve(async (req) => {
         來源: '線上',
         車位編號: v.車位編號 ?? '', // 物業抽籤前已指派者；重機為兩位頓號分隔
         已繳費: yn(v.已繳費),
+        配位狀態: v.配位狀態 ?? '', // 第二輪要認「視同放棄」
       }
     })
 

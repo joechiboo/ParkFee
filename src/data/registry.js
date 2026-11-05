@@ -91,6 +91,7 @@ export function normalizeRow(raw, fallbackSource = SOURCE.ONLINE) {
     // 物業抽籤前指派（維護頁寫入、export 帶出）：有車位編號＝該車已定位 → distribute 跳過並記入結果。
     車位編號: String(raw.車位編號 ?? '').trim(), // 重機＝兩位頓號分隔
     已繳費: toYN(raw.已繳費),
+    配位狀態: String(raw.配位狀態 ?? '').trim(), // 第二輪要認「視同放棄」，否則解除後的車會被重新抽到
   }
 }
 

@@ -735,23 +735,39 @@ describe('兩輪抽籤（stage 1＝12/1 只抽第 1 輛；stage 2＝12/15 補位
     expect(r2.assigned[0]).toMatchObject({ 車號: 'S2', 車位編號: '2、3', 配位方式: VIA.STAFF, 順序號: null })
   })
 
-  it('stage 2 onlyPaid：未繳費者列「視同放棄」不分配；preset 未繳只在 log 警告', () => {
+  it('stage 2：第二輪的車還沒收費，未繳也照常分配；視同放棄者不再分配；未解除的未繳 preset 只警告', () => {
     const r = run(
       [
-        { 戶號: 'A', 車號: 'A1', 第幾輛: 1, 車位志願: ['2'], 車位編號: '2', 已繳費: 'N' },
-        { 戶號: 'B', 車號: 'B1', 第幾輛: 1, 車位志願: ['3'], 已繳費: 'Y' },
-        { 戶號: 'C', 車號: 'C1', 第幾輛: 1, 車位志願: ['3'], 已繳費: 'N' },
+        { 戶號: 'A', 車號: 'A1', 第幾輛: 1, 車位志願: ['2'], 車位編號: '2', 已繳費: 'N' }, // 逾期但還沒解除
+        { 戶號: 'B', 車號: 'B1', 第幾輛: 2, 車位志願: ['3'], 已繳費: 'N' }, // 第 2 輛，12/15 才要繳
+        { 戶號: 'C', 車號: 'C1', 第幾輛: 1, 車位志願: ['3'], 已繳費: 'N', 配位狀態: '視同放棄' }, // 已解除
         { 戶號: 'H', 車號: 'H1', 第幾輛: 1, 車種: '重機', 已繳費: 'N' },
       ],
-      { stage: 2, onlyPaid: true, computerPickOrder: pick },
+      { stage: 2, computerPickOrder: pick },
     )
-    expect(r.assigned.map((a) => a.車號).sort()).toEqual(['A1', 'B1'])
-    expect(r.待安排.map((w) => [w.車號, w.原因])).toEqual([
-      ['C1', REASON.UNPAID],
-      ['H1', REASON.UNPAID],
-    ])
-    expect(r.summary.未繳費).toBe(2)
+    expect(r.assigned.map((a) => a.車號)).toContain('B1')
+    expect(r.assigned.map((a) => a.車號)).not.toContain('C1')
+    expect(r.待安排.map((w) => [w.車號, w.原因])).toEqual([['C1', REASON.UNPAID]])
+    expect(r.summary.未繳費).toBe(1)
     expect(r.log.some((m) => m.includes('已指派但未繳費 1 台'))).toBe(true)
+  })
+
+  it('stage 2：只有放棄的那台不分配，同戶第 2 輛照抽；第一輪落選（未中）照常補位', () => {
+    const r = run(
+      [
+        { 戶號: 'C', 車號: 'C1', 第幾輛: 1, 車位志願: ['3'], 配位狀態: '視同放棄' },
+        { 戶號: 'C', 車號: 'C2', 第幾輛: 2, 車位志願: ['3'], 配位狀態: '待第二輪' },
+        { 戶號: 'D', 車號: 'D1', 第幾輛: 1, 車位志願: ['2'], 配位狀態: '未中' },
+      ],
+      { stage: 2, computerPickOrder: pick },
+    )
+    expect(r.assigned.map((a) => a.車號).sort()).toEqual(['C2', 'D1'])
+  })
+
+  it('stage 1 不看視同放棄（12/1 前不會有）；all 也不受影響', () => {
+    const roster = [{ 戶號: 'C', 車號: 'C1', 第幾輛: 1, 車位志願: ['3'], 配位狀態: '視同放棄' }]
+    expect(run(roster, { stage: 1 }).assigned).toHaveLength(1)
+    expect(run(roster).assigned).toHaveLength(1)
   })
 
   it('stage 2 seqStart：順序號接續第一輪最後一號', () => {

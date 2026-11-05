@@ -20,10 +20,10 @@ describe('parseBillAddress — 管理費列表匯出的住戶地址', () => {
 describe('paidHouseholdsFrom', () => {
   it('已繳＝狀態非空且不是「未繳費」（社區幫把繳費方式填在狀態欄）', () => {
     const r = paidHouseholdsFrom([
-      row('H3-297-6樓', '116年度機車位清潔費', '虛擬帳號'),
-      row('A1-375-2樓', '116年度機車位清潔費', '信用卡'),
-      row('B2-379-14樓', '116年度機車位清潔費', '未繳費'),
-      row('C3-371-3樓', '116年度機車位清潔費', ''),
+      row('H3-297-6樓', '116年度機車位清潔費第一輪', '虛擬帳號'),
+      row('A1-375-2樓', '116年度機車位清潔費第一輪', '信用卡'),
+      row('B2-379-14樓', '116年度機車位清潔費第一輪', '未繳費'),
+      row('C3-371-3樓', '116年度機車位清潔費第一輪', ''),
     ])
     expect(r.已繳戶號).toEqual(['A2-1', 'H6-3'])
     expect(r.未繳戶號).toEqual(['B14-2', 'C3-3'])
@@ -31,7 +31,7 @@ describe('paidHouseholdsFrom', () => {
 
   it('收費類別用「包含」比對：跨月合繳串成多類別的列也算；純管理費列不看', () => {
     const r = paidHouseholdsFrom([
-      row('H3-297-6樓', '2026年11月管理費,116年度機車位清潔費', '信用卡'),
+      row('H3-297-6樓', '2026年11月管理費,116年度機車位清潔費第一輪', '信用卡'),
       row('A1-375-2樓', '2026年11月管理費', '信用卡'),
     ])
     expect(r.已繳戶號).toEqual(['H6-3'])
@@ -40,15 +40,15 @@ describe('paidHouseholdsFrom', () => {
 
   it('同戶多張、其中一張未繳 → 不標已繳，列進部分繳', () => {
     const r = paidHouseholdsFrom([
-      row('H3-297-6樓', '116年度機車位清潔費', '信用卡'),
-      row('H3-297-6樓', '116年度機車位清潔費', '未繳費'),
+      row('H3-297-6樓', '116年度機車位清潔費第一輪', '信用卡'),
+      row('H3-297-6樓', '116年度機車位清潔費第一輪', '未繳費'),
     ])
     expect(r.已繳戶號).toEqual([])
     expect(r.部分繳).toEqual(['H6-3'])
   })
 
   it('地址對不到戶號 → 列進略過並帶列號與帳單編號', () => {
-    const r = paidHouseholdsFrom([row('怪地址', '116年度機車位清潔費', '信用卡', { 帳單編號: 'p9' })])
+    const r = paidHouseholdsFrom([row('怪地址', '116年度機車位清潔費第一輪', '信用卡', { 帳單編號: 'p9' })])
     expect(r.已繳戶號).toEqual([])
     expect(r.略過).toEqual([{ 列: 2, 原因: '住戶地址對不到戶號：怪地址', 帳單編號: 'p9' }])
   })
@@ -56,5 +56,23 @@ describe('paidHouseholdsFrom', () => {
   it('--category 可換', () => {
     const r = paidHouseholdsFrom([row('H3-297-6樓', '汽車位清潔費', '信用卡')], { category: '汽車位' })
     expect(r.已繳戶號).toEqual(['H6-3'])
+  })
+})
+
+describe('兩輪帳單分開回查', () => {
+  const rows = [
+    row('H3-297-6樓', '116年度機車位清潔費第一輪', '信用卡'),
+    row('H3-297-6樓', '116年度機車位清潔費第二輪', '未繳費'),
+    row('A1-375-2樓', '116年度機車位清潔費第二輪', '信用卡'),
+  ]
+  it('第一輪繳了、第二輪沒繳：回查第一輪算已繳，不會被第二輪判成部分繳', () => {
+    const r = paidHouseholdsFrom(rows, { category: '機車位清潔費第一輪' })
+    expect(r.已繳戶號).toEqual(['H6-3'])
+    expect(r.部分繳).toEqual([])
+  })
+  it('回查第二輪只看第二輪的帳單', () => {
+    const r = paidHouseholdsFrom(rows, { category: '機車位清潔費第二輪' })
+    expect(r.已繳戶號).toEqual(['A2-1'])
+    expect(r.未繳戶號).toEqual(['H6-3'])
   })
 })
