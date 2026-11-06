@@ -2,8 +2,10 @@
 # 右欄改 11.5pt、項目間留白、黑字全粗體（經理手動斷行的段落先接回，字變小才不會斷在句中）。
 # 流程圖來源 docs/assets/35-流程圖.svg；列高固定，虛線才對得上表格橫線。
 #
-# 用法：python scripts/build-explainer-variants.py <經理版.docx> <輸出資料夾> [--seal]
+# 用法：python scripts/build-explainer-variants.py <經理版.docx> <輸出資料夾> [--seal | --seal-a0]
 #   --seal：署名兩側加社區公章與公告章（private/seals/，檔名加「-加章」；含電子章，只能放 private/）
+#   --seal-a0：同上，但印章縮成實際尺寸的 1/4，放大成 A0 海報（build-explainer-a0.py）後＝實際尺寸，
+#              與 B1 圖 A0 的章一樣大（2026-11-06 經理要求）；檔名加「-加章-A0印章實際尺寸」
 import copy
 import subprocess
 import sys
@@ -27,9 +29,11 @@ OUTPUT = '35-抽籤辦法說明表-A4橫式-11-4v6-署名置中.docx'
 SIGNATURE = [('樂菲莊園管理委員會', 14), ('電話 02-2218-6136', 12)]
 # 印章：格式同社區公告「[公章] 署名／電話 [公告章]」。原尺寸（82×83、132×90pt）放不進最後一列
 # 上方兩行字以下的空間，會壓到紅字與 QR，所以縮成 SEAL_SCALE；圖檔每 pt 6 像素（同 extract-seals.mjs）
-SEAL_SCALE = 0.65
+SEAL_SCALE = {'a4': 0.65, 'a0': 0.25}  # a0：A4 放大 4 倍成 A0 後為實際尺寸
+SEAL_SUFFIX = {'a4': '-加章', 'a0': '-加章-A0印章實際尺寸'}
 SEAL_GAP = 10  # 印章與署名的間距（pt）
 SEAL_BOTTOM = 97  # 印章下緣距最後一列內容頂端（pt），列內高約 100
+SEAL_CENTER = 82.5  # 署名兩行的垂直中心（同上基準）；章放得下就與署名置中
 SEALS = [('private/seals/seal-committee.png', 'left'), ('private/seals/seal-notice.png', 'right')]
 # 經理以空白手動斷行、要接回前一段的段落開頭
 CONTINUATIONS = ('由秘書協助登記', '序、免抽籤', '驗證明後指派', '位再行安排處理')
@@ -125,7 +129,7 @@ def spaced(table):
                     size_cs.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val', str(int(B_SIZE * 2)))
 
 
-def seals(table):
+def seals(table, scale):
     # 浮動圖片（不占行高）錨在最後一列第一段，水平以儲存格內文左緣、垂直以該段頂端為基準（同 QR）
     from PIL import Image
     cell = table.rows[-1].cells[DESC_COL]
@@ -137,14 +141,15 @@ def seals(table):
     emu = lambda pt: int(pt * 12700)
     for path, side in SEALS:
         px_w, px_h = Image.open(path).size
-        w, h = px_w / 6 * SEAL_SCALE, px_h / 6 * SEAL_SCALE
+        w, h = px_w / 6 * scale, px_h / 6 * scale
         x = width / 2 - name_half - SEAL_GAP - w if side == 'left' else width / 2 + name_half + SEAL_GAP
+        y = min(SEAL_CENTER - h / 2, SEAL_BOTTOM - h)
         inline = anchor_par.add_run().add_picture(path, width=Pt(w))._inline
         anchor = parse_xml(
             f'<wp:anchor {nsdecls("wp")} distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="251660300" '
             'behindDoc="0" locked="0" layoutInCell="1" allowOverlap="1"><wp:simplePos x="0" y="0"/>'
             f'<wp:positionH relativeFrom="column"><wp:posOffset>{emu(x)}</wp:posOffset></wp:positionH>'
-            f'<wp:positionV relativeFrom="paragraph"><wp:posOffset>{emu(SEAL_BOTTOM - h)}</wp:posOffset></wp:positionV></wp:anchor>'
+            f'<wp:positionV relativeFrom="paragraph"><wp:posOffset>{emu(y)}</wp:posOffset></wp:positionV></wp:anchor>'
         )
         anchor.append(inline.find(qn('wp:extent')))
         anchor.append(parse_xml(f'<wp:effectExtent {nsdecls("wp")} l="0" t="0" r="0" b="0"/>'))
@@ -154,7 +159,7 @@ def seals(table):
         inline.getparent().replace(inline, anchor)
 
 
-def build(src, out_dir, seal=False):
+def build(src, out_dir, seal=None):
     doc = Document(src)
     table = doc.tables[0]
     set_row_heights(table)
@@ -162,7 +167,7 @@ def build(src, out_dir, seal=False):
     spaced(table)
     signature(table)
     if seal:
-        seals(table)
+        seals(table, SEAL_SCALE[seal])
     flow_bottom_border(table)
     tail = doc.paragraphs[-1].paragraph_format  # 表格後的空段落縮到最小，否則被擠到第二頁
     tail.line_spacing_rule = WD_LINE_SPACING.EXACTLY
@@ -171,17 +176,18 @@ def build(src, out_dir, seal=False):
     with tempfile.TemporaryDirectory() as tmp:
         mid = Path(tmp) / 'mid.docx'
         doc.save(mid)
-        out = Path(out_dir) / (OUTPUT.replace('.docx', '-加章.docx') if seal else OUTPUT)
+        out = Path(out_dir) / (OUTPUT.replace('.docx', SEAL_SUFFIX[seal] + '.docx') if seal else OUTPUT)
         subprocess.run([sys.executable, 'scripts/build-explainer-flow.py', str(mid), str(out)], check=True)
 
 
-def main(src, out_dir, seal=False):
+def main(src, out_dir, seal=None):
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     build(src, out_dir, seal)
 
 
 if __name__ == '__main__':
-    args = [a for a in sys.argv[1:] if a != '--seal']
+    flags = {'--seal': 'a4', '--seal-a0': 'a0'}
+    args = [a for a in sys.argv[1:] if a not in flags]
     if len(args) != 2:
-        raise SystemExit('用法：python scripts/build-explainer-variants.py <經理版.docx> <輸出資料夾> [--seal]')
-    main(args[0], args[1], '--seal' in sys.argv)
+        raise SystemExit('用法：python scripts/build-explainer-variants.py <經理版.docx> <輸出資料夾> [--seal | --seal-a0]')
+    main(args[0], args[1], next((flags[a] for a in sys.argv[1:] if a in flags), None))
