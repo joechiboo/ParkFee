@@ -7,6 +7,7 @@
 //       --label「附件四」 → 標題前加標籤（併入公告文件用）；--out <路徑> → 另存他處
 //       --paper A4|A3|A2|A1|A0（預設 A3）→ 圖面與文字隨紙張放大，印章維持實際尺寸
 //       --seal image｜blank → 加電子章／留白蓋章（不加＝只印管委會名稱電話，一般張貼用）
+//       --seal-scale <倍數> → 印章放大（預設 1＝實際尺寸）；A0 海報與說明表 A0 並排時用 2.6，兩張章一樣大
 //         ⚠️ 電子章版禁止輸出到 public/（repo 公開，印章會被下載偽造），程式會直接擋
 //       列印務必選「實際大小／100%」，勿選「符合頁面大小」——否則印章會跟著縮放
 //
@@ -259,6 +260,11 @@ if (!BIKE_ONLY) {
     redW = redImg.width / SEAL_PX_PER_PT; redH = redImg.height / SEAL_PX_PER_PT
     blueW = blueImg.width / SEAL_PX_PER_PT; blueH = blueImg.height / SEAL_PX_PER_PT
   }
+  // 實際尺寸在 A0 上相對署名太小（署名隨紙張放大、印章不放大），海報可指定倍數
+  const sealScaleAt = process.argv.indexOf('--seal-scale')
+  const SEAL_SCALE = sealScaleAt > 0 ? Number(process.argv[sealScaleAt + 1]) : 1
+  if (!(SEAL_SCALE > 0)) throw new Error('--seal-scale 要是正數')
+  redW *= SEAL_SCALE; redH *= SEAL_SCALE; blueW *= SEAL_SCALE; blueH *= SEAL_SCALE
   const withSeal = SEAL === 'image' || SEAL === 'blank'
   const ORG = '樂菲莊園管理委員會', TEL = '電話 02-2218-6136'
 
