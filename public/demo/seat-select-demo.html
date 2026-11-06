@@ -27,7 +27,7 @@
  .cat-small text{font-size:5.5px}
  .cat-heavy circle{r:8.5;stroke-width:1.6}
  .cat-access circle{stroke-width:1.8;stroke-dasharray:.8 .8}
- /* 汽車 / 腳踏車：僅參考、不可點 */
+ /* 汽車 / 自行車：僅參考、不可點 */
  .cat-car circle{fill:rgba(16,185,129,.5);stroke:#047857;stroke-width:.7}.cat-car{pointer-events:none}
  .cat-bike circle{fill:rgba(249,115,22,.55);stroke:#c2410c;stroke-width:.7}.cat-bike{pointer-events:none}
  .cat-excl circle{fill:rgba(148,163,184,.4);stroke:#64748b;stroke-width:.7}.cat-excl{pointer-events:none}
@@ -61,7 +61,7 @@
  <div id="panel">
   <div id="panelHead"><a href="../">← 回首頁</a><span class="sum">志願 <b id="headCount">0</b></span><button id="toggle" type="button" aria-controls="panelBody" aria-expanded="true">收合</button></div>
   <div id="panelBody"><h1 style="margin-top:0">選位 demo（B1）</h1>
-  <p class="hint">真實 B1 平面圖。<b>機車位可點選</b>；汽車/腳踏車為參考。<br><b>按住拖曳平移</b>，Ctrl+滾輪縮放。</p>
+  <p class="hint">真實 B1 平面圖。<b>機車位可點選</b>；汽車/自行車為參考。<br><b>按住拖曳平移</b>，Ctrl+滾輪縮放。</p>
   <p class="hint">盤點進度：<b style="color:#1d4ed8">已盤點 655</b> ／ <b style="color:#d97706">未盤點 0</b>（共 655 機車位，已全數完成；498 漏水排除、654 可用）</p>
   <p class="hint">🟡 金框＝公益（20 個，不出租）</p>
   <div class="grp">機車車位（可點選）</div>
@@ -71,7 +71,7 @@
   <label><input type="checkbox" data-filter="excl"><span class="dot x"></span>排除（漏水）1</label>
   <div class="grp">其他（僅參考）</div>
   <label><input type="checkbox" data-filter="car"><span class="dot c"></span>汽車 55</label>
-  <label><input type="checkbox" data-filter="bike"><span class="dot b"></span>腳踏車 164</label>
+  <label><input type="checkbox" data-filter="bike"><span class="dot b"></span>自行車 164</label>
   <hr>
   <div>車位志願序 <b id="count">0</b> <button id="clear">清除全部</button></div><ul id="picked"></ul></div>
  </div>

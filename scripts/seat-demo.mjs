@@ -1,6 +1,6 @@
 // 選位 demo（B1）：底圖 b1.png + 依車種上色的車位點。
 // 點資料來源已改為人工分類後的 ground-truth：src/map/b1-classification.json
-//   （機車 655 可點選 / 汽車 55 / 腳踏車 164 / 排除 54 預設隱藏）。
+//   （機車 655 可點選 / 汽車 55 / 自行車 164 / 排除 54 預設隱藏）。
 // 底圖 b1.png 由竣工圖重算（scripts/lib/basemap.mjs），確保與座標系一致。
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { renderBaseMap } from './lib/basemap.mjs'
@@ -45,7 +45,7 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
  .cat-motor.verified circle{fill:rgba(59,130,246,.45);stroke:#1d4ed8}
  .cat-motor.verified:hover circle{fill:rgba(59,130,246,.75)}
  .cat-motor.sel circle{fill:#ef4444;stroke:#b91c1c}.cat-motor.sel text{fill:#fff;font-weight:700}
- /* 汽車 / 腳踏車：僅參考、不可點 */
+ /* 汽車 / 自行車：僅參考、不可點 */
  .cat-car circle{fill:rgba(16,185,129,.5);stroke:#047857;stroke-width:.7}.cat-car{pointer-events:none}
  .cat-bike circle{fill:rgba(249,115,22,.55);stroke:#c2410c;stroke-width:.7}.cat-bike{pointer-events:none}
  .cat-excl circle{fill:rgba(148,163,184,.4);stroke:#64748b;stroke-width:.7}.cat-excl{pointer-events:none}
@@ -60,11 +60,11 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
  <div id="stage"><div id="wrap"><img id="plan" src="b1.png" draggable="false">
    <svg viewBox="0 0 ${dispW} ${dispH}">${dots}</svg></div></div>
  <div id="panel"><a href="../">← 回首頁</a><h1 style="margin-top:6px">選位 demo（B1）</h1>
-  <p class="hint">真實 B1 平面圖。<b>機車位可點選</b>；汽車/腳踏車為參考。<br><b>按住拖曳平移</b>，Ctrl+滾輪縮放。</p>
+  <p class="hint">真實 B1 平面圖。<b>機車位可點選</b>；汽車/自行車為參考。<br><b>按住拖曳平移</b>，Ctrl+滾輪縮放。</p>
   <p class="hint">盤點進度：<b style="color:#1d4ed8">已盤點 ${motorVer}</b> ／ <b style="color:#d97706">未盤點 ${motorTodo}</b>（琥珀＝PDF 抽出、待現場核對）</p>
   <label><input type="checkbox" data-cat="motor" checked><span class="dot m"></span>機車 ${n.motor}</label>
   <label><input type="checkbox" data-cat="car"><span class="dot c"></span>汽車 ${n.car || 0}</label>
-  <label><input type="checkbox" data-cat="bike"><span class="dot b"></span>腳踏車 ${n.bike || 0}</label>
+  <label><input type="checkbox" data-cat="bike"><span class="dot b"></span>自行車 ${n.bike || 0}</label>
   <label><input type="checkbox" data-cat="excl"><span class="dot x"></span>排除（雜訊）${n.excl || 0}</label>
   <hr>
   <div>已選機車位 <b id="count">0</b></div><ul id="picked"></ul></div>
@@ -83,4 +83,4 @@ const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
  document.querySelectorAll('[data-cat]').forEach(cb=>{const c=cb.dataset.cat;const apply=()=>document.querySelectorAll('.cat-'+c).forEach(g=>g.classList.toggle('hide',!cb.checked));if(initHidden[c]){cb.checked=false}apply();cb.addEventListener('change',apply)})
 </script></body></html>`
 writeFileSync(`${OUT}/seat-select-demo.html`, html)
-console.log(`wrote ${OUT}/seat-select-demo.html — 機車 ${n.motor} / 汽車 ${n.car} / 腳踏車 ${n.bike} / 排除 ${n.excl}`)
+console.log(`wrote ${OUT}/seat-select-demo.html — 機車 ${n.motor} / 汽車 ${n.car} / 自行車 ${n.bike} / 排除 ${n.excl}`)
