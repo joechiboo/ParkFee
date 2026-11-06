@@ -1,4 +1,4 @@
-// 產生「單頁 A3 PDF」：B1 機車位分類圖（大/小/無障礙/腳踏車 + 鎖定/公益標記；汽車位不印）。
+// 產生「單頁 A3 PDF」：B1 機車位分類圖（大/小/無障礙/自行車 + 鎖定/公益標記；汽車位不印）。
 // 重機不設專區（2026-08-16 決議）：穿插一般車位，圖上無獨立顏色。
 // 資料：src/map/b1-classification.json（現場盤點定稿）＋ Supabase locked_seat（目前鎖定保留清單，anon 可讀）。
 // 中文用標楷體（C:\Windows\Fonts\kaiu.ttf）內嵌；離線或抓不到鎖定清單時仍出圖，只是不畫鎖定圈。
@@ -60,7 +60,7 @@ const CAT = {
   motor: { name: '大車位', color: rgb(0.23, 0.51, 0.96) },
   small: { name: '小車位', color: rgb(0.55, 0.36, 0.96) },
   access: { name: '無障礙', color: rgb(0.92, 0.70, 0.03) },
-  bike: { name: '腳踏車', color: rgb(0.98, 0.45, 0.09) },
+  bike: { name: '自行車', color: rgb(0.98, 0.45, 0.09) },
 } // 汽車位不印 — 本圖主打機車位（cat 不在 CAT 即跳過）
 const catOf = (s) => s.cat
 
@@ -232,13 +232,13 @@ if (!BIKE_ONLY) {
   const availW = R - L, availH = TOP - BOTTOM
   const FILL = 0.95 // 撐滿空白區高度的比例（留一點底邊）
 
-  const TITLE_TXT = (LABEL ? LABEL + '　' : '') + '樂菲莊園 B1 停車場機車及腳踏車車位配置圖'
+  const TITLE_TXT = (LABEL ? LABEL + '　' : '') + '樂菲莊園 B1 停車場機車及自行車車位配置圖'
   // 數量一律取自實際畫出的格數，不手填——圖例與圖面才不會對不上。
   const pubCount = printable.filter(isPublicSeat).length
   const rows = [
     { kind: 'fill', color: CAT.motor.color, label: '大車位', n: counts.motor || 0 },
     { kind: 'fill', color: CAT.small.color, label: '小車位', n: counts.small || 0 },
-    { kind: 'fill', color: CAT.bike.color, label: '腳踏車位', n: counts.bike || 0 },
+    { kind: 'fill', color: CAT.bike.color, label: '自行車位', n: counts.bike || 0 },
     { kind: 'fill', color: CAT.access.color, label: '無障礙車位', n: counts.access || 0 },
     ...(locked ? [{ kind: 'locked', label: '不開放車位', n: lockedDrawn, note: '（不選擇）' }] : []),
     { kind: 'public', label: '社宅車位', n: pubCount, note: '（不選擇）' },
