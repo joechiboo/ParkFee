@@ -3,6 +3,7 @@ import { HEAVY_WAIT_STATUS, NEXT_STAGE_STATUS } from '../data/vehicleStatus.js'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { login } from '../store/db.js'
+import HouseholdInput from '../components/HouseholdInput.vue'
 import { editTarget } from '../store/editTarget.js'
 import { sessionHousehold, sessionPlate, clearSession, refreshHousehold } from '../store/session.js'
 import { tryAdminLogin, isAdminAccount } from '../store/roles.js'
@@ -36,12 +37,16 @@ async function doLogin() {
     sessionPlate.value = creds.車號
     return
   }
+  if (!creds.戶號) {
+    error.value = '請填住家門牌：第一格填門牌號碼或房型，第二格填樓層（例 297 號 6 樓）'
+    return
+  }
   loading.value = true
   try {
     const h = await login(creds.戶號, creds.車號)
     if (!h) {
       error.value =
-        '查無此登記，請確認戶號與車號（需為該戶登記過的任一台車）。戶號請填「房型-樓層」，例：H3 房型 6 樓填 H3-6；先前若填錯，管理中心可能已代為更正。需要協助請洽 A、B 棟櫃台秘書。'
+        '查無此登記，請確認門牌、樓層與車號（車號需為該戶登記過的任一台車）。先前登記時若戶號填錯，管理中心可能已代為更正。需要協助請洽 A、B 棟櫃台秘書。'
       return
     }
     household.value = h
@@ -136,12 +141,11 @@ function logout() {
 
     <!-- 未登入：登入表單 -->
     <form v-else class="mt-4 max-w-sm space-y-4" @submit.prevent="doLogin">
-      <p class="text-sm text-slate-500">用 <b>戶號 ＋ 任一已登記車號</b> 登入。</p>
-      <label class="block">
-        <span class="text-sm font-medium text-slate-700">戶號</span>
-        <input v-model="creds.戶號" type="text" placeholder="H3-6（H3 房型 6 樓）"
-          class="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none" />
-      </label>
+      <p class="text-sm text-slate-500">用 <b>住家門牌 ＋ 任一已登記車號</b> 登入。</p>
+      <div class="block">
+        <span class="text-sm font-medium text-slate-700">住家門牌</span>
+        <HouseholdInput v-model="creds.戶號" allow-raw />
+      </div>
       <label class="block">
         <span class="text-sm font-medium text-slate-700">車號</span>
         <input v-model="creds.車號" type="text" placeholder="ABC-123"

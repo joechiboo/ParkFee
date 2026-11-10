@@ -6,6 +6,8 @@
 //   給了戶號就能沿用登記/登入/選位/結果整條線，不必另做一套。
 //   ⚠️ 與 supabase/functions/_shared/normalize.ts 的同名規則必須同步改。
 
+import { DOOR_MAP } from './door-map.js'
+
 // 輸入正規化：全形→半形、去空白、各式破折號→連字號、轉大寫。
 export function normalizeHousehold(raw) {
   if (raw == null) return ''
@@ -83,4 +85,38 @@ export function isStaffHousehold(raw) {
 export function staffHousehold(nameOrNo) {
   const v = String(nameOrNo ?? '').trim()
   return `員工-${/^\d+$/.test(v) ? v.padStart(2, '0') : v}`
+}
+
+// 「＿號＿樓」→ 戶號（2026-11-10 經理建議：登記處分兩格填，樓層一定要填，較不會搞錯）。
+//   第一格填門牌號碼（297）或房型（H3）都可以（使用者定）；第二格填樓層。
+//   門牌號碼：「門牌＋樓層」在全社區 655 戶裡不重複，查表即可唯一決定戶號；
+//     同一門牌跨兩個房型（如 385 號＝B5 的 3–15 樓、B6 的 2 樓）與一樓店面（297 號 1 樓＝S12）都由表決定。
+//   房型：直接組成「房型-樓層」再比對戶清單。
+//   資料庫仍只存戶號一欄：戶號本身就是「房型-樓層」，門牌可由對照表反查，不另開欄位。
+// 回 { id } 或 { error }；兩格還沒填完回 {}。
+const toHalf = (v) =>
+  String(v ?? '')
+    .replace(/[！-～]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+    .replace(/[\s　號樓]/g, '')
+    .toUpperCase()
+export const isUnitCode = (v) => /^[A-HS]\d{1,2}$/.test(toHalf(v))
+export function householdFromDoor(first, floor) {
+  const a = toHalf(first)
+  const f = toHalf(floor).replace(/[^0-9]/g, '').replace(/^0+/, '')
+  if (!a || !f) return {}
+  if (isUnitCode(a)) {
+    const id = normalizeHousehold(`${a}-${f}`)
+    const problem = householdProblem(id)
+    return problem ? { error: problem } : { id }
+  }
+  const d = a.replace(/^0+/, '')
+  if (!/^\d+$/.test(d)) return { error: '第一格請填門牌號碼（例 297）或房型（例 H3）' }
+  const segs = DOOR_MAP[d]
+  if (!segs) return { error: `社區沒有 ${d} 號，請確認門牌號碼` }
+  const hit = segs.find(([, from, to]) => Number(f) >= from && Number(f) <= to)
+  if (!hit) {
+    const has = segs.map(([, from, to]) => (from === to ? `${from} 樓` : `${from}–${to} 樓`)).join('、')
+    return { error: `${d} 號沒有 ${f} 樓（這個門牌有 ${has}），請確認樓層` }
+  }
+  return { id: `${hit[0]}-${Number(f)}` }
 }

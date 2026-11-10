@@ -9,6 +9,7 @@ import { editTarget } from '../store/editTarget.js'
 import { sessionHousehold, sessionPlate, adminAuth } from '../store/session.js'
 import { isAdminAccount } from '../store/roles.js'
 import { KIND } from '../map/seat-id.js'
+import HouseholdInput from '../components/HouseholdInput.vue'
 
 const router = useRouter()
 
@@ -74,10 +75,8 @@ function onHouseholdInput() {
 
 // 切換身分時同步前綴：勾起來就補「員工-」，取消就拿掉，免得殘留造成格式錯誤。
 function onStaffToggle() {
-  if (!form.戶號) return
-  form.戶號 = form.工作人員
-    ? (isStaffHousehold(form.戶號) ? form.戶號 : staffHousehold(form.戶號))
-    : form.戶號.replace(/^員工-/, '')
+  // 住戶填的是門牌與樓層、工作人員填的是姓名，兩種欄位不通用 → 切換身分就清空重填。
+  form.戶號 = ''
 }
 
 const bikeOnly = computed(() => form.vehicles.length > 0 && form.vehicles.every(isBike))
@@ -98,7 +97,9 @@ async function submit() {
   if (!isValidHousehold(form.戶號)) {
     error.value = form.工作人員
       ? '請填工作人員姓名'
-      : householdProblem(form.戶號)
+      : form.戶號
+        ? householdProblem(form.戶號)
+        : '請填住家門牌：第一格填門牌號碼或房型，第二格填樓層（例 297 號 6 樓）'
     return
   }
   form.電話 = formatTWPhone(form.電話)
@@ -210,17 +211,18 @@ async function submit() {
       </p>
 
       <div class="grid gap-4 sm:grid-cols-2">
-        <label class="block">
-          <span class="text-sm font-medium text-slate-700">戶號 *</span>
+        <!-- 住戶新登記：填「＿號＿樓」（門牌號碼或房型＋樓層），系統算出戶號。工作人員填姓名；編輯時戶號不可改。 -->
+        <div v-if="!isEdit && !form.工作人員" class="block">
+          <span class="text-sm font-medium text-slate-700">住家門牌 *</span>
+          <HouseholdInput v-model="form.戶號" allow-raw />
+        </div>
+        <label v-else class="block">
+          <span class="text-sm font-medium text-slate-700">{{ form.工作人員 ? '姓名 *' : '戶號' }}</span>
           <input v-model="form.戶號" @input="onHouseholdInput" :disabled="isEdit" type="text"
-            :placeholder="form.工作人員 ? '直接打姓名即可，例：陳大明' : '例：H3-6（H3 房型 6 樓）'"
-            style="text-transform:uppercase"
+            placeholder="直接打姓名即可，例：陳大明"
             class="mt-1 w-full rounded border border-slate-300 px-3 py-2.5 text-base sm:text-sm focus:border-slate-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500" />
           <span v-if="isEdit" class="mt-1 block text-xs text-slate-500">編輯模式：戶號不可修改</span>
-          <span v-else-if="form.戶號 && !isValidHousehold(form.戶號)" class="mt-1 block text-xs text-red-600">
-            <template v-if="form.工作人員">請填姓名即可（系統會存成「員工-姓名」）</template>
-            <template v-else>{{ householdProblem(form.戶號) }}</template>
-          </span>
+          <span v-else-if="form.戶號 && !isValidHousehold(form.戶號)" class="mt-1 block text-xs text-red-600">請填姓名即可（系統會存成「員工-姓名」）</span>
         </label>
         <label class="block">
           <span class="text-sm font-medium text-slate-700">聯絡電話<span v-if="bikeOnly"> *</span></span>
