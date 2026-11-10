@@ -138,7 +138,7 @@ function logout() {
       <p class="text-sm text-slate-500">用 <b>戶號 ＋ 任一已登記車號</b> 登入。</p>
       <label class="block">
         <span class="text-sm font-medium text-slate-700">戶號</span>
-        <input v-model="creds.戶號" type="text" placeholder="H3-6（店面 S1-6）"
+        <input v-model="creds.戶號" type="text" placeholder="H3-6（H3 房型 6 樓）"
           class="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none" />
       </label>
       <label class="block">

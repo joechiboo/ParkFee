@@ -12,9 +12,12 @@ export function sampleRoster(households = 120) {
   let serial = 0
   for (let i = 0; i < households; i++) {
     const b = BUILDINGS[i % BUILDINGS.length]
-    const floor = (i % 14) + 2 // 2..15
-    const unit = (Math.floor(i / 56) % 6) + 1 // 棟×樓 每 56 戶循環一輪 → 戶別進位，戶號唯一撐到 336 戶
-    const 戶號 = `${b}${floor}-${unit}`
+    // 戶號 = 房型-樓層（H3-6 = H3 房型 6 樓）。只用各棟都有的房型 1、2、3、5、6 與樓層 3–15，
+    // 產出的都是社區真實存在的戶；每棟 65 戶，戶號唯一撐到 BUILDINGS.length × 65 戶。
+    const k = Math.floor(i / BUILDINGS.length)
+    const floor = (k % 13) + 3 // 3..15
+    const unit = [1, 2, 3, 5, 6][Math.floor(k / 13) % 5]
+    const 戶號 = `${b}${unit}-${floor}`
     const 電話 = `09${String(10000000 + i * 137).slice(0, 8)}`
     const 來源 = i % 5 === 0 ? SOURCE.PAPER : SOURCE.ONLINE
     const stamp = (n) => `2026-11-${String(15 + (i % 15)).padStart(2, '0')} ${String(8 + (i % 9)).padStart(2, '0')}:${String((serial += 1) % 60).padStart(2, '0')}:00`

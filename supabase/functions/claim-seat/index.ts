@@ -16,7 +16,7 @@
 //
 // 開放時窗見 _shared/window.ts。櫃台指派走維護頁（assign-seat），不受此限。
 import { corsHeaders, json, adminClient, verifyOwnership, fetchHousehold, audit } from '../_shared/http.ts'
-import { normalizeHousehold, isValidHousehold } from '../_shared/normalize.ts'
+import { normalizeHousehold } from '../_shared/normalize.ts'
 import { isSmallGeneralSeat } from '../_shared/seat-types.ts'
 import { windowClosed } from '../_shared/window.ts'
 
@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json()
     const hid = normalizeHousehold(body.戶號)
-    if (!hid || !isValidHousehold(hid)) return json({ error: '戶號格式不對' }, 400)
+    if (!hid) return json({ error: '請填寫戶號' }, 400)
 
     const db = adminClient()
     if (!(await verifyOwnership(db, hid, body))) return json({ error: '驗證失敗：請使用登入時的車號再試' }, 403)

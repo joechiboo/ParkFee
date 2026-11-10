@@ -7,7 +7,8 @@ import SeatMap from '../components/SeatMap.vue'
 import { motorSeats, bikeSeats } from '../map/seats.js'
 import { heavyPartners } from '../map/heavy-pair.js'
 import { KIND, compareSeatId, displaySeatId, normalizeSeatInput } from '../map/seat-id.js'
-import { lockedSeats, refreshLocked, listAssignments, assignSeat, unlockSeat, batchLock, AssignNeedsConfirm } from '../store/locked.js'
+import { lockedSeats, refreshLocked, listAssignments, assignSeat, unlockSeat, batchLock, renameHousehold, AssignNeedsConfirm } from '../store/locked.js'
+import { normalizeHousehold, householdProblem } from '../data/household.js'
 import { sessionHousehold } from '../store/session.js'
 import { isAdmin } from '../store/roles.js'
 
@@ -182,6 +183,37 @@ async function runBatch(mode) {
     batchInput.value = ''
   } catch (e) {
     batchMsg.value = e?.message || '操作失敗'
+  } finally {
+    saving.value = false
+  }
+}
+
+// ── 更正戶號：住戶登記時把戶號填錯（常見是填成門牌號碼、沒填樓層），改成正確的戶號。──
+// 整戶的車、志願、已選定車位、繳費紀錄一起搬；新戶號已有登記時後端拒絕，不做合併。
+const renameForm = ref({ 舊: '', 新: '' })
+const renameMsg = ref('')
+const renameOk = ref(false)
+const renameProblem = computed(() => {
+  const v = renameForm.value.新.trim()
+  return v ? householdProblem(v) : null
+})
+async function doRename() {
+  renameMsg.value = ''
+  renameOk.value = false
+  const oldId = renameForm.value.舊.trim().toUpperCase()
+  const newId = normalizeHousehold(renameForm.value.新)
+  if (!oldId || !newId || renameProblem.value) return
+  if (!confirm(`把戶號「${oldId}」更正為「${newId}」？
+這一戶的車輛、志願、車位、繳費紀錄會一起搬過去。`)) return
+  saving.value = true
+  try {
+    const r = await renameHousehold(oldId, newId)
+    renameOk.value = true
+    renameMsg.value = `已更正為 ${r.戶號}（${r.車輛數} 台車一起搬）。請通知住戶之後用新戶號登入。`
+    renameForm.value = { 舊: '', 新: '' }
+    await reloadAssignments()
+  } catch (e) {
+    renameMsg.value = e?.message || '更正失敗'
   } finally {
     saving.value = false
   }
@@ -429,6 +461,28 @@ function decorate(s) {
               <span v-if="parsedValid.length" class="text-xs text-slate-500">解析到 {{ parsedValid.length }} 格</span>
               <span v-if="batchMsg" class="text-xs text-slate-700">{{ batchMsg }}</span>
             </div>
+          </div>
+
+          <!-- 更正戶號：住戶填錯戶號時改成正確的 -->
+          <div class="rounded-lg border border-sky-200 bg-sky-50/50 p-4">
+            <div class="font-semibold text-sky-800">更正戶號</div>
+            <p class="mt-1 text-xs text-slate-500">
+              住戶登記時把戶號填錯（例如填成門牌號碼 <code class="rounded bg-white px-1">B3-385</code>）用這裡改。戶號＝<b>房型-樓層</b>，H3 房型 6 樓是 <code class="rounded bg-white px-1">H3-6</code>。車輛、志願、車位、繳費紀錄會一起搬。
+            </p>
+            <div class="mt-2 flex flex-wrap items-center gap-2">
+              <input v-model="renameForm.舊" type="text" placeholder="原本填的戶號" style="text-transform:uppercase"
+                class="w-36 rounded border border-slate-300 px-2 py-1.5 text-sm" />
+              <span class="text-slate-400">→</span>
+              <input v-model="renameForm.新" type="text" placeholder="正確戶號，例 B3-6" style="text-transform:uppercase"
+                class="w-36 rounded border border-slate-300 px-2 py-1.5 text-sm" />
+              <button
+                class="rounded bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
+                :disabled="saving || !renameForm.舊.trim() || !renameForm.新.trim() || !!renameProblem"
+                @click="doRename"
+              >更正</button>
+            </div>
+            <p v-if="renameProblem" class="mt-1 text-xs text-red-600">{{ renameProblem }}</p>
+            <p v-if="renameMsg" class="mt-1 text-xs" :class="renameOk ? 'text-emerald-700' : 'text-red-600'">{{ renameMsg }}</p>
           </div>
 
           <!-- 未繳費／逾期批次解除：12/10 繳費截止後釋出，第二輪才配得到 -->

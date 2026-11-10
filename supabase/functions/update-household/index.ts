@@ -4,7 +4,7 @@
 //    否則任何人拿公開 anon key 就能竄改他戶登記。自行車的合成車號不算憑證。
 import { corsHeaders, json, adminClient, fetchHousehold, verifyOwnership, verifyAdmin } from '../_shared/http.ts'
 import { windowClosed } from '../_shared/window.ts'
-import { normalizeHousehold, isValidHousehold } from '../_shared/normalize.ts'
+import { normalizeHousehold } from '../_shared/normalize.ts'
 import { buildVehicleRows, isBikeOnly } from '../_shared/vehicles.ts'
 
 Deno.serve(async (req) => {
@@ -16,7 +16,6 @@ Deno.serve(async (req) => {
 
     const hid = normalizeHousehold(戶號)
     if (!hid) return json({ error: '請填寫戶號' }, 400)
-    if (!isValidHousehold(hid)) return json({ error: '戶號格式不對（例 H3-6／店面 S1-6）' }, 400)
     if (!Array.isArray(vehicles) || vehicles.length === 0)
       return json({ error: '至少要保留一台車' }, 400)
 

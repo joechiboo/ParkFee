@@ -11,6 +11,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseCSVObjects } from '../src/data/csv.js'
 import { PUBLIC_BIKE_IDS, MOTOR_SEATS_OPEN_TO_BIKE, toBikeId, isBikeId } from '../src/map/seat-id.js'
+import { householdProblem } from '../src/data/household.js'
 const ADJ = JSON.parse(readFileSync('src/map/seat-adjacency.json', 'utf8')).adj
 
 // ── 車位主檔（直接讀 JSON：seats.js 走 import attribute，純 Node 載不動）──
@@ -183,13 +184,12 @@ if (accessibleWaiting.length > cap.無障礙)
     `待指派 ${accessibleWaiting.length} ＞ 可用 ${cap.無障礙} 格。辦法伍二（三）規定登記戶數大於車位數時採登記抽籤，未抽中者納入一般抽籤，請管委會先辦理。`,
     accessibleWaiting.map(({ h, c }) => `${h.戶號} ${c.車號}`))
 
-// 3) 戶號格式
-const badHouse = all.filter(
-  (h) => !/^[A-HS]\d{1,2}-\d{1,2}$/i.test(h.戶號) && !/^員工-.+$/.test(h.戶號) && !/^Z\d{1,3}$/.test(h.戶號),
-)
+// 3) 戶號：比對社區實際有的戶（房型-樓層，例 H3-6 = H3 房型 6 樓）
+//    填錯的戶出帳時對不到門牌、或對到別人家，一定要在抽籤前由櫃台更正（維護頁「更正戶號」）。
+const badHouse = all.map((h) => ({ h, why: householdProblem(h.戶號) })).filter((x) => x.why)
 if (badHouse.length)
-  add('warn', '戶號格式不符', '預期如 A3-6（棟樓-戶別）。格式不符會影響去重與對帳。',
-    badHouse.map((h) => h.戶號))
+  add('warn', '戶號有誤（社區沒有這一戶）', '請在維護頁「更正戶號」改成正確的戶號；不改會出帳到錯的門牌或開不出帳單。',
+    badHouse.map(({ h, why }) => `${h.戶號}：${why}`))
 
 // 3.5) 工作人員：比對名單（線上可自行勾選 → 必須人工把關）
 const staffHouses = all.filter((h) => h.工作人員 || /^員工-/.test(h.戶號))

@@ -4,7 +4,7 @@
 //    與 update-household 同招，避免任何人拿公開 anon key 改他戶志願。
 import { corsHeaders, json, adminClient, fetchHousehold, verifyAdmin } from '../_shared/http.ts'
 import { windowClosed } from '../_shared/window.ts'
-import { normalizeHousehold, isValidHousehold, normalizeTWPlate } from '../_shared/normalize.ts'
+import { normalizeHousehold, normalizeTWPlate } from '../_shared/normalize.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -15,7 +15,6 @@ Deno.serve(async (req) => {
 
     const hid = normalizeHousehold(戶號)
     if (!hid) return json({ error: '請填寫戶號' }, 400)
-    if (!isValidHousehold(hid)) return json({ error: '戶號格式不對（例 H3-6／店面 S1-6）' }, 400)
 
     // 志願：去空白、去重、保序的字串陣列
     const seen = new Set<string>()

@@ -2,7 +2,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { register, updateHousehold, RegistrationError } from '../store/db.js'
-import { normalizeHousehold, isValidHousehold, staffHousehold, isStaffHousehold } from '../data/household.js'
+import { normalizeHousehold, isValidHousehold, householdProblem, staffHousehold, isStaffHousehold } from '../data/household.js'
 import { normalizeTWPlate } from '../data/plate.js'
 import { formatTWPhone, isValidTWPhone } from '../data/phone.js'
 import { editTarget } from '../store/editTarget.js'
@@ -95,7 +95,7 @@ async function submit() {
   if (!isValidHousehold(form.戶號)) {
     error.value = form.工作人員
       ? '請填工作人員姓名'
-      : '戶號格式不對，請用「棟+樓-戶」，例：H3-6（店面 S1-6）'
+      : householdProblem(form.戶號)
     return
   }
   form.電話 = formatTWPhone(form.電話)
@@ -205,13 +205,13 @@ async function submit() {
         <label class="block">
           <span class="text-sm font-medium text-slate-700">戶號 *</span>
           <input v-model="form.戶號" @input="onHouseholdInput" :disabled="isEdit" type="text"
-            :placeholder="form.工作人員 ? '直接打姓名即可，例：陳大明' : '例：H3-6（店面 S1-6）'"
+            :placeholder="form.工作人員 ? '直接打姓名即可，例：陳大明' : '例：H3-6（H3 房型 6 樓）'"
             style="text-transform:uppercase"
             class="mt-1 w-full rounded border border-slate-300 px-3 py-2.5 text-base sm:text-sm focus:border-slate-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500" />
           <span v-if="isEdit" class="mt-1 block text-xs text-slate-500">編輯模式：戶號不可修改</span>
           <span v-else-if="form.戶號 && !isValidHousehold(form.戶號)" class="mt-1 block text-xs text-red-600">
             <template v-if="form.工作人員">請填姓名即可（系統會存成「員工-姓名」）</template>
-            <template v-else>格式：棟(A–H)+樓(1–15)-戶，例 H3-6；店面 S1-6</template>
+            <template v-else>{{ householdProblem(form.戶號) }}</template>
           </span>
         </label>
         <label class="block">
