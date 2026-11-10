@@ -59,77 +59,89 @@ const plate = (v) => {
   return m ? `自行車 第 ${m[1]} 輛` : v
 }
 
-const assigned = rows.filter((r) => r.車位編號).sort(cmp)
-const missed = rows.filter((r) => !r.車位編號 && r.狀態 === '未中').sort(cmp)
-const waiting = rows.filter((r) => !r.車位編號 && r.狀態 !== '未中').sort(cmp)
+// 機車與自行車分開列（經理 2026-11-10）：先機車、後自行車，各自依戶號排序。
+const isBike = (r) => r.車位類型 === '自行車' || /^自行車-/.test(String(r.車號 || ''))
+const motor = rows.filter((r) => !isBike(r))
+const bikes = rows.filter(isBike)
+const assigned = motor.filter((r) => r.車位編號).sort(cmp)
+const missed = motor.filter((r) => !r.車位編號 && r.狀態 === '未中').sort(cmp)
+const waiting = motor.filter((r) => !r.車位編號 && r.狀態 !== '未中').sort(cmp)
+const bikeAssigned = bikes.filter((r) => r.車位編號).sort(cmp)
+const bikeMissed = bikes.filter((r) => !r.車位編號).sort(cmp)
+
+// 配位方式的公告用字：志願小位是登記時依先後順序選定的，標明出來（經理 2026-11-10）。
+const viaLabel = (v) => (v === '志願小位' ? '志願小位（依登記順序）' : v)
 
 // ── 分頁：每頁兩欄，每欄 PER 列；第一頁因為有抬頭與說明，列數較少 ──
 const PER = 44
 const PER_FIRST = 34
-function pages(list, firstCap) {
-  const out = []
-  let i = 0
-  let cap = firstCap
-  while (i < list.length) {
-    out.push([list.slice(i, i + cap), list.slice(i + cap, i + cap * 2)])
-    i += cap * 2
-    cap = PER
-  }
-  return out
-}
 const hidTh = hasHid ? '<th>戶號</th>' : ''
 const hidTd = (r) => (hasHid ? `<td>${esc(r.戶號)}</td>` : '')
-const tableAssigned = (list) =>
+const table = (heads, cells) => (list) =>
   list.length
-    ? `<table><thead><tr>${hidTh}<th>車號</th><th>車位</th><th>類型</th><th>應繳</th><th>配位方式</th></tr></thead><tbody>${list
-        .map(
-          (r) =>
-            `<tr>${hidTd(r)}<td>${esc(plate(r.車號))}</td><td class="seat">${esc(r.車位編號)}</td><td>${esc(r.車位類型)}</td><td class="num">${
-              r.狀態 === '已繳' ? '已繳' : Number(r.應繳金額) ? Number(r.應繳金額).toLocaleString() : '免費'
-            }</td><td>${esc(r.備註)}</td></tr>`,
-        )
+    ? `<table><thead><tr>${hidTh}${heads.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${list
+        .map((r) => `<tr>${hidTd(r)}${cells(r)}</tr>`)
         .join('')}</tbody></table>`
     : ''
-const tableOther = (list) =>
-  list.length
-    ? `<table><thead><tr>${hidTh}<th>車號</th><th>狀態</th><th>說明</th></tr></thead><tbody>${list
-        .map((r) => `<tr>${hidTd(r)}<td>${esc(plate(r.車號))}</td><td>${esc(r.狀態)}</td><td>${esc(r.備註)}</td></tr>`)
-        .join('')}</tbody></table>`
-    : ''
+const fee = (r) => (r.狀態 === '已繳' ? '已繳' : Number(r.應繳金額) ? Number(r.應繳金額).toLocaleString() : '')
+const tAssigned = table(
+  ['車號', '車位', '類型', '應繳', '配位方式'],
+  (r) =>
+    `<td>${esc(r.車號)}</td><td class="seat">${esc(r.車位編號)}</td><td>${esc(r.車位類型)}</td><td class="num">${fee(r)}</td><td class="via">${esc(viaLabel(r.備註))}</td>`,
+)
+const tOther = table(['車號', '狀態', '說明'], (r) => `<td>${esc(r.車號)}</td><td>${esc(r.狀態)}</td><td>${esc(r.備註)}</td>`)
+const tBike = table(['車輛', '車位', '配位方式'], (r) => `<td>${esc(plate(r.車號))}</td><td class="seat">${esc(r.車位編號)}</td><td>${esc(r.備註)}</td>`)
+const tBikeMissed = table(['車輛', '狀態', '說明'], (r) => `<td>${esc(plate(r.車號))}</td><td>${esc(r.狀態)}</td><td>${esc(r.備註)}</td>`)
 
 const title = `樂菲莊園社區 116 年度機車及自行車停車位　第${round === '2' ? '二' : '一'}輪抽籤結果公告`
 const notes =
   round === '2'
-    ? [
-        `配到車位者請於 <b>${roc(deadline)}</b> 前完成繳費，逾期視同放棄。`,
-        '應繳金額為年度清潔費；自行車位免費。',
-      ]
+    ? [`機車配到車位者請於 <b>${roc(deadline)}</b> 前完成繳費，逾期視同放棄。`]
     : [
-        `配到車位者請於 <b>${roc(deadline)}</b> 前完成繳費，逾期視同放棄，車位釋出供第二輪分配。`,
+        `機車配到車位者請於 <b>${roc(deadline)}</b> 前完成繳費，逾期視同放棄，車位釋出供第二輪分配。`,
         '「待第二輪」：每戶第 2 輛起的機車，於第二輪抽籤分配。「待安排」：重型機車，另行安排相鄰兩個大車位。',
         '「未中」：本輪未配到車位，併入第二輪分配。',
-        '應繳金額為年度清潔費；自行車位免費。',
       ]
-notes.push('對結果有疑問，請洽管理中心或 A、B 棟櫃台秘書。')
+notes.push('應繳金額為機車位年度清潔費；自行車位免費。', '名單先列機車、後列自行車，各依戶號排序。對結果有疑問，請洽管理中心或 A、B 棟櫃台秘書。')
 
+const count = (label, n) => (n ? `${label} ${n} 輛` : '')
 const head = `
 <h1>${esc(title)}</h1>
-<div class="meta">${announce ? `公告日期：${roc(announce)}　` : ''}${deadline ? `繳費期限：${roc(deadline)}　` : ''}配到 ${assigned.length} 輛${missed.length ? `、未中 ${missed.length}` : ''}${waiting.length ? `、待第二輪／待安排 ${waiting.length}` : ''}</div>
+<div class="meta">${announce ? `公告日期：${roc(announce)}　` : ''}${deadline ? `繳費期限：${roc(deadline)}　` : ''}${[count('機車配到', assigned.length), count('自行車配到', bikeAssigned.length)].filter(Boolean).join('、')}</div>
 <ol class="notes">${notes.map((n) => `<li>${n}</li>`).join('')}</ol>`
 
+const sections = [
+  ['機車：配到車位', assigned, tAssigned],
+  ['機車：本輪未中', missed, tOther],
+  ['機車：待第二輪／待安排', waiting, tOther],
+  ['自行車：配到車位', bikeAssigned, tBike],
+  ['自行車：未配到車位', bikeMissed, tBikeMissed],
+].filter(([, list]) => list.length)
+const NUM = ['一', '二', '三', '四', '五']
+// 排版：各段接續排，不強制換頁。每頁有「列數額度」，段標題算 2 列；
+// 一段在同一頁內左右兩欄平均分，剩不到 6 列就換頁，避免標題孤懸或只剩一列獨佔一頁。
+const HEAD_ROWS = 2
 const sheets = []
-pages(assigned, PER_FIRST).forEach(([l, r], i) =>
-  sheets.push(`${i === 0 ? head : ''}<h2>一、配到車位（依${hasHid ? '戶號' : '車號'}排序）${i ? '（續）' : ''}</h2><div class="cols"><div>${tableAssigned(l)}</div><div>${tableAssigned(r)}</div></div>`),
-)
-if (!sheets.length) sheets.push(head)
-const others = [
-  ['二、本輪未中', missed],
-  [`${missed.length ? '三' : '二'}、待第二輪／待安排`, waiting],
-]
-for (const [label, list] of others)
-  pages(list, PER).forEach(([l, r], i) =>
-    sheets.push(`<h2>${label}${i ? '（續）' : ''}</h2><div class="cols"><div>${tableOther(l)}</div><div>${tableOther(r)}</div></div>`),
-  )
+let cur = head
+let used = PER - PER_FIRST // 第一頁的抬頭與說明佔掉的列數
+const flush = () => {
+  sheets.push(cur)
+  cur = ''
+  used = 0
+}
+sections.forEach(([label, list, render], n) => {
+  let i = 0
+  while (i < list.length) {
+    if (PER - used - HEAD_ROWS < 6) flush()
+    const room = PER - used - HEAD_ROWS
+    const take = Math.min(list.length - i, room * 2)
+    const half = Math.ceil(take / 2)
+    cur += `<h2>${NUM[n]}、${label}（${list.length} 輛，依${hasHid ? '戶號' : '車號'}排序）${i ? '（續）' : ''}</h2><div class="cols"><div>${render(list.slice(i, i + half))}</div><div>${render(list.slice(i + half, i + take))}</div></div>`
+    used += half + HEAD_ROWS
+    i += take
+  }
+})
+if (cur) flush()
 const sign = `<div class="sign">樂菲莊園管理委員會</div>`
 
 const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
@@ -141,7 +153,7 @@ body { margin: 0; font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
 h1 { font-size: 16pt; text-align: center; margin: 0 0 4px; letter-spacing: 1px; }
 .meta { text-align: center; font-size: 10pt; margin-bottom: 4px; }
 .notes { margin: 0 0 6px; padding-left: 1.6em; font-size: 9.5pt; line-height: 1.45; }
-h2 { font-size: 11.5pt; margin: 4px 0 4px; border-left: 4px solid #333; padding-left: 6px; }
+h2 { font-size: 11.5pt; margin: 8px 0 4px; border-left: 4px solid #333; padding-left: 6px; }
 .cols { display: flex; gap: 6mm; align-items: flex-start; }
 .cols > div { flex: 1; min-width: 0; }
 table { width: 100%; border-collapse: collapse; }
@@ -150,6 +162,7 @@ th { background: #e8e8e8; font-weight: 700; }
 tbody tr:nth-child(even) { background: #f6f6f6; }
 td.seat { font-weight: 700; font-size: 10pt; }
 td.num { text-align: right; }
+td.via { font-size: 8.5pt; }
 .sign { text-align: right; font-size: 12pt; font-weight: 700; margin-top: 8mm; }
 .pageno { text-align: center; font-size: 8.5pt; color: #555; margin-top: 3mm; }
 .wm { position: absolute; top: 105mm; left: 0; right: 0; text-align: center; font-size: 110pt; font-weight: 900; color: rgba(200,0,0,.13); transform: rotate(-28deg); pointer-events: none; letter-spacing: 12px; }
@@ -176,4 +189,4 @@ if (!existsSync(outPdf)) {
   process.exit(1)
 }
 console.log(`✅ ${outPdf}`)
-console.log(`   配到車位 ${assigned.length}、未中 ${missed.length}、待第二輪／待安排 ${waiting.length}；共 ${sheets.length} 頁${sample ? '（樣張）' : ''}`)
+console.log(`   機車：配到 ${assigned.length}、未中 ${missed.length}、待第二輪／待安排 ${waiting.length}；自行車：配到 ${bikeAssigned.length}、未配到 ${bikeMissed.length}；共 ${sheets.length} 頁${sample ? '（樣張）' : ''}`)
