@@ -128,10 +128,5 @@ function go(key) {
       </p>
     </div>
 
-    <p class="mt-6 text-sm text-slate-500">
-      看不慣條文？
-      <RouterLink to="/rules" class="text-indigo-600 underline">住戶說明</RouterLink>
-      用白話整理了時程、配位方式、繳費與常見問題。
-    </p>
   </section>
 </template>

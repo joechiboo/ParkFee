@@ -23,13 +23,8 @@ const routes = [
     // 公開：預設跑範例 demo（鄰居可玩、看演算法）。真實名冊匯入在 dev 專區（限管理員）。
   },
   { path: '/result', name: 'result', component: () => import('../views/ResultView.vue'), meta: { title: '結果' } },
-  {
-    path: '/rules',
-    name: 'rules',
-    component: () => import('../views/RulesView.vue'),
-    meta: { title: '住戶說明' },
-    // 公開：住戶最常看的一頁（登記/抽籤/繳費怎麼進行），內容由 docs/01 產生。
-  },
+  // 住戶說明頁已拿掉（2026-11-10 使用者定：內容與辦法重複，有需要直接看辦法）。舊連結導到辦法頁。
+  { path: '/rules', redirect: '/bylaw' },
   {
     path: '/bylaw',
     name: 'bylaw',
