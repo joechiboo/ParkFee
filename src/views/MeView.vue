@@ -40,7 +40,8 @@ async function doLogin() {
   try {
     const h = await login(creds.戶號, creds.車號)
     if (!h) {
-      error.value = '查無此登記，請確認戶號與車號（需為該戶登記過的任一台車）'
+      error.value =
+        '查無此登記，請確認戶號與車號（需為該戶登記過的任一台車）。戶號請填「房型-樓層」，例：H3 房型 6 樓填 H3-6；先前若填錯，管理中心可能已代為更正。需要協助請洽 A、B 棟櫃台秘書。'
       return
     }
     household.value = h
