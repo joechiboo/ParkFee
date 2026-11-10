@@ -16,6 +16,13 @@ const routes = [
     beforeEnter: (to) => (isAdmin(sessionHousehold.value) ? true : { name: 'me' }), // 僅管理員
   },
   {
+    path: '/roster',
+    name: 'roster',
+    component: () => import('../views/RosterAdminView.vue'),
+    meta: { title: '登記名冊' },
+    beforeEnter: () => (isAdmin(sessionHousehold.value) ? true : { name: 'me' }), // 僅管理員（含個資）
+  },
+  {
     path: '/allocate',
     name: 'allocate',
     component: () => import('../views/AllocateView.vue'),

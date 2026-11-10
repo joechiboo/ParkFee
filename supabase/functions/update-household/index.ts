@@ -2,7 +2,7 @@
 // 編輯既有戶：整批取代車輛 + 改電話。戶號不可變。可一併增刪自行車（車號由後端合成，前端不送）。
 // 🔒 擁有權驗證：見 http.ts verifyOwnership——認證車號須「目前」屬於該戶，
 //    否則任何人拿公開 anon key 就能竄改他戶登記。自行車的合成車號不算憑證。
-import { corsHeaders, json, adminClient, fetchHousehold, verifyOwnership, verifyAdmin } from '../_shared/http.ts'
+import { corsHeaders, json, adminClient, fetchHousehold, verifyOwnership, verifyAdmin, audit } from '../_shared/http.ts'
 import { windowClosed } from '../_shared/window.ts'
 import { normalizeHousehold } from '../_shared/normalize.ts'
 import { buildVehicleRows, isBikeOnly } from '../_shared/vehicles.ts'
@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405)
 
   try {
-    const { 戶號, 電話, 社宅, 工作人員, vehicles, 認證車號 } = await req.json()
+    const { 戶號, 電話, 社宅, 工作人員, vehicles, 認證車號, admin } = await req.json()
 
     const hid = normalizeHousehold(戶號)
     if (!hid) return json({ error: '請填寫戶號' }, 400)
@@ -21,19 +21,25 @@ Deno.serve(async (req) => {
 
     const db = adminClient()
 
-    // 🔒 擁有權驗證：認證車號目前須屬於 hid
-    if (!(await verifyOwnership(db, hid, { 認證車號 })))
-      return json({ error: '驗證失敗：請使用登入時的車號再試' }, 403)
+    // 管理員代改（名冊維護頁，2026-11-10）：body.admin 帶管理員憑證（密碼，或管理員戶號＋車牌）。
+    // 通過者可改任一戶：不驗擁有權、不受登記時窗限制、可只留自行車（等同臨櫃辦理），並寫稽核。
+    const byAdmin = !!admin && (await verifyAdmin(db, admin))
 
-    // 登記時窗：管理員戶號修改自己的登記可豁免。
-    const closed = windowClosed('登記資料修改')
-    if (closed && !(await verifyAdmin(db, { 戶號: hid, 認證車號 }))) return json({ error: closed }, 403)
+    if (!byAdmin) {
+      // 🔒 擁有權驗證：認證車號目前須屬於 hid
+      if (!(await verifyOwnership(db, hid, { 認證車號 })))
+        return json({ error: '驗證失敗：請使用登入時的車號再試' }, 403)
+
+      // 登記時窗：管理員戶號修改自己的登記可豁免。
+      const closed = windowClosed('登記資料修改')
+      if (closed && !(await verifyAdmin(db, { 戶號: hid, 認證車號 }))) return json({ error: closed }, 403)
+    }
 
     const { rows: cleaned, error: vErrMsg } = buildVehicleRows(hid, vehicles)
     if (vErrMsg) return json({ error: vErrMsg }, 400)
 
     // 刪掉最後一台機車＝從此沒有登入憑證，之後只能臨櫃 → 擋下並要住戶臨櫃辦理，避免自鎖。
-    if (isBikeOnly(cleaned))
+    if (!byAdmin && isBikeOnly(cleaned))
       return json(
         { error: '線上不可只保留自行車（車號是登入憑證）。要移除全部機車請至管理中心辦理' },
         400,
@@ -55,6 +61,7 @@ Deno.serve(async (req) => {
     if (工作人員 !== undefined) 戶旗標.工作人員 = !!工作人員
     if (Object.keys(戶旗標).length) await db.from('household').update(戶旗標).eq('戶號', hid)
 
+    if (byAdmin) await audit(db, 'household.update', { body: admin, target: hid, detail: { 車輛數: cleaned.length } })
     return json({ household: await fetchHousehold(db, hid) })
   } catch (e) {
     console.error('update-household error:', e)

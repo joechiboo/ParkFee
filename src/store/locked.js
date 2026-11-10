@@ -139,10 +139,10 @@ export async function renameHousehold(oldId, newId) {
   return callRename({ 舊戶號: oldId, 新戶號: newId, ...adminAuth() })
 }
 
-// 戶號不在社區戶清單裡的登記（管理員）：[{ 戶號, 原因, 電話, 車號[] }]
-export async function listHouseholdProblems() {
+// 全部登記（管理員，名冊維護頁用）：[{ 戶號, 電話, createdAt, 車位志願, 志願落選保底, 工作人員, vehicles[] }]
+export async function listHouseholds() {
   if (!useSupabase) return []
-  return (await callRename({ op: 'list', ...adminAuth() }))?.problems || []
+  return (await callRename({ op: 'list', ...adminAuth() }))?.households || []
 }
 
 async function callRename(body) {

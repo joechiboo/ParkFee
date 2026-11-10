@@ -6,7 +6,7 @@ import { normalizeHousehold, isValidHousehold, householdProblem, staffHousehold,
 import { normalizeTWPlate } from '../data/plate.js'
 import { formatTWPhone, isValidTWPhone } from '../data/phone.js'
 import { editTarget } from '../store/editTarget.js'
-import { sessionHousehold, sessionPlate } from '../store/session.js'
+import { sessionHousehold, sessionPlate, adminAuth } from '../store/session.js'
 import { isAdminAccount } from '../store/roles.js'
 import { KIND } from '../map/seat-id.js'
 
@@ -28,13 +28,16 @@ const error = ref('')
 const done = ref(null) // 成功後的整戶資料
 const isEdit = ref(false) // 由 MeView 帶資料進來編輯時為 true
 const authPlate = ref('') // 登入時的車號，編輯送出時當擁有權證明
+// 管理員從名冊維護頁（/roster）代改某一戶：帶管理員憑證送出，不切換登入身分，改完回名冊。
+const adminEdit = ref(false)
 // 管理員帳號在櫃台補登紙本：一律新登記、帶管理密碼（截止後仍可補登），送出後不切換登入身分。
 const counterMode = computed(() => isAdminAccount(sessionHousehold.value))
 
 // 編輯模式：從 MeView 帶進來的 editTarget，或（直接點「登記」時）已登入的 sessionHousehold。
 onMounted(() => {
+  adminEdit.value = !!editTarget.value?.adminEdit
   const h = editTarget.value || sessionHousehold.value
-  if (!h || counterMode.value) return // 未登入、或櫃台補登 → 維持新登記空白表
+  if (!h || (counterMode.value && !adminEdit.value)) return // 未登入、或櫃台補登 → 維持新登記空白表
   isEdit.value = true
   authPlate.value = h.認證車號 || sessionPlate.value || ''
   form.戶號 = h.戶號
@@ -121,9 +124,9 @@ async function submit() {
     // 編輯時也順手清掉舊資料殘留的旗標。後端與引擎的社宅分支保留不動。
     const payload = { 戶號: form.戶號, 電話: form.電話, 社宅: false, 工作人員: form.工作人員, vehicles }
     done.value = isEdit.value
-      ? await updateHousehold({ ...payload, 認證車號: authPlate.value })
+      ? await updateHousehold({ ...payload, 認證車號: authPlate.value, admin: adminEdit.value ? adminAuth() : undefined })
       : await register(counterMode.value ? { ...payload, password: sessionPlate.value } : payload)
-    if (!counterMode.value) {
+    if (!counterMode.value && !adminEdit.value) {
       sessionHousehold.value = done.value
       sessionPlate.value = done.value?.vehicles?.[0]?.車號 || authPlate.value
     }
@@ -138,7 +141,7 @@ async function submit() {
 
 <template>
   <section class="mx-auto max-w-2xl">
-    <h1 class="text-2xl font-bold">{{ isEdit ? '編輯登記' : '車位登記（機車／自行車）' }}</h1>
+    <h1 class="text-2xl font-bold">{{ adminEdit ? `代改登記：${form.戶號}` : isEdit ? '編輯登記' : '車位登記（機車／自行車）' }}</h1>
     <p class="mt-1 text-sm text-slate-500">
       登記期間 11/15 00:00 至 11/30 23:59。<span v-if="counterMode">目前為櫃台補登，截止後仍可登打期間內收件的紙本。</span>
     </p>
@@ -170,10 +173,15 @@ async function submit() {
           </template>
         </li>
       </ul>
-      <p v-if="doneHasMotor" class="mt-3 rounded border border-emerald-300 bg-white/60 p-2 text-sm text-emerald-900">
+      <p v-if="doneHasMotor && !adminEdit" class="mt-3 rounded border border-emerald-300 bg-white/60 p-2 text-sm text-emerald-900">
         <b>下一步：排「車位志願序」</b> — 抽籤會依你的志願由高到低分發，建議至少排幾個。<span v-if="doneBikeCount">（自行車不用排志願，12/1 直接抽車位號碼。）</span>
       </p>
-      <div v-if="counterMode" class="mt-3">
+      <div v-if="adminEdit" class="mt-3">
+        <RouterLink to="/roster" class="rounded bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800">
+          ← 回登記名冊
+        </RouterLink>
+      </div>
+      <div v-else-if="counterMode" class="mt-3">
         <button class="rounded bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800" @click="nextCounterEntry">
           登打下一筆
         </button>
