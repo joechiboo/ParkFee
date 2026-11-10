@@ -136,9 +136,17 @@ export async function unlockSeat(seatId, plate, { 放棄 = false } = {}) {
 // 新戶號已有登記時後端會拒絕，不做合併。
 export async function renameHousehold(oldId, newId) {
   if (!useSupabase) throw new Error('本機模式不支援更正戶號')
-  const { data, error } = await (await client()).functions.invoke('rename-household', {
-    body: { 舊戶號: oldId, 新戶號: newId, ...adminAuth() },
-  })
+  return callRename({ 舊戶號: oldId, 新戶號: newId, ...adminAuth() })
+}
+
+// 戶號不在社區戶清單裡的登記（管理員）：[{ 戶號, 原因, 電話, 車號[] }]
+export async function listHouseholdProblems() {
+  if (!useSupabase) return []
+  return (await callRename({ op: 'list', ...adminAuth() }))?.problems || []
+}
+
+async function callRename(body) {
+  const { data, error } = await (await client()).functions.invoke('rename-household', { body })
   let msg = error?.message
   try {
     const j = await error?.context?.json?.()

@@ -7,7 +7,7 @@ import SeatMap from '../components/SeatMap.vue'
 import { motorSeats, bikeSeats } from '../map/seats.js'
 import { heavyPartners } from '../map/heavy-pair.js'
 import { KIND, compareSeatId, displaySeatId, normalizeSeatInput } from '../map/seat-id.js'
-import { lockedSeats, refreshLocked, listAssignments, assignSeat, unlockSeat, batchLock, renameHousehold, AssignNeedsConfirm } from '../store/locked.js'
+import { lockedSeats, refreshLocked, listAssignments, assignSeat, unlockSeat, batchLock, renameHousehold, listHouseholdProblems, AssignNeedsConfirm } from '../store/locked.js'
 import { normalizeHousehold, householdProblem } from '../data/household.js'
 import { sessionHousehold } from '../store/session.js'
 import { isAdmin } from '../store/roles.js'
@@ -121,6 +121,7 @@ function defaultStatus(s) {
 onMounted(async () => {
   await refreshLocked()
   await reloadAssignments()
+  await reloadProblems()
 })
 
 async function reloadAssignments() {
@@ -193,6 +194,18 @@ async function runBatch(mode) {
 const renameForm = ref({ 舊: '', 新: '' })
 const renameMsg = ref('')
 const renameOk = ref(false)
+const householdProblems = ref([]) // 戶號不在社區戶清單裡的登記
+async function reloadProblems() {
+  try {
+    householdProblems.value = await listHouseholdProblems()
+  } catch {
+    /* 列不出來不影響手動更正 */
+  }
+}
+function pickProblem(p) {
+  renameMsg.value = ''
+  renameForm.value = { 舊: p.戶號, 新: '' }
+}
 const renameProblem = computed(() => {
   const v = renameForm.value.新.trim()
   return v ? householdProblem(v) : null
@@ -212,6 +225,7 @@ async function doRename() {
     renameMsg.value = `已更正為 ${r.戶號}（${r.車輛數} 台車一起搬）。請通知住戶之後用新戶號登入。`
     renameForm.value = { 舊: '', 新: '' }
     await reloadAssignments()
+    await reloadProblems()
   } catch (e) {
     renameMsg.value = e?.message || '更正失敗'
   } finally {
@@ -469,6 +483,21 @@ function decorate(s) {
             <p class="mt-1 text-xs text-slate-500">
               住戶登記時把戶號填錯（例如填成門牌號碼 <code class="rounded bg-white px-1">B3-385</code>）用這裡改。戶號＝<b>房型-樓層</b>，H3 房型 6 樓是 <code class="rounded bg-white px-1">H3-6</code>。車輛、志願、車位、繳費紀錄會一起搬。
             </p>
+            <div v-if="householdProblems.length" class="mt-2 rounded border border-red-200 bg-white p-2">
+              <div class="text-xs font-semibold text-red-700">戶號有誤的登記（{{ householdProblems.length }} 戶）— 點一戶帶入，問到正確戶號後更正</div>
+              <button
+                v-for="p in householdProblems"
+                :key="p.戶號"
+                type="button"
+                class="mt-1 block w-full rounded px-2 py-1 text-left text-xs hover:bg-sky-50"
+                :class="renameForm.舊 === p.戶號 ? 'bg-sky-100' : ''"
+                @click="pickProblem(p)"
+              >
+                <b class="font-mono">{{ p.戶號 }}</b>
+                <span class="ml-2 text-slate-600">{{ p.電話 || '無電話' }}・{{ p.車號.join('、') || '無車輛' }}</span>
+                <span class="block text-red-600">{{ p.原因 }}</span>
+              </button>
+            </div>
             <div class="mt-2 flex flex-wrap items-center gap-2">
               <input v-model="renameForm.舊" type="text" placeholder="原本填的戶號" style="text-transform:uppercase"
                 class="w-36 rounded border border-slate-300 px-2 py-1.5 text-sm" />

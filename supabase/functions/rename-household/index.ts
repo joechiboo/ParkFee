@@ -1,4 +1,6 @@
 // POST /rename-household  { 舊戶號, 新戶號, password | (戶號, 認證車號) }  → { 戶號, 車輛數 } | { error }
+// POST /rename-household  { op: 'list', ...同上憑證 }  → { problems: [{ 戶號, 原因, 電話, 車號[] }] }
+//   列出戶號不在社區戶清單裡的登記，維護頁直接點選更正。電話給櫃台打去問樓層用，不寫進稽核。
 // 更正戶號（2026-11-10）：住戶把戶號填錯時，由管理員改成正確的戶號。🔒 僅管理員。
 // 整戶的電話、志願、車輛、已選定車位、繳費紀錄一起搬（資料庫函式 app_rename_household，單一交易）。
 // 新戶號必須是社區實際有的戶；舊戶號不檢查格式（本來就是填錯的）。
@@ -14,6 +16,21 @@ Deno.serve(async (req) => {
     const body = await req.json()
     const db = adminClient()
     if (!(await verifyAdmin(db, body))) return json({ error: '管理員驗證失敗' }, 403)
+
+    if (body.op === 'list') {
+      const { data: hs, error: hErr } = await db.from('household').select('戶號, 電話')
+      if (hErr) return json({ error: hErr.message }, 400)
+      const bad = (hs || [])
+        .map((h) => ({ 戶號: h.戶號 as string, 電話: (h.電話 as string) || '', 原因: householdProblem(h.戶號) }))
+        .filter((h) => h.原因)
+      const { data: vs } = bad.length
+        ? await db.from('vehicle').select('車號, 戶號').in('戶號', bad.map((h) => h.戶號))
+        : { data: [] }
+      const problems = bad
+        .map((h) => ({ ...h, 車號: (vs || []).filter((v) => v.戶號 === h.戶號).map((v) => v.車號) }))
+        .sort((a, b) => a.戶號.localeCompare(b.戶號))
+      return json({ problems })
+    }
 
     // 舊戶號只做全形、空白、大小寫的整理，不補店面樓層：要能對到資料庫裡填錯的原樣。
     const oldId = String(body.舊戶號 ?? '').normalize('NFKC').replace(/\s+/g, '').toUpperCase()
