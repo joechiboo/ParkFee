@@ -7,11 +7,13 @@
 //        SUPABASE_SERVICE_ROLE_KEY=eyJ...
 //      （URL 會沿用 .env 既有的 VITE_SUPABASE_URL；或另設 SUPABASE_URL）
 //   2) node scripts/export-roster.mjs
+//   （沒設 SUPABASE_SERVICE_ROLE_KEY 也能跑：自動改用 Supabase CLI 唯讀查詢，需先 npx supabase login）
 //   3) 產出 private/roster-<時間>.csv（gitignored）→ 交物業 或 匯入 AllocateView 抽籤
 //
 // CSV schema 與 registry.js 一致：戶號,車號,車種,第幾輛,身障,志願小位,登記時間,聯絡電話,車位志願,志願落選保底,來源
 
 import { readFileSync, mkdirSync, existsSync } from 'node:fs'
+import { execSync } from 'node:child_process'
 import { createClient } from '@supabase/supabase-js'
 import { writeCsvUtf8 } from './lib/csv-out.mjs'
 
@@ -32,10 +34,18 @@ function loadEnv() {
 const env = loadEnv()
 const URL = env.SUPABASE_URL || env.VITE_SUPABASE_URL
 const KEY = env.SUPABASE_SERVICE_ROLE_KEY
-if (!URL || !KEY) {
-  console.error('缺少設定：需要 SUPABASE_URL（或 VITE_SUPABASE_URL）與 SUPABASE_SERVICE_ROLE_KEY')
-  console.error('請在 .env 加 SUPABASE_SERVICE_ROLE_KEY=...（Dashboard → Settings → API → service_role）')
-  process.exit(1)
+// 沒有 service_role key 時改走 Supabase CLI 的唯讀查詢（2026-11-10）：
+//   用的是 `supabase login` 的登入身分，不必把上帝權限的 key 放進 .env；--read-only 交易保證不會寫入。
+const viaCli = !KEY
+function cliQuery(sql) {
+  const out = execSync(`npx --yes supabase db query --remote --read-only --output-format json "${sql.replace(/"/g, '\\"')}"`, {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+    maxBuffer: 64 * 1024 * 1024,
+  })
+  const j = JSON.parse(out.slice(out.indexOf('{')))
+  if (!j.rows) throw new Error(j.error?.message || 'Supabase CLI 查詢失敗（先跑 npx supabase login）')
+  return j.rows
 }
 
 const yn = (b) => (b ? 'Y' : 'N')
@@ -47,18 +57,25 @@ const esc = (v) => {
 // 配位狀態：第二輪要認「視同放棄」。車位類型不帶（distribute 由車位編號反查主檔得知型別）；重機＝同車號掛兩個車位編號（頓號分隔）。
 const COLUMNS = ['戶號', '車號', '車種', '第幾輛', '身障', '志願小位', '登記時間', '聯絡電話', '車位志願', '志願落選保底', '社宅', '工作人員', '來源', '車位編號', '已繳費', '配位狀態']
 
-const db = createClient(URL, KEY, { auth: { persistSession: false } })
-
-const { data: households, error: he } = await db
-  .from('household')
-  .select('戶號, 電話, 車位志願, 志願落選保底, 社宅, 工作人員, created_at')
-if (he) throw he
-const { data: vehicles, error: ve } = await db
-  .from('vehicle')
-  .select('車號, 戶號, 車種, 第幾輛, 身障, 志願小位, 車位編號, 已繳費, 配位狀態')
-  .order('戶號')
-  .order('第幾輛')
-if (ve) throw ve
+let households
+let vehicles
+if (viaCli) {
+  console.log('（.env 沒有 SUPABASE_SERVICE_ROLE_KEY，改用 Supabase CLI 唯讀查詢）')
+  households = cliQuery('select "戶號", "電話", "車位志願", "志願落選保底", "社宅", "工作人員", created_at from household')
+  vehicles = cliQuery('select "車號", "戶號", "車種", "第幾輛", "身障", "志願小位", "車位編號", "已繳費", "配位狀態" from vehicle order by "戶號", "第幾輛"')
+} else {
+  const db = createClient(URL, KEY, { auth: { persistSession: false } })
+  const h = await db.from('household').select('戶號, 電話, 車位志願, 志願落選保底, 社宅, 工作人員, created_at')
+  if (h.error) throw h.error
+  const v = await db
+    .from('vehicle')
+    .select('車號, 戶號, 車種, 第幾輛, 身障, 志願小位, 車位編號, 已繳費, 配位狀態')
+    .order('戶號')
+    .order('第幾輛')
+  if (v.error) throw v.error
+  households = h.data
+  vehicles = v.data
+}
 
 const hById = new Map(households.map((h) => [h.戶號, h]))
 const rows = vehicles.map((v) => {

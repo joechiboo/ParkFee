@@ -188,7 +188,7 @@ if (accessibleWaiting.length > cap.無障礙)
 //    填錯的戶出帳時對不到門牌、或對到別人家，一定要在抽籤前由櫃台更正（維護頁「更正戶號」）。
 const badHouse = all.map((h) => ({ h, why: householdProblem(h.戶號) })).filter((x) => x.why)
 if (badHouse.length)
-  add('warn', '戶號有誤（社區沒有這一戶）', '請在維護頁「更正戶號」改成正確的戶號；不改會出帳到錯的門牌或開不出帳單。',
+  add('warn', '戶號有誤（社區沒有這一戶）', '請在「名冊」頁按該戶的「更正戶號」改成正確的戶號；不改會出帳到錯的門牌或開不出帳單。',
     badHouse.map(({ h, why }) => `${h.戶號}：${why}`))
 
 // 3.5) 工作人員：比對名單（線上可自行勾選 → 必須人工把關）
