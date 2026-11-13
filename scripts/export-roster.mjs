@@ -103,7 +103,9 @@ const rows = vehicles.map((v) => {
 const csv = [COLUMNS.join(','), ...rows.map((r) => COLUMNS.map((c) => esc(r[c])).join(','))].join('\r\n')
 
 if (!existsSync('private')) mkdirSync('private')
-const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '').replace(/(\d{8})(\d{4})/, '$1-$2')
+// 檔名用台北時間 YYYYMMDD-HHmm（原本用 UTC 且格式黏在一起，11/13 早上 9 點產的檔叫 2026-11-130107）
+const now = new Date(Date.now() + 8 * 3600 * 1000).toISOString()
+const stamp = `${now.slice(0, 10).replace(/-/g, '')}-${now.slice(11, 16).replace(':', '')}`
 const out = `private/roster-${stamp}.csv`
 writeCsvUtf8(out, csv)
 
