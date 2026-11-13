@@ -37,15 +37,41 @@ const KEY = env.SUPABASE_SERVICE_ROLE_KEY
 // 沒有 service_role key 時改走 Supabase CLI 的唯讀查詢（2026-11-10）：
 //   用的是 `supabase login` 的登入身分，不必把上帝權限的 key 放進 .env；--read-only 交易保證不會寫入。
 const viaCli = !KEY
+// Supabase CLI 的 JSON 輸出有兩種樣子：一般環境直接印「列的陣列」[{…},{…}]；
+// 在 Claude Code 這類代理環境會包成 { rows: [...], warning, boundary }。兩種都要吃，
+// 而且前後可能夾雜其他文字 → 取第一個完整的 JSON 值（陣列或物件），再取出列。
+function rowsOf(out) {
+  const start = out.search(/[\[{]/)
+  if (start < 0) throw new Error('Supabase CLI 沒有回傳 JSON（先確認已 npx supabase login）')
+  let depth = 0
+  let inStr = false
+  let end = -1
+  for (let i = start; i < out.length; i++) {
+    const c = out[i]
+    if (inStr) {
+      if (c === '\\') i++
+      else if (c === '"') inStr = false
+    } else if (c === '"') inStr = true
+    else if (c === '{' || c === '[') depth++
+    else if ((c === '}' || c === ']') && --depth === 0) {
+      end = i
+      break
+    }
+  }
+  if (end < 0) throw new Error('Supabase CLI 回傳的 JSON 不完整')
+  const j = JSON.parse(out.slice(start, end + 1))
+  if (Array.isArray(j)) return j
+  if (Array.isArray(j.rows)) return j.rows
+  // 不把內容印出來：可能是名冊資料（含電話）
+  throw new Error('Supabase CLI 查詢失敗：' + (j.error?.message || j.error?.code || '回傳格式不認得'))
+}
 function cliQuery(sql) {
   const out = execSync(`npx --yes supabase db query --remote --read-only --output-format json "${sql.replace(/"/g, '\\"')}"`, {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'ignore'],
     maxBuffer: 64 * 1024 * 1024,
   })
-  const j = JSON.parse(out.slice(out.indexOf('{')))
-  if (!j.rows) throw new Error(j.error?.message || 'Supabase CLI 查詢失敗（先跑 npx supabase login）')
-  return j.rows
+  return rowsOf(out)
 }
 
 const yn = (b) => (b ? 'Y' : 'N')
