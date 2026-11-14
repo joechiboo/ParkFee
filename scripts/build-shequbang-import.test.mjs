@@ -26,26 +26,26 @@ describe('社區幫下載檔的 Excel 包法', () => {
 })
 
 describe('householdIdOf — 門牌＋樓層 → 戶號', () => {
-  it('社區幫的中間數字是「單元」，戶號的是「樓層」，兩者對調', () => {
-    // #A1-375 = A 棟第 1 單元；樓層欄 2 → 戶號 A2-1（A 棟 2 樓 1 戶）
-    expect(householdIdOf('#A1-375', '2')).toBe('A2-1')
-    expect(householdIdOf('#H6-293', '3')).toBe('H3-6')
-    expect(householdIdOf('#E8-335', '15')).toBe('E15-8')
+  it('戶號 = 房型-樓層（建商編法）：門牌的房型照抄，後面接樓層', () => {
+    // #A1-375 = A1 房型；樓層欄 2 → 戶號 A1-2（A1 房型 2 樓）
+    expect(householdIdOf('#A1-375', '2')).toBe('A1-2')
+    expect(householdIdOf('#H6-293', '3')).toBe('H6-3')
+    expect(householdIdOf('#E8-335', '15')).toBe('E8-15')
   })
 
   it('店面走同一條規則（S 棟恆在 1 樓）', () => {
-    expect(householdIdOf('#S6-40', '1')).toBe('S1-6')
-    expect(householdIdOf('#S15-303', '1')).toBe('S1-15')
+    expect(householdIdOf('#S6-40', '1')).toBe('S6-1')
+    expect(householdIdOf('#S15-303', '1')).toBe('S15-1')
   })
 
   it('同一單元不同樓層可能掛不同街號 — 街號不參與對照', () => {
     // A5 單元大多數樓層是 #A5-367，唯獨 3 樓是 #A5-369，但都屬 A 棟第 5 單元。
-    expect(householdIdOf('#A5-367', '4')).toBe('A4-5')
-    expect(householdIdOf('#A5-369', '3')).toBe('A3-5')
+    expect(householdIdOf('#A5-367', '4')).toBe('A5-4')
+    expect(householdIdOf('#A5-369', '3')).toBe('A5-3')
   })
 
   it('# 前綴可有可無；格式不符或樓層非數字回 null', () => {
-    expect(householdIdOf('A1-375', '2')).toBe('A2-1')
+    expect(householdIdOf('A1-375', '2')).toBe('A1-2')
     expect(householdIdOf('', '2')).toBe(null)
     expect(householdIdOf('#A1-375', '')).toBe(null)
     expect(householdIdOf('亂碼', '2')).toBe(null)
@@ -54,36 +54,36 @@ describe('householdIdOf — 門牌＋樓層 → 戶號', () => {
 
 describe('兩輪分開收費', () => {
   const round1 = [
-    { 戶號: 'A2-1', 車號: 'AAA-1', 應繳金額: '1200', 狀態: '分配' },
-    { 戶號: 'A2-1', 車號: 'AAA-2', 應繳金額: '', 狀態: '待第二輪' },
-    { 戶號: 'B3-2', 車號: 'BBB-1', 應繳金額: '', 狀態: '未中' },
-    { 戶號: 'H5-1', 車號: 'HHH-1', 應繳金額: '', 狀態: '待安排' },
+    { 戶號: 'A1-2', 車號: 'AAA-1', 應繳金額: '1200', 狀態: '分配' },
+    { 戶號: 'A1-2', 車號: 'AAA-2', 應繳金額: '', 狀態: '待第二輪' },
+    { 戶號: 'B2-3', 車號: 'BBB-1', 應繳金額: '', 狀態: '未中' },
+    { 戶號: 'H1-5', 車號: 'HHH-1', 應繳金額: '', 狀態: '待安排' },
   ]
   const round2 = [
-    { 戶號: 'A2-1', 車號: 'AAA-1', 應繳金額: '1200', 狀態: '已繳' }, // 第一輪繳了
-    { 戶號: 'A2-1', 車號: 'AAA-2', 應繳金額: '1200', 狀態: '分配' },
-    { 戶號: 'B3-2', 車號: 'BBB-1', 應繳金額: '1200', 狀態: '分配' },
-    { 戶號: 'H5-1', 車號: 'HHH-1', 應繳金額: '3600', 狀態: '分配' },
-    { 戶號: 'C4-1', 車號: 'CCC-1', 應繳金額: '1200', 狀態: '分配' }, // 第一輪中籤，逾期但還沒解除
+    { 戶號: 'A1-2', 車號: 'AAA-1', 應繳金額: '1200', 狀態: '已繳' }, // 第一輪繳了
+    { 戶號: 'A1-2', 車號: 'AAA-2', 應繳金額: '1200', 狀態: '分配' },
+    { 戶號: 'B2-3', 車號: 'BBB-1', 應繳金額: '1200', 狀態: '分配' },
+    { 戶號: 'H1-5', 車號: 'HHH-1', 應繳金額: '3600', 狀態: '分配' },
+    { 戶號: 'C1-4', 車號: 'CCC-1', 應繳金額: '1200', 狀態: '分配' }, // 第一輪中籤，逾期但還沒解除
   ]
 
   it('第一輪只收配到位的第 1 輛；待第二輪、未中、重機待安排都不出帳', () => {
     const acc = feeByHousehold(round1)
-    expect([...acc.keys()]).toEqual(['A2-1'])
-    expect(acc.get('A2-1')).toEqual({ 金額: 1200, 台數: 1 })
+    expect([...acc.keys()]).toEqual(['A1-2'])
+    expect(acc.get('A1-2')).toEqual({ 金額: 1200, 台數: 1 })
   })
 
   it('第二輪排除第一輪已出帳的車，不重複收費；重機配到才收 3,600', () => {
-    const 已出帳 = billedPlates([...round1, { 戶號: 'C4-1', 車號: 'CCC-1', 應繳金額: '1200', 狀態: '分配' }])
+    const 已出帳 = billedPlates([...round1, { 戶號: 'C1-4', 車號: 'CCC-1', 應繳金額: '1200', 狀態: '分配' }])
     const acc = feeByHousehold(round2, { 已出帳 })
-    expect(acc.get('A2-1')).toEqual({ 金額: 1200, 台數: 1 })
-    expect(acc.get('B3-2').金額).toBe(1200)
-    expect(acc.get('H5-1').金額).toBe(3600)
-    expect(acc.has('C4-1')).toBe(false)
+    expect(acc.get('A1-2')).toEqual({ 金額: 1200, 台數: 1 })
+    expect(acc.get('B2-3').金額).toBe(1200)
+    expect(acc.get('H1-5').金額).toBe(3600)
+    expect(acc.has('C1-4')).toBe(false)
   })
 
   it('已繳（櫃台收過）不再出帳', () => {
-    expect(feeByHousehold([{ 戶號: 'C2-3', 車號: 'X', 應繳金額: '1200', 狀態: '已繳' }]).size).toBe(0)
+    expect(feeByHousehold([{ 戶號: 'C3-2', 車號: 'X', 應繳金額: '1200', 狀態: '已繳' }]).size).toBe(0)
   })
 
   it('兩輪收費類別不同，回查才分得出繳的是哪輪', () => {
@@ -95,24 +95,24 @@ describe('兩輪分開收費', () => {
 describe('feeByHousehold — 配位結果 → 每戶應繳', () => {
   it('一戶多台逐台加總', () => {
     const acc = feeByHousehold([
-      { 戶號: 'A2-1', 應繳金額: '1200', 狀態: '分配' },
-      { 戶號: 'A2-1', 應繳金額: '3600', 狀態: '分配' },
+      { 戶號: 'A1-2', 應繳金額: '1200', 狀態: '分配' },
+      { 戶號: 'A1-2', 應繳金額: '3600', 狀態: '分配' },
     ])
-    expect(acc.get('A2-1')).toEqual({ 金額: 4800, 台數: 2 })
+    expect(acc.get('A1-2')).toEqual({ 金額: 4800, 台數: 2 })
   })
 
   it('未中不出帳', () => {
     const acc = feeByHousehold([
-      { 戶號: 'B3-2', 應繳金額: '1200', 狀態: '分配' },
-      { 戶號: 'B3-2', 應繳金額: '', 狀態: '未中' },
+      { 戶號: 'B2-3', 應繳金額: '1200', 狀態: '分配' },
+      { 戶號: 'B2-3', 應繳金額: '', 狀態: '未中' },
     ])
-    expect(acc.get('B3-2').金額).toBe(1200)
-    expect(acc.get('B3-2').台數).toBe(1)
+    expect(acc.get('B2-3').金額).toBe(1200)
+    expect(acc.get('B2-3').台數).toBe(1)
   })
 
   it('純自行車戶金額 0 但仍入列 — 對帳表要看得到它顯示 0，而非當成沒登記', () => {
-    const acc = feeByHousehold([{ 戶號: 'D4-5', 應繳金額: '0', 狀態: '分配' }])
-    expect(acc.get('D4-5')).toEqual({ 金額: 0, 台數: 1 })
+    const acc = feeByHousehold([{ 戶號: 'D5-4', 應繳金額: '0', 狀態: '分配' }])
+    expect(acc.get('D5-4')).toEqual({ 金額: 0, 台數: 1 })
   })
 })
 
@@ -141,7 +141,7 @@ describe('fillMotorFee — 填回物業月結檔', () => {
 
   it('配位戶填入加總金額，且不動其他欄位', () => {
     const src = row('#A1-375', 2, 1739, '500')
-    const { rows } = fillMotorFee([src], new Map([['A2-1', { 金額: 4800, 台數: 2 }]]))
+    const { rows } = fillMotorFee([src], new Map([['A1-2', { 金額: 4800, 台數: 2 }]]))
     expect(rows[0].機車清潔費).toBe('4800')
     expect(rows[0].管理費).toBe('1739')
     expect(rows[0].汽車清潔費).toBe('500')
@@ -151,11 +151,11 @@ describe('fillMotorFee — 填回物業月結檔', () => {
   it('多列戶只填「管理費 > 0」的主帳列 — 兩列都填會重複收費', () => {
     // 範本檔的 #F1-321 2 樓：物業把管理費與汽車清潔費拆成兩筆立帳。
     const feeRows = [row('#F1-321', 2, 1654, '0'), row('#F1-321', 2, 0, '500')]
-    const { rows, report } = fillMotorFee(feeRows, new Map([['F2-1', { 金額: 1200, 台數: 1 }]]))
+    const { rows, report } = fillMotorFee(feeRows, new Map([['F1-2', { 金額: 1200, 台數: 1 }]]))
     expect(rows[0].機車清潔費).toBe('1200') // 管理費 1654 的主帳列
     expect(rows[1].機車清潔費).toBe('0') // 汽車清潔費那筆不填
     expect(report.輸出總額).toBe(1200)
-    expect(report.多列戶).toEqual([{ 戶號: 'F2-1', 列數: 2, 金額: 1200 }])
+    expect(report.多列戶).toEqual([{ 戶號: 'F1-2', 列數: 2, 金額: 1200 }])
   })
 
   it('配位結果有、物業檔查無門牌 → 列入 查無門牌（例：工作人員 員工-*）', () => {
@@ -192,14 +192,14 @@ describe('獨立帳單模式', () => {
 
   it('addressIndex 由物業檔建戶號→門牌索引（街號推不出來，只能查）', () => {
     const idx = addressIndex(feeRows)
-    expect(idx.get('A2-1')['住戶住址(門牌號)']).toBe('#A1-375')
-    expect(idx.get('A3-1')['住戶住址(門牌號)']).toBe('#A1-375')
-    expect(idx.get('H5-6')['住戶住址(門牌號)']).toBe('#H6-293')
+    expect(idx.get('A1-2')['住戶住址(門牌號)']).toBe('#A1-375')
+    expect(idx.get('A1-3')['住戶住址(門牌號)']).toBe('#A1-375')
+    expect(idx.get('H6-5')['住戶住址(門牌號)']).toBe('#H6-293')
   })
 
   it('照 2026-11-03 範例檔欄位：金額填「汽/機車清潔費」，管理費／郵資／附加費用一律 0', () => {
     const { rows } = buildStandaloneRows(
-      new Map([['A2-1', { 金額: 4800, 台數: 2 }]]),
+      new Map([['A1-2', { 金額: 4800, 台數: 2 }]]),
       addressIndex(feeRows),
       opts
     )
@@ -218,8 +218,8 @@ describe('獨立帳單模式', () => {
   it('只列有金額的戶 — 0 元不出帳，否則會產生一堆 0 元帳單', () => {
     const { rows, report } = buildStandaloneRows(
       new Map([
-        ['A2-1', { 金額: 1200, 台數: 1 }],
-        ['A3-1', { 金額: 0, 台數: 1 }], // 純自行車戶
+        ['A1-2', { 金額: 1200, 台數: 1 }],
+        ['A1-3', { 金額: 0, 台數: 1 }], // 純自行車戶
       ]),
       addressIndex(feeRows),
       opts
@@ -243,9 +243,9 @@ describe('獨立帳單模式', () => {
   it('依門牌、樓層排序，方便物業核對', () => {
     const { rows } = buildStandaloneRows(
       new Map([
-        ['H5-6', { 金額: 1200, 台數: 1 }],
-        ['A3-1', { 金額: 1200, 台數: 1 }],
-        ['A2-1', { 金額: 1200, 台數: 1 }],
+        ['H6-5', { 金額: 1200, 台數: 1 }],
+        ['A1-3', { 金額: 1200, 台數: 1 }],
+        ['A1-2', { 金額: 1200, 台數: 1 }],
       ]),
       addressIndex(feeRows),
       opts

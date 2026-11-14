@@ -4,7 +4,7 @@
 // 自行車（車種='自行車'）無車牌 → 車號由 buildVehicleRows 產生綁戶號的合成鍵，見 docs/10 Q18。
 import { corsHeaders, json, adminClient, fetchHousehold, verifyAdmin } from '../_shared/http.ts'
 import { windowClosed } from '../_shared/window.ts'
-import { normalizeHousehold, isValidHousehold } from '../_shared/normalize.ts'
+import { normalizeHousehold, householdProblem } from '../_shared/normalize.ts'
 import { buildVehicleRows, isBikeOnly } from '../_shared/vehicles.ts'
 
 Deno.serve(async (req) => {
@@ -15,8 +15,8 @@ Deno.serve(async (req) => {
     const { 戶號, 電話, 社宅, 工作人員, vehicles, password } = await req.json()
 
     const hid = normalizeHousehold(戶號)
-    if (!hid) return json({ error: '請填寫戶號' }, 400)
-    if (!isValidHousehold(hid)) return json({ error: '戶號格式不對（例 H3-6／店面 S1-6）' }, 400)
+    const hidProblem = householdProblem(hid)
+    if (hidProblem) return json({ error: hidProblem }, 400)
     if (!Array.isArray(vehicles) || vehicles.length === 0)
       return json({ error: '至少要登記一台車' }, 400)
 

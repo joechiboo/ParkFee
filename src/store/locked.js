@@ -131,3 +131,30 @@ export async function unlockSeat(seatId, plate, { 放棄 = false } = {}) {
   lockedSeats.value = next
   saveOccupied([...next])
 }
+
+// 更正戶號（管理員）：住戶把戶號填錯時改成正確的，整戶的車、志願、車位、繳費一起搬。
+// 新戶號已有登記時後端會拒絕，不做合併。
+export async function renameHousehold(oldId, newId) {
+  if (!useSupabase) throw new Error('本機模式不支援更正戶號')
+  return callRename({ 舊戶號: oldId, 新戶號: newId, ...adminAuth() })
+}
+
+// 全部登記（管理員，名冊維護頁用）：[{ 戶號, 電話, createdAt, 車位志願, 志願落選保底, 工作人員, vehicles[] }]
+export async function listHouseholds() {
+  if (!useSupabase) return []
+  return (await callRename({ op: 'list', ...adminAuth() }))?.households || []
+}
+
+async function callRename(body) {
+  const { data, error } = await (await client()).functions.invoke('rename-household', { body })
+  let msg = error?.message
+  try {
+    const j = await error?.context?.json?.()
+    if (j?.error) msg = j.error
+  } catch {
+    /* ignore */
+  }
+  if (error) throw new Error(msg || '更正失敗，請稍後再試')
+  if (data?.error) throw new Error(data.error)
+  return data
+}

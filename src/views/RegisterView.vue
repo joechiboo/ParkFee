@@ -2,13 +2,14 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { register, updateHousehold, RegistrationError } from '../store/db.js'
-import { normalizeHousehold, isValidHousehold, staffHousehold, isStaffHousehold } from '../data/household.js'
+import { normalizeHousehold, isValidHousehold, householdProblem, staffHousehold, isStaffHousehold } from '../data/household.js'
 import { normalizeTWPlate } from '../data/plate.js'
 import { formatTWPhone, isValidTWPhone } from '../data/phone.js'
 import { editTarget } from '../store/editTarget.js'
-import { sessionHousehold, sessionPlate } from '../store/session.js'
+import { sessionHousehold, sessionPlate, adminAuth } from '../store/session.js'
 import { isAdminAccount } from '../store/roles.js'
 import { KIND } from '../map/seat-id.js'
+import HouseholdInput from '../components/HouseholdInput.vue'
 
 const router = useRouter()
 
@@ -28,13 +29,16 @@ const error = ref('')
 const done = ref(null) // 成功後的整戶資料
 const isEdit = ref(false) // 由 MeView 帶資料進來編輯時為 true
 const authPlate = ref('') // 登入時的車號，編輯送出時當擁有權證明
+// 管理員從名冊維護頁（/roster）代改某一戶：帶管理員憑證送出，不切換登入身分，改完回名冊。
+const adminEdit = ref(false)
 // 管理員帳號在櫃台補登紙本：一律新登記、帶管理密碼（截止後仍可補登），送出後不切換登入身分。
 const counterMode = computed(() => isAdminAccount(sessionHousehold.value))
 
 // 編輯模式：從 MeView 帶進來的 editTarget，或（直接點「登記」時）已登入的 sessionHousehold。
 onMounted(() => {
+  adminEdit.value = !!editTarget.value?.adminEdit
   const h = editTarget.value || sessionHousehold.value
-  if (!h || counterMode.value) return // 未登入、或櫃台補登 → 維持新登記空白表
+  if (!h || (counterMode.value && !adminEdit.value)) return // 未登入、或櫃台補登 → 維持新登記空白表
   isEdit.value = true
   authPlate.value = h.認證車號 || sessionPlate.value || ''
   form.戶號 = h.戶號
@@ -71,10 +75,8 @@ function onHouseholdInput() {
 
 // 切換身分時同步前綴：勾起來就補「員工-」，取消就拿掉，免得殘留造成格式錯誤。
 function onStaffToggle() {
-  if (!form.戶號) return
-  form.戶號 = form.工作人員
-    ? (isStaffHousehold(form.戶號) ? form.戶號 : staffHousehold(form.戶號))
-    : form.戶號.replace(/^員工-/, '')
+  // 住戶填的是門牌與樓層、工作人員填的是姓名，兩種欄位不通用 → 切換身分就清空重填。
+  form.戶號 = ''
 }
 
 const bikeOnly = computed(() => form.vehicles.length > 0 && form.vehicles.every(isBike))
@@ -95,7 +97,9 @@ async function submit() {
   if (!isValidHousehold(form.戶號)) {
     error.value = form.工作人員
       ? '請填工作人員姓名'
-      : '戶號格式不對，請用「棟+樓-戶」，例：H3-6（店面 S1-6）'
+      : form.戶號
+        ? householdProblem(form.戶號)
+        : '請填住家門牌：第一格填門牌號碼或房型，第二格填樓層（例 297 號 6 樓）'
     return
   }
   form.電話 = formatTWPhone(form.電話)
@@ -121,9 +125,9 @@ async function submit() {
     // 編輯時也順手清掉舊資料殘留的旗標。後端與引擎的社宅分支保留不動。
     const payload = { 戶號: form.戶號, 電話: form.電話, 社宅: false, 工作人員: form.工作人員, vehicles }
     done.value = isEdit.value
-      ? await updateHousehold({ ...payload, 認證車號: authPlate.value })
+      ? await updateHousehold({ ...payload, 認證車號: authPlate.value, admin: adminEdit.value ? adminAuth() : undefined })
       : await register(counterMode.value ? { ...payload, password: sessionPlate.value } : payload)
-    if (!counterMode.value) {
+    if (!counterMode.value && !adminEdit.value) {
       sessionHousehold.value = done.value
       sessionPlate.value = done.value?.vehicles?.[0]?.車號 || authPlate.value
     }
@@ -138,7 +142,7 @@ async function submit() {
 
 <template>
   <section class="mx-auto max-w-2xl">
-    <h1 class="text-2xl font-bold">{{ isEdit ? '編輯登記' : '車位登記（機車／自行車）' }}</h1>
+    <h1 class="text-2xl font-bold">{{ adminEdit ? `代改登記：${form.戶號}` : isEdit ? '編輯登記' : '車位登記（機車／自行車）' }}</h1>
     <p class="mt-1 text-sm text-slate-500">
       登記期間 11/15 00:00 至 11/30 23:59。<span v-if="counterMode">目前為櫃台補登，截止後仍可登打期間內收件的紙本。</span>
     </p>
@@ -170,10 +174,15 @@ async function submit() {
           </template>
         </li>
       </ul>
-      <p v-if="doneHasMotor" class="mt-3 rounded border border-emerald-300 bg-white/60 p-2 text-sm text-emerald-900">
+      <p v-if="doneHasMotor && !adminEdit" class="mt-3 rounded border border-emerald-300 bg-white/60 p-2 text-sm text-emerald-900">
         <b>下一步：排「車位志願序」</b> — 抽籤會依你的志願由高到低分發，建議至少排幾個。<span v-if="doneBikeCount">（自行車不用排志願，12/1 直接抽車位號碼。）</span>
       </p>
-      <div v-if="counterMode" class="mt-3">
+      <div v-if="adminEdit" class="mt-3">
+        <RouterLink to="/roster" class="rounded bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800">
+          ← 回登記名冊
+        </RouterLink>
+      </div>
+      <div v-else-if="counterMode" class="mt-3">
         <button class="rounded bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800" @click="nextCounterEntry">
           登打下一筆
         </button>
@@ -202,17 +211,18 @@ async function submit() {
       </p>
 
       <div class="grid gap-4 sm:grid-cols-2">
-        <label class="block">
-          <span class="text-sm font-medium text-slate-700">戶號 *</span>
+        <!-- 住戶新登記：填「＿號＿樓」（門牌號碼或房型＋樓層），系統算出戶號。工作人員填姓名；編輯時戶號不可改。 -->
+        <div v-if="!isEdit && !form.工作人員" class="block">
+          <span class="text-sm font-medium text-slate-700">住家門牌 *</span>
+          <HouseholdInput v-model="form.戶號" allow-raw />
+        </div>
+        <label v-else class="block">
+          <span class="text-sm font-medium text-slate-700">{{ form.工作人員 ? '姓名 *' : '戶號' }}</span>
           <input v-model="form.戶號" @input="onHouseholdInput" :disabled="isEdit" type="text"
-            :placeholder="form.工作人員 ? '直接打姓名即可，例：陳大明' : '例：H3-6（店面 S1-6）'"
-            style="text-transform:uppercase"
+            placeholder="直接打姓名即可，例：陳大明"
             class="mt-1 w-full rounded border border-slate-300 px-3 py-2.5 text-base sm:text-sm focus:border-slate-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500" />
           <span v-if="isEdit" class="mt-1 block text-xs text-slate-500">編輯模式：戶號不可修改</span>
-          <span v-else-if="form.戶號 && !isValidHousehold(form.戶號)" class="mt-1 block text-xs text-red-600">
-            <template v-if="form.工作人員">請填姓名即可（系統會存成「員工-姓名」）</template>
-            <template v-else>格式：棟(A–H)+樓(1–15)-戶，例 H3-6；店面 S1-6</template>
-          </span>
+          <span v-else-if="form.戶號 && !isValidHousehold(form.戶號)" class="mt-1 block text-xs text-red-600">請填姓名即可（系統會存成「員工-姓名」）</span>
         </label>
         <label class="block">
           <span class="text-sm font-medium text-slate-700">聯絡電話<span v-if="bikeOnly"> *</span></span>

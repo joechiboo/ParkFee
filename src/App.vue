@@ -7,7 +7,7 @@ import { isAdmin } from './store/roles.js'
 const router = useRouter()
 const route = useRoute()
 // 選位頁是地圖頁，給更寬版面；其餘頁維持窄版易讀。
-const shellMax = computed(() => (route.name === 'select' ? 'max-w-[1600px]' : 'max-w-5xl'))
+const shellMax = computed(() => (route.name === 'select' ? 'max-w-[1600px]' : route.name === 'roster' ? 'max-w-7xl' : 'max-w-5xl'))
 
 // 手機漢堡選單開關；換頁自動收起。
 const menuOpen = ref(false)
@@ -27,7 +27,6 @@ const nav = [
   { to: '/allocate', label: '配位' },
   { to: '/result', label: '結果' },
   { to: '/patrol', label: '巡邏稽核', adminOnly: true },
-  { to: '/rules', label: '住戶說明' },
   { to: '/bylaw', label: '辦法' },
 ]
 const visibleNav = computed(() => nav.filter((i) => !i.adminOnly || isAdmin(sessionHousehold.value)))
@@ -36,6 +35,7 @@ const visibleNav = computed(() => nav.filter((i) => !i.adminOnly || isAdmin(sess
 const menuItems = computed(() => {
   const items = visibleNav.value.map((i) => ({ to: i.to, label: i.label, cls: 'plain' }))
   if (isAdmin(sessionHousehold.value)) {
+    items.push({ to: '/roster', label: '📋 名冊', cls: 'admin' })
     items.push({ to: '/seat-admin', label: '🔧 管理', cls: 'admin' })
     items.push({ to: '/dev', label: '🛠 進階', cls: 'dev' })
   }

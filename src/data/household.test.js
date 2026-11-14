@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeHousehold, isValidHousehold, isStaffHousehold, staffHousehold, isTestHousehold } from './household.js'
+import { householdFromDoor } from './household.js'
+import { DOOR_MAP } from './door-map.js'
+import { normalizeHousehold, isValidHousehold, householdProblem, isStaffHousehold, staffHousehold, isTestHousehold } from './household.js'
 
 describe('戶號正規化', () => {
   it('轉大寫、去頭尾與中間空白', () => {
@@ -17,21 +19,39 @@ describe('戶號正規化', () => {
 })
 
 describe('戶號驗證', () => {
-  it('住宅 A–H 合法（樓 1–15）', () => {
-    expect(isValidHousehold('H3-6')).toBe(true)
-    expect(isValidHousehold('A1-1')).toBe(true)
-    expect(isValidHousehold('G15-12')).toBe(true)
+  it('住宅：房型-樓層，須是社區真實存在的戶', () => {
+    expect(isValidHousehold('H3-6')).toBe(true) // H3 房型 6 樓
+    expect(isValidHousehold('A1-2')).toBe(true)
+    expect(isValidHousehold('G6-15')).toBe(true)
+    expect(isValidHousehold('A8-3')).toBe(true) // A8 只有 3 樓
     expect(isValidHousehold('h3-6')).toBe(true) // 正規化後合法
     expect(isValidHousehold('Ｈ３－６')).toBe(true)
   })
-  it('店面 S（1F）合法，樓層可省', () => {
-    expect(isValidHousehold('S1-6')).toBe(true)
-    expect(isValidHousehold('S-6')).toBe(true)
+  it('店面 S1–S15 在 1 樓，只打 S6 會補成 S6-1', () => {
+    expect(isValidHousehold('S6-1')).toBe(true)
+    expect(isValidHousehold('S15-1')).toBe(true)
+    expect(normalizeHousehold('s6')).toBe('S6-1')
+    expect(isValidHousehold('S6')).toBe(true)
+    expect(isValidHousehold('S6-2')).toBe(false) // 店面沒有 2 樓
+    expect(isValidHousehold('S16-1')).toBe(false)
   })
-  it('不合法：樓>15 / 缺樓 / 棟別錯 / 缺格式', () => {
-    expect(isValidHousehold('H16-1')).toBe(false) // 樓層超過 15
-    expect(isValidHousehold('H0-1')).toBe(false) // 樓層 0
-    expect(isValidHousehold('H-6')).toBe(false) // 住宅缺樓層
+  it('前導 0 去掉，同一戶只有一種寫法', () => {
+    expect(normalizeHousehold('h03-06')).toBe('H3-6')
+  })
+  it('社區沒有的戶一律擋，並說明原因', () => {
+    expect(householdProblem('H3-6')).toBeNull()
+    expect(householdProblem('B3-385')).toMatch(/門牌號碼/) // 填了門牌、沒填樓層
+    expect(householdProblem('H4-6')).toMatch(/沒有 H4 這個房型/) // 房型編號跳過 4
+    expect(householdProblem('A5-12')).toBeNull() // 舊規則（棟+樓-戶）會把 12 當第 12 戶
+    expect(householdProblem('A12-5')).toMatch(/沒有 A12 這個房型/) // 反著填
+    expect(householdProblem('H3-16')).toMatch(/沒有 16 樓/)
+    expect(householdProblem('H3-1')).toMatch(/店面/) // 1 樓是店面 S
+    expect(householdProblem('F2-2')).toMatch(/3–15 樓/) // F2 從 3 樓起
+    expect(householdProblem('A8-5')).toMatch(/只有 3 樓/)
+    expect(householdProblem('')).toMatch(/請填寫/)
+  })
+  it('不合法：缺樓 / 棟別錯 / 缺格式', () => {
+    expect(isValidHousehold('H-6')).toBe(false) // 住宅缺房型編號
     expect(isValidHousehold('Z3-6')).toBe(false) // 無此棟別
     expect(isValidHousehold('36')).toBe(false) // 缺棟別與分隔
     expect(isValidHousehold('H3_6')).toBe(false) // 分隔符錯
@@ -46,8 +66,8 @@ describe('戶號驗證', () => {
     })
 
     it('住戶戶號不會被誤判為工作人員', () => {
-      expect(isStaffHousehold('A1-1')).toBe(false)
-      expect(isStaffHousehold('S1-6')).toBe(false)
+      expect(isStaffHousehold('A1-2')).toBe(false)
+      expect(isStaffHousehold('S6-1')).toBe(false)
     })
 
     it('員工-<姓名> 亦為合法（櫃檯代打不必維護編號對照表）', () => {
@@ -80,9 +100,59 @@ describe('測試棟 Z', () => {
     expect(isValidHousehold('Z9999')).toBe(false)
     expect(isValidHousehold('Y99')).toBe(false) // 只開 Z，別的字母照擋
   })
-  it('isTestHousehold 只認 Z 棟', () => {
+  it('isTestHousehold：Z 棟、/dev 假戶（樓層段 9X）、種子 S1-99X', () => {
     expect(isTestHousehold('Z99')).toBe(true)
-    expect(isTestHousehold('S1-99')).toBe(false)
+    expect(isTestHousehold('S1-99')).toBe(true)
+    expect(isTestHousehold('A1-90')).toBe(true)
+    expect(isTestHousehold('S1-996')).toBe(true)
+    expect(isValidHousehold('S1-996')).toBe(true) // 驗證腳本還要用
+    expect(isTestHousehold('H3-6')).toBe(false)
     expect(isTestHousehold('員工-測試員')).toBe(false)
+  })
+})
+
+// 登記處改填「＿號＿樓」（2026-11-10 經理建議）：門牌號碼＋樓層查表得戶號。
+describe('門牌號碼＋樓層 → 戶號', () => {
+  it('一般住宅', () => {
+    expect(householdFromDoor('297', '6')).toEqual({ id: 'H3-6' })
+    expect(householdFromDoor('379', '14')).toEqual({ id: 'B2-14' })
+    expect(householdFromDoor('２９７', ' 6樓')).toEqual({ id: 'H3-6' }) // 全形、夾雜文字
+  })
+  it('同一門牌跨兩個房型，由樓層決定', () => {
+    expect(householdFromDoor(385, 3)).toEqual({ id: 'B5-3' })
+    expect(householdFromDoor(385, 2)).toEqual({ id: 'B6-2' })
+  })
+  it('一樓店面：住宅門牌的 1 樓對到 S 編號', () => {
+    expect(householdFromDoor(297, 1)).toEqual({ id: 'S12-1' })
+    expect(householdFromDoor(40, 1)).toEqual({ id: 'S6-1' })
+  })
+  it('第一格也可以填房型', () => {
+    expect(householdFromDoor('H3', '6')).toEqual({ id: 'H3-6' })
+    expect(householdFromDoor('h3', '６')).toEqual({ id: 'H3-6' })
+    expect(householdFromDoor('S12', '1')).toEqual({ id: 'S12-1' })
+    expect(householdFromDoor('F2 號', '3F')).toEqual({ id: 'F2-3' }) // F 棟不能被當成樓層的 F 吃掉
+    expect(householdFromDoor('H4', '6').error).toMatch(/沒有 H4 這個房型/)
+    expect(householdFromDoor('H3', '16').error).toMatch(/沒有 16 樓/)
+    expect(householdFromDoor('H3', '')).toEqual({}) // 樓層一定要填
+    expect(householdFromDoor('王小明', '6').error).toMatch(/門牌號碼.*或房型/)
+  })
+  it('沒填完回空物件；查不到給說明', () => {
+    expect(householdFromDoor('297', '')).toEqual({})
+    expect(householdFromDoor('', '6')).toEqual({})
+    expect(householdFromDoor(999, 6).error).toMatch(/沒有 999 號/)
+    expect(householdFromDoor(297, 16).error).toMatch(/297 號沒有 16 樓/)
+    expect(householdFromDoor(40, 2).error).toMatch(/1 樓/)
+  })
+  it('對照表涵蓋的戶與戶號規則一致：655 戶、每一戶都是合法戶號、不重複', () => {
+    const ids = new Set()
+    for (const [door, segs] of Object.entries(DOOR_MAP))
+      for (const [, from, to] of segs)
+        for (let f = from; f <= to; f++) {
+          const { id } = householdFromDoor(door, f)
+          expect(isValidHousehold(id)).toBe(true)
+          expect(ids.has(id)).toBe(false)
+          ids.add(id)
+        }
+    expect(ids.size).toBe(655)
   })
 })

@@ -11,7 +11,7 @@
 //     即視為新的一次送出 → 旗標衝突，並以較新（檔案後面）那次取代。
 
 import { normalizeTWPlate } from './plate.js'
-import { normalizeHousehold, isValidHousehold } from './household.js'
+import { normalizeHousehold, householdProblem } from './household.js'
 import { KIND } from '../map/seat-id.js'
 
 export const REGISTRATION_COLUMNS = [
@@ -99,7 +99,8 @@ export function normalizeRow(raw, fallbackSource = SOURCE.ONLINE) {
 export function validateRow(e) {
   const errors = []
   const warnings = []
-  if (!isValidHousehold(e.戶號)) errors.push(`戶號格式錯誤：「${e.戶號}」（應如 H3-6、S1-2）`)
+  const hidProblem = householdProblem(e.戶號)
+  if (hidProblem) errors.push(`戶號有誤：「${e.戶號}」— ${hidProblem}`)
   if (!e.車號) errors.push('車號為空')
   if (!['一般', '重機', KIND.BIKE].includes(e.車種)) errors.push(`車種非法：「${e.車種}」`)
   if (!Number.isInteger(e.第幾輛) || e.第幾輛 < 1) errors.push(`第幾輛非法：「${e.第幾輛}」`)

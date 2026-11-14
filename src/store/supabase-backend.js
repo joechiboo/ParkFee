@@ -47,8 +47,9 @@ export async function login(戶號, 車號) {
 // 編輯既有戶（新增/移除車輛、改電話）。戶號不可變。
 // 需對應 Edge Function 'update-household'（伺服器端用 service_role 驗證後整批取代該戶車輛）。
 // 認證車號＝登入時用的車號（擁有權證明），server 端會驗證它目前屬於該戶才允許編輯。
-export async function updateHousehold({ 戶號, 電話, 社宅, 工作人員, vehicles, 認證車號 }) {
-  const data = await invoke('update-household', { 戶號, 電話, 社宅, 工作人員, vehicles, 認證車號 })
+// admin：管理員代改時帶管理員憑證（adminAuth()），後端通過即不驗擁有權、不受時窗限制。
+export async function updateHousehold({ 戶號, 電話, 社宅, 工作人員, vehicles, 認證車號, admin }) {
+  const data = await invoke('update-household', { 戶號, 電話, 社宅, 工作人員, vehicles, 認證車號, admin })
   return data.household
 }
 

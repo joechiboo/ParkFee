@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 330 798.5" font-family="Microsoft JhengHei, PingFang TC, sans-serif" font-size="13.5" font-weight="bold">
   <!-- 抽籤辦法說明表（A4 橫式 Word 版）左欄流程圖。以 11-3v1 的流程圖為底，座標單位同原圖，圖寬 330＝Word 205pt。
        2026-11-04 主委選回 v1 後的調整：所有字與「線上登記」同大小、粗體；第二輪直線往下；三行說明改紅字；虛線對齊表格橫線。
+       2026-11-10 經理要求：志願選小車位「否」之後加「登記 選擇志願車位」方塊。
        虛線 y＝表格列分界距圖頂的距離，列高由 scripts/build-explainer-variants.py 固定，改列高要重量。 -->
   <defs>
     <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -18,7 +19,8 @@
     <line x1="101" y1="30" x2="101" y2="40"/>
     <line x1="101" y1="92" x2="101" y2="102"/>
     <line x1="198" y1="150" x2="224" y2="150"/>
-    <line x1="101" y1="198" x2="101" y2="293"/>
+    <line x1="101" y1="198" x2="101" y2="226"/>
+    <line x1="101" y1="268" x2="101" y2="293"/>
     <line x1="101" y1="333" x2="101" y2="340"/>
     <line x1="173" y1="360" x2="274" y2="360"/>
     <line x1="101" y1="380" x2="101" y2="398"/>
@@ -33,7 +35,7 @@
 
   <g fill="#c1121f">
     <text x="207" y="145" fill="#1a7f37">是</text>
-    <text x="107" y="248">否</text>
+    <text x="107" y="217">否</text>
     <text x="183" y="355" fill="#1a7f37">是</text>
     <text x="107" y="394">否</text>
     <text x="194" y="553">否</text>
@@ -72,6 +74,13 @@
       <text x="275" y="179">號碼已被選者</text>
       <text x="275" y="195">請改選</text>
     </g>
+  </g>
+
+  <!-- 2026-11-10 經理要求：「否」之後加一格，說明不選小車位的人是登記志願車位 -->
+  <rect x="41" y="226" width="120" height="42" rx="3" fill="#fff" stroke="#1d5fa8" stroke-width="1.6"/>
+  <g text-anchor="middle">
+    <text x="101" y="243">登記</text>
+    <text x="101" y="260">選擇志願車位</text>
   </g>
 
   <rect x="6" y="293" width="190" height="40" rx="3" fill="#1d5fa8"/>

@@ -56,8 +56,8 @@ describe('登記列驗證', () => {
     expect(validateRow(e).errors.length).toBeGreaterThan(0)
   })
 
-  it('合法戶號 H3-6 / S1-2 通過', () => {
-    for (const 戶號 of ['H3-6', 'S1-2', 'A12-3']) {
+  it('合法戶號 H3-6 / S2-1 通過', () => {
+    for (const 戶號 of ['H3-6', 'S2-1', 'A3-12']) {
       const e = normalizeRow({ 戶號, 車號: 'ABC-1234', 車種: '一般', 第幾輛: 1 })
       expect(validateRow(e).errors).toHaveLength(0)
     }

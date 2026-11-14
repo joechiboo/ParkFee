@@ -20,19 +20,6 @@ const flow = [
       登記 → 抽籤 → 車位分配 → 繳費 → 巡邏稽核。
     </p>
 
-    <RouterLink
-      to="/rules"
-      class="mt-5 flex items-center justify-between gap-3 rounded-lg border border-indigo-200 bg-indigo-50 p-4 transition hover:border-indigo-400 hover:shadow-sm"
-    >
-      <div>
-        <div class="font-semibold text-indigo-900">📋 住戶說明 — 車位使用實施細則</div>
-        <p class="mt-1 text-sm text-indigo-700/80">
-          一頁看懂：登記、抽籤、配位、繳費、換位與自行車怎麼進行（可分享給住戶）
-        </p>
-      </div>
-      <span class="flex-none text-indigo-400">→</span>
-    </RouterLink>
-
     <a
       :href="demoUrl"
       class="mt-3 flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 transition hover:border-emerald-400 hover:shadow-sm"
