@@ -45,9 +45,8 @@ async function doLogin() {
   try {
     const h = await login(creds.戶號, creds.車號)
     if (!h) {
-      error.value = !String(creds.車號 || '').trim()
-        ? '車號留空只適用於只登記自行車的住戶。有登記機車請填任一台的車號；還沒登記過請先按上方「登記」。需要協助請洽 A、B 棟櫃台秘書。'
-        :
+      // 車號留空失敗也用同一句，不在登入頁透露「純自行車戶可空白登入」（11/16 使用者定：只在登記完成畫面告訴純自行車戶）
+      error.value =
         '查無此登記，請確認門牌、樓層與車號（車號需為該戶登記過的任一台車）。先前登記時若戶號填錯，管理中心可能已代為更正。需要協助請洽 A、B 棟櫃台秘書。'
       return
     }
@@ -143,14 +142,14 @@ function logout() {
 
     <!-- 未登入：登入表單 -->
     <form v-else class="mt-4 max-w-sm space-y-4" @submit.prevent="doLogin">
-      <p class="text-sm text-slate-500">用 <b>住家門牌 ＋ 任一已登記車號</b> 登入。<b>只登記自行車的住戶，車號欄留空即可。</b></p>
+      <p class="text-sm text-slate-500">用 <b>住家門牌 ＋ 任一已登記車號</b> 登入。</p>
       <div class="block">
         <span class="text-sm font-medium text-slate-700">住家門牌</span>
         <HouseholdInput v-model="creds.戶號" allow-raw />
       </div>
       <label class="block">
         <span class="text-sm font-medium text-slate-700">車號</span>
-        <input v-model="creds.車號" type="text" placeholder="ABC-123（只登記自行車請留空）"
+        <input v-model="creds.車號" type="text" placeholder="ABC-123"
           class="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm uppercase focus:border-slate-500 focus:outline-none" />
       </label>
       <p v-if="error" class="rounded bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ error }}</p>
