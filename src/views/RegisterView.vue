@@ -29,6 +29,8 @@ const error = ref('')
 const done = ref(null) // 成功後的整戶資料
 const isEdit = ref(false) // 由 MeView 帶資料進來編輯時為 true
 const authPlate = ref('') // 登入時的車號，編輯送出時當擁有權證明
+// 純自行車戶空白車號登入後的編輯（2026-11-16）：只能改自行車，不能加機車、不能改電話（後端同此規則）。
+const bikeSession = computed(() => isEdit.value && !adminEdit.value && !authPlate.value)
 // 管理員從名冊維護頁（/roster）代改某一戶：帶管理員憑證送出，不切換登入身分，改完回名冊。
 const adminEdit = ref(false)
 // 管理員帳號在櫃台補登紙本：一律新登記、帶管理密碼（截止後仍可補登），送出後不切換登入身分。
@@ -102,8 +104,8 @@ async function submit() {
         : '請填住家門牌：第一格填門牌號碼或房型，第二格填樓層（例 297 號 6 樓）'
     return
   }
-  form.電話 = formatTWPhone(form.電話)
-  if (form.電話 && !isValidTWPhone(form.電話)) {
+  if (!bikeSession.value) form.電話 = formatTWPhone(form.電話) // 純自行車戶看到的是遮住的電話，不檢查也不送出更改
+  if (!bikeSession.value && form.電話 && !isValidTWPhone(form.電話)) {
     error.value = '電話格式不對，手機請填 09 開頭 10 碼（例 0986-642-519）'
     return
   }
@@ -114,7 +116,7 @@ async function submit() {
     return
   }
   // 純自行車戶沒有車牌可當登入憑證 → 電話改為必填（後端 login 同此規則）。
-  if (bikeOnly.value && !form.電話) {
+  if (!bikeSession.value && bikeOnly.value && !form.電話) {
     error.value = '只登記自行車時電話為必填 — 自行車沒有車牌，日後要靠電話讓物業查到你的登記'
     return
   }
@@ -135,7 +137,8 @@ async function submit() {
       : await register(counterMode.value ? { ...payload, password: sessionPlate.value } : payload)
     if (!counterMode.value && !adminEdit.value) {
       sessionHousehold.value = done.value
-      sessionPlate.value = done.value?.vehicles?.[0]?.車號 || authPlate.value
+      // 登入憑證要用機車車號；自行車的合成車號不能登入。純自行車戶維持空白（空白車號登入）。
+      sessionPlate.value = done.value?.vehicles?.find((v) => v.車種 !== BIKE)?.車號 || authPlate.value
     }
   } catch (e) {
     if (e instanceof RegistrationError) error.value = e.message
@@ -166,8 +169,8 @@ async function submit() {
         之後可用 <b>戶號 ＋ 任一車號</b> 登入查看登記內容與抽籤結果。
       </p>
       <p v-else class="mt-2 rounded border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900">
-        <b>只登記自行車者無法自行上線查詢</b> — 登入需要車號，自行車沒有車牌。
-        要查詢或修改請洽管理中心臨櫃辦理，抽籤結果也會另行公告。
+        <b>只登記自行車：之後登入時車號欄留空即可</b>，只要填門牌與樓層。
+        線上可以查詢、修改自行車；要加登機車或改電話請洽管理中心。
       </p>
       <ul class="mt-2 space-y-1 text-sm text-emerald-900">
         <li v-for="v in done.vehicles" :key="v.車號" class="font-mono">
@@ -232,9 +235,10 @@ async function submit() {
         </label>
         <label class="block">
           <span class="text-sm font-medium text-slate-700">聯絡電話<span v-if="bikeOnly"> *</span></span>
-          <input v-model="form.電話" @blur="form.電話 = formatTWPhone(form.電話)" type="tel" placeholder="0912-345-678"
-            class="mt-1 w-full rounded border border-slate-300 px-3 py-2.5 text-base sm:text-sm focus:border-slate-500 focus:outline-none" />
-          <span v-if="form.電話 && !isValidTWPhone(form.電話)" class="mt-1 block text-xs text-red-600">手機請填 09 開頭 10 碼（例 0986-642-519）</span>
+          <input v-model="form.電話" @blur="!bikeSession && (form.電話 = formatTWPhone(form.電話))" :disabled="bikeSession" type="tel" placeholder="0912-345-678"
+            class="mt-1 w-full rounded border border-slate-300 px-3 py-2.5 text-base sm:text-sm focus:border-slate-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500" />
+          <span v-if="bikeSession" class="mt-1 block text-xs text-slate-500">要改電話請洽管理中心</span>
+          <span v-else-if="form.電話 && !isValidTWPhone(form.電話)" class="mt-1 block text-xs text-red-600">手機請填 09 開頭 10 碼（例 0986-642-519）</span>
         </label>
       </div>
 
@@ -255,7 +259,7 @@ async function submit() {
         <div class="flex flex-wrap items-center justify-between gap-2">
           <span class="text-sm font-medium text-slate-700">車輛（機車第 1 台為保障一位的主車）</span>
           <div class="flex gap-2">
-            <button type="button" class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100" @click="addVehicle()">
+            <button v-if="!bikeSession" type="button" class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100" @click="addVehicle()">
               + 機車
             </button>
             <button type="button" class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100" @click="addVehicle(BIKE)">

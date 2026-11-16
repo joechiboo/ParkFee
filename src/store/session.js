@@ -60,7 +60,8 @@ export function clearSession() {
 export async function refreshHousehold() {
   const hid = sessionHousehold.value?.戶號
   const plate = sessionPlate.value
-  if (!hid || !plate) return
+  // 純自行車戶空白車號登入（2026-11-16）：plate 是空的也要能重抓
+  if (!hid || (!plate && !sessionHousehold.value?.僅自行車登入)) return
   try {
     const { login } = await import('./db.js') // 動態載入避免 session↔db 循環相依
     const fresh = await login(hid, plate)
