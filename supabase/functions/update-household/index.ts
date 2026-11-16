@@ -2,8 +2,9 @@
 // 編輯既有戶：整批取代車輛 + 改電話。戶號不可變。可一併增刪自行車（車號由後端合成，前端不送）。
 // 🔒 擁有權驗證：見 http.ts verifyOwnership——認證車號須「目前」屬於該戶，
 //    否則任何人拿公開 anon key 就能竄改他戶登記。自行車的合成車號不算憑證。
-// 認證車號留空＝純自行車戶（2026-11-16，見 _shared/bike-auth.ts）：只限整戶只有自行車的戶；只能改自行車、
-//    不能加機車、不能改電話與身分旗標；同一網路位址有次數上限；每次修改寫稽核（含網路位址）。
+// 認證車號留空＝純自行車戶（2026-11-16，見 _shared/bike-auth.ts）：只限整戶只有自行車的戶；不能改電話與身分旗標；
+//    同一網路位址有次數上限；每次修改寫稽核（含網路位址與新增的機車車號）。
+//    可以加機車（11/16 使用者定：12/1 才抽，冒用可在抽籤前從稽核撈出確認）；加了之後就不再是純自行車戶，以後改用車號登入。
 import { corsHeaders, json, adminClient, fetchHousehold, verifyOwnership, verifyAdmin, audit } from '../_shared/http.ts'
 import { windowClosed } from '../_shared/window.ts'
 import { normalizeHousehold } from '../_shared/normalize.ts'
@@ -51,10 +52,6 @@ Deno.serve(async (req) => {
     const { rows: cleaned, error: vErrMsg } = buildVehicleRows(hid, vehicles)
     if (vErrMsg) return json({ error: vErrMsg }, 400)
 
-    // 空白車號登入的人不能加機車：否則可以替別人加一台、害對方被收 1,200 元。
-    if (bikeAuth && !isBikeOnly(cleaned))
-      return json({ error: '只登記自行車的住戶，線上只能修改自行車。要加登機車請洽管理中心' }, 403)
-
     // 原本「線上不可只保留自行車」是因為刪掉最後一台機車就沒有登入憑證；
     // 11/16 起純自行車戶可空白車號登入，改成只要求留電話（櫃台要靠電話聯絡）。
     const stored = bikeAuth ? (await db.from('household').select('電話').eq('戶號', hid).maybeSingle()).data : null
@@ -80,9 +77,14 @@ Deno.serve(async (req) => {
     if (!bikeAuth && Object.keys(戶旗標).length) await db.from('household').update(戶旗標).eq('戶號', hid)
 
     if (byAdmin) await audit(db, 'household.update', { body: admin, target: hid, detail: { 車輛數: cleaned.length } })
-    if (bikeAuth) await audit(db, 'household.update', { body: { 戶號: hid }, target: hid, detail: { via: '空白車號（純自行車戶）', ip, 車輛數: cleaned.length } })
+    if (bikeAuth) {
+      const 新增機車 = cleaned.filter((r) => r.車種 !== '自行車').map((r) => r.車號)
+      await audit(db, 'household.update', { body: { 戶號: hid }, target: hid, detail: { via: '空白車號（純自行車戶）', ip, 車輛數: cleaned.length, ...(新增機車.length ? { 新增機車 } : {}) } })
+    }
     const h = await fetchHousehold(db, hid)
-    return json({ household: bikeAuth && h ? { ...h, 電話: maskPhone(h.電話), 僅自行車登入: true } : h })
+    // 還是純自行車戶 → 電話照樣遮住、維持空白車號登入；加了機車 → 回完整資料，前端改用那台機車的車號當登入憑證
+    const stillBike = bikeAuth && isBikeOnly(cleaned)
+    return json({ household: stillBike && h ? { ...h, 電話: maskPhone(h.電話), 僅自行車登入: true } : h })
   } catch (e) {
     console.error('update-household error:', e)
     return json({ error: '伺服器錯誤，請稍後再試' }, 500)

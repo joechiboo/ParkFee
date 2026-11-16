@@ -29,7 +29,7 @@ const error = ref('')
 const done = ref(null) // 成功後的整戶資料
 const isEdit = ref(false) // 由 MeView 帶資料進來編輯時為 true
 const authPlate = ref('') // 登入時的車號，編輯送出時當擁有權證明
-// 純自行車戶空白車號登入後的編輯（2026-11-16）：只能改自行車，不能加機車、不能改電話（後端同此規則）。
+// 純自行車戶空白車號登入後的編輯（2026-11-16）：不能改電話（後端同此規則）；可以加機車，加了之後改用車號登入。
 const bikeSession = computed(() => isEdit.value && !adminEdit.value && !authPlate.value)
 // 管理員從名冊維護頁（/roster）代改某一戶：帶管理員憑證送出，不切換登入身分，改完回名冊。
 const adminEdit = ref(false)
@@ -259,7 +259,7 @@ async function submit() {
         <div class="flex flex-wrap items-center justify-between gap-2">
           <span class="text-sm font-medium text-slate-700">車輛（機車第 1 台為保障一位的主車）</span>
           <div class="flex gap-2">
-            <button v-if="!bikeSession" type="button" class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100" @click="addVehicle()">
+            <button type="button" class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100" @click="addVehicle()">
               + 機車
             </button>
             <button type="button" class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100" @click="addVehicle(BIKE)">
