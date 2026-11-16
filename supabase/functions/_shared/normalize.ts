@@ -95,3 +95,22 @@ export function normalizeTWPlate(raw: unknown): string {
   if (m) return `${m[1]}-${m[2]}`
   return s
 }
+
+// 比對用的鍵：只留英數字。同一台車不論有沒有打連字號都是同一個鍵（與前端 src/data/plate.js 同步）。
+export function plateKey(raw: unknown): string {
+  return String(raw ?? '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+}
+
+// 車號像不像車牌：回 null＝沒問題；否則回一句說明（與前端 src/data/plate.js 同步）。
+//   擋的是把自行車特徵、「無」、廠牌名稱填進車號欄——那會被當成機車抽車位、收費（2026-11-16 名冊實際出現 5 筆）。
+export function plateProblem(raw: unknown): string | null {
+  const s = normalizeTWPlate(raw)
+  if (!s) return '請填車號'
+  if (!/^[A-Z0-9-]+$/.test(s) || !/\d/.test(s))
+    return '這不是車牌號碼。沒有車牌的車（自行車、電動代步車等）請改按「＋自行車」登記，或洽管理中心'
+  if (!s.includes('-')) return `請照車牌上的寫法加上連字號（例：${s.slice(0, 3)}-${s.slice(3)}）`
+  if (!/^[A-Z0-9]{2,4}-[A-Z0-9]{2,4}$/.test(s)) return '車號格式不對，請照車牌上的寫法填（例：ABC-1234）'
+  return null
+}

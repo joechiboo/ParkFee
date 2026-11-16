@@ -3,7 +3,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { register, updateHousehold, RegistrationError } from '../store/db.js'
 import { normalizeHousehold, isValidHousehold, householdProblem, staffHousehold, isStaffHousehold } from '../data/household.js'
-import { normalizeTWPlate } from '../data/plate.js'
+import { normalizeTWPlate, plateProblem } from '../data/plate.js'
 import { formatTWPhone, isValidTWPhone } from '../data/phone.js'
 import { editTarget } from '../store/editTarget.js'
 import { sessionHousehold, sessionPlate, adminAuth } from '../store/session.js'
@@ -105,6 +105,12 @@ async function submit() {
   form.電話 = formatTWPhone(form.電話)
   if (form.電話 && !isValidTWPhone(form.電話)) {
     error.value = '電話格式不對，手機請填 09 開頭 10 碼（例 0986-642-519）'
+    return
+  }
+  // 車號欄填了不是車牌的東西（自行車特徵、「無」、廠牌）→ 會被當成機車抽位收費，送出前擋下（後端同此規則）。
+  const badPlate = form.vehicles.findIndex((v) => !isBike(v) && plateProblem(v.車號))
+  if (badPlate >= 0) {
+    error.value = `第 ${badPlate + 1} 台：${plateProblem(form.vehicles[badPlate].車號)}`
     return
   }
   // 純自行車戶沒有車牌可當登入憑證 → 電話改為必填（後端 login 同此規則）。
@@ -276,6 +282,7 @@ async function submit() {
               <span class="text-xs text-slate-600">車號 *</span>
               <input v-model="v.車號" @input="v.車號 = v.車號.toUpperCase()" @blur="v.車號 = normalizeTWPlate(v.車號)" type="text" placeholder="ABC-123"
                 class="mt-1 w-full rounded border border-slate-300 px-3 py-2.5 text-base sm:text-sm uppercase focus:border-slate-500 focus:outline-none" />
+              <span v-if="v.車號 && plateProblem(v.車號)" class="mt-1 block text-xs text-red-600">{{ plateProblem(v.車號) }}</span>
             </label>
             <label class="block">
               <span class="text-xs text-slate-600">車種</span>

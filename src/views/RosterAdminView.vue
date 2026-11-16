@@ -3,9 +3,11 @@
 // 2026-11-10 使用者定：這些不要塞在車位維護頁，獨立一頁。
 // 資料來源 rename-household op=list（整戶含電話，後端每次撈都寫稽核）。
 // 代改登記沿用登記頁的編輯模式（editTarget.adminEdit），不另做一套表單。
+// 2026-11-16：加「需聯繫」警示（戶號有誤、車號不是車牌、同一台車兩戶、車號只差一字、同電話多戶，規則在 roster-warnings.js）與刪除整戶。
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { listHouseholds, renameHousehold } from '../store/locked.js'
+import { listHouseholds, renameHousehold, deleteHousehold } from '../store/locked.js'
+import { rosterWarnings } from '../data/roster-warnings.js'
 import { editTarget } from '../store/editTarget.js'
 import { normalizeHousehold, householdProblem, isTestHousehold } from '../data/household.js'
 import { toCSV } from '../data/csv.js'
@@ -46,12 +48,13 @@ onMounted(reload)
 const isBike = (v) => v.車種 === KIND.BIKE
 const plateText = (v) => (isBike(v) ? `自行車 第 ${v.第幾輛} 輛${v.特徵 ? `（${v.特徵}）` : ''}` : v.車號)
 const problemOf = (h) => householdProblem(h.戶號)
+const warnings = computed(() => rosterWarnings(households.value))
 
 const rows = computed(() => {
   const k = keyword.value.trim().toUpperCase()
   return households.value
-    .map((h) => ({ ...h, problem: problemOf(h), test: isTestHousehold(h.戶號) }))
-    .filter((h) => !onlyProblem.value || h.problem)
+    .map((h) => ({ ...h, problem: problemOf(h), warns: warnings.value.get(h.戶號) || [], test: isTestHousehold(h.戶號) }))
+    .filter((h) => !onlyProblem.value || h.warns.length)
     .filter(
       (h) =>
         !k ||
@@ -67,12 +70,12 @@ const stats = computed(() => {
     一般: vs.filter((v) => v.車種 === '一般').length,
     重機: vs.filter((v) => v.車種 === '重機').length,
     自行車: vs.filter(isBike).length,
-    有誤: households.value.filter(problemOf).length,
+    有誤: warnings.value.size,
   }
 })
 
-// ── 匯出：一台車一列，Excel 可直接開（UTF-8 BOM）。戶號有誤的列在「戶號檢核」欄有說明。──
-const EXPORT_COLUMNS = ['戶號', '戶號檢核', '聯絡電話', '登記時間', '車號', '車種', '第幾輛', '身障', '志願小位', '已選定車位', '配位狀態', '已繳費', '志願數', '電腦選號', '工作人員']
+// ── 匯出：一台車一列，Excel 可直接開（UTF-8 BOM）。要聯繫住戶確認的戶，「需聯繫確認」欄寫原因。──
+const EXPORT_COLUMNS = ['戶號', '需聯繫確認', '聯絡電話', '登記時間', '車號', '車種', '第幾輛', '身障', '志願小位', '已選定車位', '配位狀態', '已繳費', '志願數', '電腦選號', '工作人員']
 const fmtTime = (t) => {
   if (!t) return ''
   const d = new Date(t)
@@ -83,11 +86,11 @@ const fmtTime = (t) => {
 function exportCsv() {
   const out = []
   for (const h of households.value) {
-    const problem = problemOf(h)
+    const warns = warnings.value.get(h.戶號) || []
     for (const v of h.vehicles?.length ? h.vehicles : [{}]) {
       out.push({
         戶號: h.戶號,
-        戶號檢核: problem ? `戶號有誤：${problem}` : '',
+        需聯繫確認: warns.join('；'),
         聯絡電話: h.電話 ? `="${h.電話}"` : '', // 包成公式字串，Excel 才不會吃掉開頭的 0
         登記時間: fmtTime(h.createdAt),
         車號: v.車號 ? plateText(v) : '',
@@ -118,6 +121,33 @@ function exportCsv() {
 function edit(h) {
   editTarget.value = { ...h, adminEdit: true }
   router.push('/register')
+}
+
+// ── 刪除整戶：確認是重複登記或不是住戶時用。已繳費的車後端會拒絕；佔的車位一併放回可選。
+//    要求再打一次戶號才刪，避免點錯列。刪錯可從每日備份快照查回內容後重新登記。──
+async function doDelete(h) {
+  const cars = (h.vehicles || []).map((v) => plateText(v) + (v.車位編號 ? `（車位 ${displaySeatIds(v.車位編號)}）` : '')).join('、') || '無'
+  const typed = prompt(`確定要刪除 ${h.戶號} 整筆登記？
+車輛：${cars}
+佔用的車位會放回可選。刪除後無法復原。
+
+請再輸入一次戶號「${h.戶號}」確認：`)
+  if (typed == null) return
+  if (typed.trim().toUpperCase() !== h.戶號.toUpperCase()) {
+    renameMsg.value = '輸入的戶號不一致，沒有刪除'
+    return
+  }
+  saving.value = true
+  renameMsg.value = ''
+  try {
+    const r = await deleteHousehold(h.戶號)
+    await reload()
+    renameMsg.value = `已刪除 ${r.戶號}（${r.車輛數} 台車${r.釋出車位?.length ? `，車位 ${r.釋出車位.map((x) => displaySeatIds(x)).join('、')} 已放回可選` : ''}）。`
+  } catch (e) {
+    renameMsg.value = e?.message || '刪除失敗'
+  } finally {
+    saving.value = false
+  }
 }
 
 // ── 更正戶號：整戶的車、志願、車位、繳費紀錄一起搬；新戶號已有登記時後端拒絕 ──
@@ -157,7 +187,7 @@ async function doRename() {
       <div>
         <h1 class="text-2xl font-bold">登記名冊</h1>
         <p class="mt-1 text-sm text-slate-500">
-          目前全部登記。可匯出、代住戶修改登記內容、更正填錯的戶號。內含電話與車號，請勿外流。
+          目前全部登記。可匯出、代住戶修改登記內容、更正填錯的戶號、刪除重複登記。黃底是需要聯繫住戶確認的戶，紅字寫要確認什麼。內含電話與車號，請勿外流。
         </p>
       </div>
       <div class="flex gap-2">
@@ -177,10 +207,10 @@ async function doRename() {
       <span>一般機車 <b>{{ stats.一般 }}</b></span>
       <span>重機 <b>{{ stats.重機 }}</b></span>
       <span>自行車 <b>{{ stats.自行車 }}</b></span>
-      <span v-if="stats.有誤" class="rounded bg-yellow-200 px-2 py-0.5 font-medium text-yellow-900">戶號有誤 {{ stats.有誤 }} 戶</span>
+      <span v-if="stats.有誤" class="rounded bg-yellow-200 px-2 py-0.5 font-medium text-yellow-900">需聯繫確認 {{ stats.有誤 }} 戶</span>
       <span class="ml-auto flex flex-wrap items-center gap-3">
         <label class="flex cursor-pointer items-center gap-1 text-slate-600">
-          <input v-model="onlyProblem" type="checkbox" /> 只看戶號有誤
+          <input v-model="onlyProblem" type="checkbox" /> 只看需聯繫確認
         </label>
         <input v-model="keyword" type="search" placeholder="搜尋戶號／車號／電話" class="w-52 rounded border border-slate-300 px-2 py-1 text-sm" />
       </span>
@@ -202,12 +232,14 @@ async function doRename() {
         </thead>
         <tbody>
           <template v-for="h in rows" :key="h.戶號">
-            <tr class="border-t border-slate-100 align-top" :class="h.problem ? 'bg-yellow-100' : ''">
+            <tr class="border-t border-slate-100 align-top" :class="h.warns.length ? 'bg-yellow-100' : ''">
               <td class="px-3 py-2">
                 <b class="font-mono">{{ h.戶號 }}</b>
                 <span v-if="h.工作人員" class="ml-1 rounded bg-slate-200 px-1 text-xs">工作人員</span>
                 <span v-if="h.test" class="ml-1 rounded bg-rose-200 px-1 text-xs text-rose-900">測試</span>
-                <div v-if="h.problem" class="mt-0.5 max-w-xs text-xs text-red-700">{{ h.problem }}</div>
+                <ul v-if="h.warns.length" class="mt-1 max-w-md list-disc space-y-0.5 pl-4 text-xs text-red-700">
+                  <li v-for="w in h.warns" :key="w">{{ w }}</li>
+                </ul>
               </td>
               <td class="whitespace-nowrap px-3 py-2 font-mono text-xs">{{ h.電話 || '—' }}</td>
               <td class="px-3 py-2">
@@ -228,6 +260,7 @@ async function doRename() {
               <td class="whitespace-nowrap px-3 py-2 text-right">
                 <button class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100" @click="edit(h)">修改登記</button>
                 <button class="ml-1 rounded border border-sky-400 px-2 py-1 text-xs text-sky-700 hover:bg-sky-50" @click="startRename(h)">更正戶號</button>
+                <button class="ml-1 rounded border border-rose-300 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50" @click="doDelete(h)">刪除</button>
               </td>
             </tr>
             <tr v-if="renaming === h.戶號" class="border-t border-sky-100 bg-sky-50">

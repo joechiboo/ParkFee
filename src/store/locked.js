@@ -145,6 +145,12 @@ export async function listHouseholds() {
   return (await callRename({ op: 'list', ...adminAuth() }))?.households || []
 }
 
+// 刪除整戶登記（管理員）：已繳費的車後端會拒絕；該戶佔的車位一併放回可選。
+export async function deleteHousehold(hid) {
+  if (!useSupabase) throw new Error('本機模式不支援刪除登記')
+  return callRename({ op: 'delete', 戶號目標: hid, ...adminAuth() })
+}
+
 async function callRename(body) {
   const { data, error } = await (await client()).functions.invoke('rename-household', { body })
   let msg = error?.message

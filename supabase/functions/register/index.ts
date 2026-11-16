@@ -5,7 +5,7 @@
 import { corsHeaders, json, adminClient, fetchHousehold, verifyAdmin } from '../_shared/http.ts'
 import { windowClosed } from '../_shared/window.ts'
 import { normalizeHousehold, householdProblem } from '../_shared/normalize.ts'
-import { buildVehicleRows, isBikeOnly } from '../_shared/vehicles.ts'
+import { buildVehicleRows, isBikeOnly, plateTakenElsewhere } from '../_shared/vehicles.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -29,6 +29,9 @@ Deno.serve(async (req) => {
     // 登記時窗：管理員帶密碼可豁免（櫃台在截止後補登期間內收件的紙本）。
     const closed = windowClosed('車位登記')
     if (closed && !(await verifyAdmin(db, { password }))) return json({ error: closed }, 403)
+
+    const taken = await plateTakenElsewhere(db, hid, cleaned)
+    if (taken) return json({ error: taken }, 409)
 
     // 1) 建戶（戶號 PK；重複 → 已登記過）
     const { error: hErr } = await db

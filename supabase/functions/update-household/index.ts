@@ -5,7 +5,7 @@
 import { corsHeaders, json, adminClient, fetchHousehold, verifyOwnership, verifyAdmin, audit } from '../_shared/http.ts'
 import { windowClosed } from '../_shared/window.ts'
 import { normalizeHousehold } from '../_shared/normalize.ts'
-import { buildVehicleRows, isBikeOnly } from '../_shared/vehicles.ts'
+import { buildVehicleRows, isBikeOnly, plateTakenElsewhere } from '../_shared/vehicles.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -44,6 +44,9 @@ Deno.serve(async (req) => {
         { error: '線上不可只保留自行車（車號是登入憑證）。要移除全部機車請至管理中心辦理' },
         400,
       )
+
+    const taken = await plateTakenElsewhere(db, hid, cleaned)
+    if (taken) return json({ error: taken }, 409)
 
     const phone = String(電話 ?? '').trim()
 
