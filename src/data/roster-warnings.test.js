@@ -62,3 +62,34 @@ describe('名冊警示', () => {
     expect(w.get('A6-10').join()).not.toMatch(/不是車牌/)
   })
 })
+
+describe('容易落選（不同意電腦選號、有效志願少）', () => {
+  const seats = [{ id: 10, public: false }, { id: 11, public: false }, { id: 12, public: false }, { id: 1, public: true }, ...Array.from({ length: 10 }, (_, i) => ({ id: 100 + i, public: false }))]
+  const plates = ['QWE-1111', 'RTY-2222', 'UIO-3333', 'PAS-4444', 'DFG-5555', 'HJK-6666', 'ZXC-7777']
+  let n = 0
+  const one = (hid, wishes, pick, extra = {}) => ({ 戶號: hid, 電話: '', 車位志願: wishes, 志願落選保底: pick, vehicles: [{ 車號: plates[n++], 車種: '一般', 第幾輛: 1, ...extra }] })
+  const hh = [
+    one('A1-2', ['10'], false),
+    one('A1-3', ['10', '11'], false),
+    one('A1-4', ['12'], false),
+    one('A1-5', ['10'], true),
+    one('A1-6', ['100', '101', '102', '103', '104'], false),
+    one('A1-7', ['1'], false),
+    one('A1-8', ['11'], false, { 車位編號: '250' }),
+  ]
+  const w = rosterWarnings(hh, { seats, locked: new Set(['12']) })
+  it('只排少數幾格又不同意 → 提醒，並寫出每格有幾戶也排', () => {
+    expect(w.get('A1-2').join()).toMatch(/只排 1 格又不同意電腦選號.*10 有 2 戶也排/)
+    expect(w.get('A1-3').join()).toMatch(/只排 2 格/)
+  })
+  it('排的都被鎖定、或只排公益位 → 一定落選', () => {
+    expect(w.get('A1-4').join()).toMatch(/一定落選/)
+    expect(w.get('A1-7').join()).toMatch(/一定落選/)
+  })
+  it('有勾電腦選號、排夠 5 格、已選定車位的都不提醒', () => {
+    expect(w.has('A1-5')).toBe(false)
+    expect(w.has('A1-6')).toBe(false)
+    expect(w.has('A1-8')).toBe(false)
+  })
+  it('沒給車位資料就不檢查這項', () => expect(rosterWarnings(hh).has('A1-2')).toBe(false))
+})

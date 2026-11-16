@@ -6,7 +6,8 @@
 // 2026-11-16：加「需聯繫」警示（戶號有誤、車號不是車牌、同一台車兩戶、車號只差一字、同電話多戶，規則在 roster-warnings.js）與刪除整戶。
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { listHouseholds, renameHousehold, deleteHousehold } from '../store/locked.js'
+import { listHouseholds, renameHousehold, deleteHousehold, lockedSeats, refreshLocked } from '../store/locked.js'
+import { motorSeats } from '../map/seats.js'
 import { rosterWarnings } from '../data/roster-warnings.js'
 import { editTarget } from '../store/editTarget.js'
 import { normalizeHousehold, householdProblem, isTestHousehold } from '../data/household.js'
@@ -36,7 +37,8 @@ async function reload() {
   loading.value = true
   err.value = ''
   try {
-    households.value = (await listHouseholds()).sort(byHid)
+    const [hs] = await Promise.all([listHouseholds(), refreshLocked()])
+    households.value = hs.sort(byHid)
   } catch (e) {
     err.value = e?.message || '讀取名冊失敗'
   } finally {
@@ -48,7 +50,8 @@ onMounted(reload)
 const isBike = (v) => v.車種 === KIND.BIKE
 const plateText = (v) => (isBike(v) ? `自行車 第 ${v.第幾輛} 輛${v.特徵 ? `（${v.特徵}）` : ''}` : v.車號)
 const problemOf = (h) => householdProblem(h.戶號)
-const warnings = computed(() => rosterWarnings(households.value))
+const allMotorSeats = motorSeats()
+const warnings = computed(() => rosterWarnings(households.value, { seats: allMotorSeats, locked: lockedSeats.value }))
 
 const rows = computed(() => {
   const k = keyword.value.trim().toUpperCase()
