@@ -5,7 +5,7 @@
 //   車號欄留空、只打戶號即可登入。保護措施見 _shared/bike-auth.ts（擋掃描、只能改自行車、電話遮住、留紀錄）。
 //   自行車的合成車號（自行車-<戶號>-<序>）仍不能當憑證——從戶號就推得出來，等於沒有意義。
 // 每次登入（成功、失敗）都寫 login_log（0017）。
-import { corsHeaders, json, adminClient, fetchHousehold } from '../_shared/http.ts'
+import { corsHeaders, json, adminClient, fetchHousehold, storedPlate } from '../_shared/http.ts'
 import { isBikeVehicleKey, normalizeHousehold, normalizeTWPlate } from '../_shared/normalize.ts'
 import { clientIp, isBikeOnlyHousehold, bikeThrottled, logLogin, maskPhone, THROTTLE_MSG } from '../_shared/bike-auth.ts'
 
@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
     }
 
     // ── 有車號：照舊 ──
-    const plate = normalizeTWPlate(車號)
+    const plate = await storedPlate(db, 車號) // 忽略連字號位置比對（11/17 舊式車牌）
     // 合成車號從戶號即可推得（自行車-<戶號>-1），當憑證等於免密碼 → 一律擋（原始值與正規化後都檢查）
     if (!plate || isBikeVehicleKey(車號) || isBikeVehicleKey(plate)) {
       await logLogin(db, { ip, hid, method: 'plate', ok: false })

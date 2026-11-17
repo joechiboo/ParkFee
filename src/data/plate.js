@@ -10,6 +10,9 @@ export function normalizeTWPlate(raw) {
     .replace(/[\s　]/g, '')
     .replace(/[—–－‐]/g, '-')
   const compact = s.replace(/-/g, '')
+  // 住戶自己打了連字號就照他的位置保留（11/17：舊式車牌 K12-345 前段字母數字混合，
+  //   原本會被重拆成 K-12345、再被判格式不對）。沒打連字號才自動在字母段與數字段之間補一個。
+  if (/^[A-Z0-9]+-[A-Z0-9]+$/.test(s)) return s
   // 台灣車牌多為「字母段 + 數字段」或「數字段 + 字母段」兩段，於邊界補一個連字號
   const m = compact.match(/^([A-Z]+)(\d+)$/) || compact.match(/^(\d+)([A-Z]+)$/)
   if (m) return `${m[1]}-${m[2]}`
@@ -34,6 +37,8 @@ export function plateProblem(raw) {
   if (!/^[A-Z0-9-]+$/.test(s) || !/\d/.test(s))
     return '這不是車牌號碼。沒有車牌的車（自行車、電動代步車等）請改按「＋自行車」登記，或洽管理中心'
   if (!s.includes('-')) return `請照車牌上的寫法加上連字號（例：${s.slice(0, 3)}-${s.slice(3)}）`
+  // 自動補的連字號位置不對（例：舊式車牌 K12345 被拆成 K-12345）→ 請住戶照車牌自己打連字號
+  if (/^[A-Z0-9]-|-[A-Z0-9]$/.test(s)) return '請照車牌上的寫法，在正確的位置自己打連字號（例：K12-345）'
   // 兩邊各 2–5 碼：掛牌電動機車是 2 碼＋5 碼（例 AB-12345，11/17 秘書回報真實車牌被誤判）
   if (!/^[A-Z0-9]{2,5}-[A-Z0-9]{2,5}$/.test(s)) return '車號格式不對，請照車牌上的寫法填（例：ABC-1234）'
   return null

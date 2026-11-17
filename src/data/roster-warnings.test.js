@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { rosterWarnings, rosterWarningItems, WARN_TYPE, nearPlate } from './roster-warnings.js'
-import { plateProblem, plateKey } from './plate.js'
+import { plateProblem, plateKey, normalizeTWPlate } from './plate.js'
 
 describe('車號像不像車牌', () => {
   it('正常車牌通過', () => {
@@ -12,12 +12,19 @@ describe('車號像不像車牌', () => {
   it('英數交錯又沒打連字號 → 要求補連字號', () => {
     expect(plateProblem('X1Y234')).toMatch(/加上連字號/)
   })
+  it('舊式車牌前段字母數字混合：住戶打的連字號位置要保留', () => {
+    expect(normalizeTWPlate('K12-345')).toBe('K12-345')
+    expect(plateProblem('K12-345')).toBeNull()
+    expect(plateProblem('k12－345')).toBeNull()
+    expect(plateProblem('K12345')).toMatch(/正確的位置自己打連字號/) // 沒打連字號、自動補錯位置 → 請住戶自己打
+    expect(normalizeTWPlate('ABC1234')).toBe('ABC-1234') // 新式車牌沒打連字號照舊自動補
+  })
   it('掛牌電動機車 2 碼＋5 碼是真車牌', () => {
     expect(plateProblem('AB-12345')).toBeNull()
   })
   it('碼數不對', () => {
     expect(plateProblem('AB-123456')).toMatch(/格式不對/)
-    expect(plateProblem('A-123')).toMatch(/格式不對/)
+    expect(plateProblem('A-123')).toMatch(/格式不對|正確的位置/)
     expect(plateProblem('')).toMatch(/請填車號/)
   })
   it('plateKey 忽略連字號與大小寫', () => {

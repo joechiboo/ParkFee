@@ -1,6 +1,6 @@
 // Edge Function 共用：CORS、JSON 回應、admin（service_role）client、整戶查詢、管理員驗證。
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2'
-import { isBikeVehicleKey, normalizeHousehold, normalizeTWPlate } from './normalize.ts'
+import { isBikeVehicleKey, normalizeHousehold, normalizeTWPlate, plateKey } from './normalize.ts'
 
 // 額外管理員戶號：真實戶號 + 已登記車牌登入即可管理（免共用密碼）。要加管理員就改這裡。
 const ADMIN_HOUSEHOLDS = ['H3-6']
@@ -37,10 +37,23 @@ export async function verifyAdmin(
   const secret = Deno.env.get('ADMIN_PASSWORD')
   if (secret && String(body?.password ?? '') === secret) return true // A 路：密碼
   const hid = normalizeHousehold(body?.戶號)
-  const plate = normalizeTWPlate(body?.認證車號)
+  const plate = await storedPlate(db, body?.認證車號)
   if (!hid || !plate || !ADMIN_HOUSEHOLDS.includes(hid)) return false
   const { data } = await db.from('vehicle').select('戶號').eq('車號', plate).maybeSingle() // B 路：車牌擁有權
   return !!data && data.戶號 === hid
+}
+
+// 住戶或管理員打的車號 → 資料庫裡實際存的車號（11/17）。
+//   先照整理後的字串找；找不到再忽略連字號比對。車號整理規則改過（保留住戶打的連字號位置），
+//   舊資料可能存成另一種寫法，比對時不能因為連字號位置不同就說查無此車。找不到就回整理後的字串。
+export async function storedPlate(db: SupabaseClient, raw: unknown): Promise<string> {
+  const plate = normalizeTWPlate(raw)
+  if (!plate || isBikeVehicleKey(plate)) return plate
+  const { data: exact } = await db.from('vehicle').select('車號').eq('車號', plate).maybeSingle()
+  if (exact) return plate
+  const key = plateKey(plate)
+  const { data } = await db.from('vehicle').select('車號').neq('車種', '自行車')
+  return (data ?? []).find((v) => plateKey(v.車號) === key)?.車號 ?? plate
 }
 
 // 擁有權驗證（編輯登記、改志願用）：認證車號（登入時用的車號）須「目前」屬於該戶。
@@ -51,7 +64,7 @@ export async function verifyOwnership(
   hid: string,
   body: { 認證車號?: string },
 ): Promise<boolean> {
-  const plate = normalizeTWPlate(body?.認證車號)
+  const plate = await storedPlate(db, body?.認證車號)
   if (!plate || isBikeVehicleKey(plate)) return false
   const { data } = await db.from('vehicle').select('戶號').eq('車號', plate).maybeSingle()
   return !!data && data.戶號 === hid

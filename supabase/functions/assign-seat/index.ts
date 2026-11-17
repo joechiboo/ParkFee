@@ -8,7 +8,7 @@
 //   unlock → 解鎖該位；若帶車號則清掉該車的指派（重機兩格一起解）。帶 放棄:true 時該車留「視同放棄」。
 //   pay    → 批次標繳費（12/11、12/26 社區幫對帳）：按戶號把該戶已配到位的機車 已繳費 設為 true/false，
 //            並記 繳費來源（例「社區幫第一輪 2026-12-11」）與 繳費時間；稽核 pay.batch 只記筆數。
-import { corsHeaders, json, adminClient, verifyAdmin, audit } from '../_shared/http.ts'
+import { corsHeaders, json, adminClient, verifyAdmin, audit, storedPlate } from '../_shared/http.ts'
 import { normalizeHousehold } from '../_shared/normalize.ts'
 import { holderOf, planAssign, seatIdsOf } from '../_shared/seat-holder.ts'
 
@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
 
     const seat = String(body.車位編號 ?? '').trim()
     if (!seat) return json({ error: '缺少車位編號' }, 400)
-    const plate = String(body.車號 ?? '').trim().toUpperCase()
+    const plate = await storedPlate(db, body.車號) // 管理員打的車號對到資料庫實際存的（忽略連字號位置，11/17）
 
     if (op === 'assign') {
       const pair = String(body.配對車位 ?? '').trim()

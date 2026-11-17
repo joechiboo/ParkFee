@@ -2,7 +2,7 @@
 // 寫該戶「車位志願序」（戶層級，全戶共用一份）+ 志願落選保底。
 // 🔒 擁有權驗證：認證車號（登入時用的車號）必須「目前」屬於該戶，才允許寫入——
 //    與 update-household 同招，避免任何人拿公開 anon key 改他戶志願。
-import { corsHeaders, json, adminClient, fetchHousehold, verifyAdmin } from '../_shared/http.ts'
+import { corsHeaders, json, adminClient, fetchHousehold, verifyAdmin, storedPlate } from '../_shared/http.ts'
 import { windowClosed } from '../_shared/window.ts'
 import { normalizeHousehold, normalizeTWPlate } from '../_shared/normalize.ts'
 
@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
     const db = adminClient()
 
     // 🔒 擁有權驗證：認證車號目前須屬於 hid
-    const authPlate = normalizeTWPlate(認證車號)
+    const authPlate = await storedPlate(db, 認證車號) // 忽略連字號位置比對（11/17）
     const { data: auth } = await db
       .from('vehicle')
       .select('戶號')
