@@ -143,32 +143,40 @@ function edit(h) {
   router.push('/register')
 }
 
-// ── 警示已處理：秘書聯繫住戶確認後標記，該條改灰、整列沒有未處理的就改淺綠。可寫備註，可取消。──
-async function markReviewed(h, w) {
+// ── 警示已處理：秘書聯繫住戶確認後，在右邊「維護」欄按一次，這一戶所有未處理的警示一起標記（可寫備註）。
+//    該條改灰、整列改淺綠；按「取消已處理」整戶還原。（11/17 使用者要求按鈕跟其他維護按鈕放一起）──
+async function markReviewed(h) {
+  const open = h.warns.filter((w) => !w.review)
+  if (!open.length) return
+  const list = open.map((w) => '・' + w.text.replace(/。.*/, '')).join('
+')
   const note = prompt(`${h.戶號}：標記為已處理
-${w.text.replace(/。.*/, '')}
+${list}
 
 可寫備註（例：家人代填、電動機車真車牌），也可留空：`, '')
   if (note == null) return
-  await saveReview(h, w, { done: true, note })
+  await saveReview(h, open, { done: true, note })
 }
-async function unmarkReviewed(h, w) {
-  if (!confirm(`取消 ${h.戶號} 這條的「已處理」？`)) return
-  await saveReview(h, w, { done: false })
+async function unmarkReviewed(h) {
+  const done = h.warns.filter((w) => w.review)
+  if (!done.length || !confirm(`取消 ${h.戶號} 的「已處理」？`)) return
+  await saveReview(h, done, { done: false })
 }
-async function saveReview(h, w, opts) {
+async function saveReview(h, list, opts) {
   saving.value = true
   renameMsg.value = ''
+  const next = new Map(reviews.value)
   try {
-    await reviewWarning(h.戶號, w.type, opts)
-    const key = `${h.戶號}|${w.type}`
-    const next = new Map(reviews.value)
-    if (opts.done) next.set(key, { 戶號: h.戶號, type: w.type, note: opts.note || '', at: new Date().toISOString() })
-    else next.delete(key)
-    reviews.value = next
+    for (const w of list) {
+      await reviewWarning(h.戶號, w.type, opts)
+      const key = `${h.戶號}|${w.type}`
+      if (opts.done) next.set(key, { 戶號: h.戶號, type: w.type, note: opts.note || '', at: new Date().toISOString() })
+      else next.delete(key)
+    }
   } catch (e) {
     renameMsg.value = e?.message || '儲存失敗'
   } finally {
+    reviews.value = next // 中途失敗也保留已成功的那幾條
     saving.value = false
   }
 }
@@ -299,12 +307,10 @@ async function doRename() {
                   <li v-for="w in h.warns" :key="w.text">
                     <template v-if="!w.review">
                       <span class="text-red-700">• {{ w.text }}</span>
-                      <button class="ml-1 rounded border border-emerald-500 px-1.5 py-0.5 text-emerald-700 hover:bg-emerald-50 disabled:opacity-50" :disabled="saving" @click="markReviewed(h, w)">已處理</button>
                     </template>
                     <template v-else>
                       <span class="text-slate-400 line-through">• {{ w.text.replace(/。.*/, '') }}</span>
                       <span class="ml-1 text-emerald-700">✓ 已處理{{ w.review.note ? `：${w.review.note}` : '' }}（{{ fmtDay(w.review.at) }}）</span>
-                      <button class="ml-1 text-slate-400 underline hover:text-slate-600 disabled:opacity-50" :disabled="saving" @click="unmarkReviewed(h, w)">取消</button>
                     </template>
                   </li>
                 </ul>
@@ -326,6 +332,8 @@ async function doRename() {
               </td>
               <td class="whitespace-nowrap px-3 py-2 text-xs text-slate-500">{{ fmtTime(h.createdAt) }}</td>
               <td class="whitespace-nowrap px-3 py-2 text-right">
+                <button v-if="h.open" class="mr-1 rounded border border-emerald-500 px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-50 disabled:opacity-50" :disabled="saving" @click="markReviewed(h)">已處理</button>
+                <button v-else-if="h.warns.length" class="mr-1 rounded border border-slate-300 px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 disabled:opacity-50" :disabled="saving" @click="unmarkReviewed(h)">取消已處理</button>
                 <button class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100" @click="edit(h)">修改登記</button>
                 <button class="ml-1 rounded border border-sky-400 px-2 py-1 text-xs text-sky-700 hover:bg-sky-50" @click="startRename(h)">更正戶號</button>
                 <button class="ml-1 rounded border border-rose-300 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50" @click="doDelete(h)">刪除</button>
