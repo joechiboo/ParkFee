@@ -3,12 +3,13 @@
 // 2026-11-10 使用者定：這些不要塞在車位維護頁，獨立一頁。
 // 資料來源 rename-household op=list（整戶含電話，後端每次撈都寫稽核）。
 // 代改登記沿用登記頁的編輯模式（editTarget.adminEdit），不另做一套表單。
+// 2026-11-17：警示可標「已處理」（存 roster_review，整列沒有未處理的改淺綠）。
 // 2026-11-16：加「需聯繫」警示（戶號有誤、車號不是車牌、同一台車兩戶、車號只差一字、同電話多戶，規則在 roster-warnings.js）與刪除整戶。
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { listHouseholds, renameHousehold, deleteHousehold, lockedSeats, refreshLocked } from '../store/locked.js'
+import { listHouseholds, renameHousehold, deleteHousehold, reviewWarning, lockedSeats, refreshLocked } from '../store/locked.js'
 import { motorSeats } from '../map/seats.js'
-import { rosterWarnings } from '../data/roster-warnings.js'
+import { rosterWarningItems } from '../data/roster-warnings.js'
 import { editTarget } from '../store/editTarget.js'
 import { normalizeHousehold, householdProblem, isTestHousehold } from '../data/household.js'
 import { toCSV } from '../data/csv.js'
@@ -20,6 +21,8 @@ const loading = ref(false)
 const err = ref('')
 const keyword = ref('')
 const onlyProblem = ref(false)
+const showResolved = ref(false) // 只看需聯繫確認時，要不要連已處理的一起列（回頭查用）
+const reviews = ref(new Map()) // `${戶號}|${種類}` → { note, at }（名冊警示已處理，2026-11-17）
 
 // 戶號自然排序：棟別字母 → 房型編號 → 樓層；工作人員等排最後。
 const hidKey = (h) => {
@@ -37,8 +40,9 @@ async function reload() {
   loading.value = true
   err.value = ''
   try {
-    const [hs] = await Promise.all([listHouseholds(), refreshLocked()])
-    households.value = hs.sort(byHid)
+    const [r] = await Promise.all([listHouseholds(), refreshLocked()])
+    households.value = r.households.sort(byHid)
+    reviews.value = new Map(r.reviews.map((x) => [`${x.戶號}|${x.type}`, x]))
   } catch (e) {
     err.value = e?.message || '讀取名冊失敗'
   } finally {
@@ -51,13 +55,24 @@ const isBike = (v) => v.車種 === KIND.BIKE
 const plateText = (v) => (isBike(v) ? `自行車 第 ${v.第幾輛} 輛${v.特徵 ? `（${v.特徵}）` : ''}` : v.車號)
 const problemOf = (h) => householdProblem(h.戶號)
 const allMotorSeats = motorSeats()
-const warnings = computed(() => rosterWarnings(households.value, { seats: allMotorSeats, locked: lockedSeats.value }))
+// 每戶的警示，標上是否已處理：[{ type, text, review }]
+const warnings = computed(() => {
+  const out = new Map()
+  for (const [hid, items] of rosterWarningItems(households.value, { seats: allMotorSeats, locked: lockedSeats.value }))
+    out.set(hid, items.map((w) => ({ ...w, review: reviews.value.get(`${hid}|${w.type}`) || null })))
+  return out
+})
+const openWarns = (hid) => (warnings.value.get(hid) || []).filter((w) => !w.review)
 
 const rows = computed(() => {
   const k = keyword.value.trim().toUpperCase()
   return households.value
-    .map((h) => ({ ...h, problem: problemOf(h), warns: warnings.value.get(h.戶號) || [], test: isTestHousehold(h.戶號) }))
-    .filter((h) => !onlyProblem.value || h.warns.length)
+    .map((h) => {
+      const warns = warnings.value.get(h.戶號) || []
+    const fmtReview = (w) => `${w.text.replace(/。.*/, '')}（${w.review.note || '已確認'}）`
+      return { ...h, problem: problemOf(h), warns, open: warns.filter((w) => !w.review).length, test: isTestHousehold(h.戶號) }
+    })
+    .filter((h) => !onlyProblem.value || h.open || (showResolved.value && h.warns.length))
     .filter(
       (h) =>
         !k ||
@@ -73,12 +88,13 @@ const stats = computed(() => {
     一般: vs.filter((v) => v.車種 === '一般').length,
     重機: vs.filter((v) => v.車種 === '重機').length,
     自行車: vs.filter(isBike).length,
-    有誤: warnings.value.size,
+    有誤: households.value.filter((h) => openWarns(h.戶號).length).length,
+    已處理: households.value.filter((h) => (warnings.value.get(h.戶號) || []).length && !openWarns(h.戶號).length).length,
   }
 })
 
 // ── 匯出：一台車一列，Excel 可直接開（UTF-8 BOM）。要聯繫住戶確認的戶，「需聯繫確認」欄寫原因。──
-const EXPORT_COLUMNS = ['戶號', '需聯繫確認', '聯絡電話', '登記時間', '車號', '車種', '第幾輛', '身障', '志願小位', '已選定車位', '配位狀態', '已繳費', '志願數', '電腦選號', '工作人員']
+const EXPORT_COLUMNS = ['戶號', '需聯繫確認', '已處理', '聯絡電話', '登記時間', '車號', '車種', '第幾輛', '身障', '志願小位', '已選定車位', '配位狀態', '已繳費', '志願數', '電腦選號', '工作人員']
 const fmtTime = (t) => {
   if (!t) return ''
   const d = new Date(t)
@@ -93,7 +109,8 @@ function exportCsv() {
     for (const v of h.vehicles?.length ? h.vehicles : [{}]) {
       out.push({
         戶號: h.戶號,
-        需聯繫確認: warns.join('；'),
+        需聯繫確認: warns.filter((w) => !w.review).map((w) => w.text).join('；'),
+        已處理: warns.filter((w) => w.review).map(fmtReview).join('；'),
         聯絡電話: h.電話 ? `="${h.電話}"` : '', // 包成公式字串，Excel 才不會吃掉開頭的 0
         登記時間: fmtTime(h.createdAt),
         車號: v.車號 ? plateText(v) : '',
@@ -124,6 +141,40 @@ function exportCsv() {
 function edit(h) {
   editTarget.value = { ...h, adminEdit: true }
   router.push('/register')
+}
+
+// ── 警示已處理：秘書聯繫住戶確認後標記，該條改灰、整列沒有未處理的就改淺綠。可寫備註，可取消。──
+async function markReviewed(h, w) {
+  const note = prompt(`${h.戶號}：標記為已處理
+${w.text.replace(/。.*/, '')}
+
+可寫備註（例：家人代填、電動機車真車牌），也可留空：`, '')
+  if (note == null) return
+  await saveReview(h, w, { done: true, note })
+}
+async function unmarkReviewed(h, w) {
+  if (!confirm(`取消 ${h.戶號} 這條的「已處理」？`)) return
+  await saveReview(h, w, { done: false })
+}
+async function saveReview(h, w, opts) {
+  saving.value = true
+  renameMsg.value = ''
+  try {
+    await reviewWarning(h.戶號, w.type, opts)
+    const key = `${h.戶號}|${w.type}`
+    const next = new Map(reviews.value)
+    if (opts.done) next.set(key, { 戶號: h.戶號, type: w.type, note: opts.note || '', at: new Date().toISOString() })
+    else next.delete(key)
+    reviews.value = next
+  } catch (e) {
+    renameMsg.value = e?.message || '儲存失敗'
+  } finally {
+    saving.value = false
+  }
+}
+const fmtDay = (t) => {
+  const d = new Date(t)
+  return Number.isNaN(d.getTime()) ? '' : `${d.getMonth() + 1}/${d.getDate()}`
 }
 
 // ── 刪除整戶：確認是重複登記或不是住戶時用。已繳費的車後端會拒絕；佔的車位一併放回可選。
@@ -211,9 +262,13 @@ async function doRename() {
       <span>重機 <b>{{ stats.重機 }}</b></span>
       <span>自行車 <b>{{ stats.自行車 }}</b></span>
       <span v-if="stats.有誤" class="rounded bg-yellow-200 px-2 py-0.5 font-medium text-yellow-900">需聯繫確認 {{ stats.有誤 }} 戶</span>
+      <span v-if="stats.已處理" class="rounded bg-emerald-100 px-2 py-0.5 font-medium text-emerald-800">已處理 {{ stats.已處理 }} 戶</span>
       <span class="ml-auto flex flex-wrap items-center gap-3">
         <label class="flex cursor-pointer items-center gap-1 text-slate-600">
           <input v-model="onlyProblem" type="checkbox" /> 只看需聯繫確認
+        </label>
+        <label v-if="onlyProblem" class="flex cursor-pointer items-center gap-1 text-slate-600">
+          <input v-model="showResolved" type="checkbox" /> 含已處理
         </label>
         <input v-model="keyword" type="search" placeholder="搜尋戶號／車號／電話" class="w-52 rounded border border-slate-300 px-2 py-1 text-sm" />
       </span>
@@ -235,13 +290,23 @@ async function doRename() {
         </thead>
         <tbody>
           <template v-for="h in rows" :key="h.戶號">
-            <tr class="border-t border-slate-100 align-top" :class="h.warns.length ? 'bg-yellow-100' : ''">
+            <tr class="border-t border-slate-100 align-top" :class="h.open ? 'bg-yellow-100' : h.warns.length ? 'bg-emerald-50' : ''">
               <td class="px-3 py-2">
                 <b class="font-mono">{{ h.戶號 }}</b>
                 <span v-if="h.工作人員" class="ml-1 rounded bg-slate-200 px-1 text-xs">工作人員</span>
                 <span v-if="h.test" class="ml-1 rounded bg-rose-200 px-1 text-xs text-rose-900">測試</span>
-                <ul v-if="h.warns.length" class="mt-1 max-w-md list-disc space-y-0.5 pl-4 text-xs text-red-700">
-                  <li v-for="w in h.warns" :key="w">{{ w }}</li>
+                <ul v-if="h.warns.length" class="mt-1 max-w-md space-y-1 text-xs">
+                  <li v-for="w in h.warns" :key="w.text">
+                    <template v-if="!w.review">
+                      <span class="text-red-700">• {{ w.text }}</span>
+                      <button class="ml-1 rounded border border-emerald-500 px-1.5 py-0.5 text-emerald-700 hover:bg-emerald-50 disabled:opacity-50" :disabled="saving" @click="markReviewed(h, w)">已處理</button>
+                    </template>
+                    <template v-else>
+                      <span class="text-slate-400 line-through">• {{ w.text.replace(/。.*/, '') }}</span>
+                      <span class="ml-1 text-emerald-700">✓ 已處理{{ w.review.note ? `：${w.review.note}` : '' }}（{{ fmtDay(w.review.at) }}）</span>
+                      <button class="ml-1 text-slate-400 underline hover:text-slate-600 disabled:opacity-50" :disabled="saving" @click="unmarkReviewed(h, w)">取消</button>
+                    </template>
+                  </li>
                 </ul>
               </td>
               <td class="whitespace-nowrap px-3 py-2 font-mono text-xs">{{ h.電話 || '—' }}</td>

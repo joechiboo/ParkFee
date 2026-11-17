@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { rosterWarnings, nearPlate } from './roster-warnings.js'
+import { rosterWarnings, rosterWarningItems, WARN_TYPE, nearPlate } from './roster-warnings.js'
 import { plateProblem, plateKey } from './plate.js'
 
 describe('車號像不像車牌', () => {
@@ -12,8 +12,12 @@ describe('車號像不像車牌', () => {
   it('英數交錯又沒打連字號 → 要求補連字號', () => {
     expect(plateProblem('X1Y234')).toMatch(/加上連字號/)
   })
+  it('掛牌電動機車 2 碼＋5 碼是真車牌', () => {
+    expect(plateProblem('AB-12345')).toBeNull()
+  })
   it('碼數不對', () => {
-    expect(plateProblem('AB-63858')).toMatch(/格式不對/)
+    expect(plateProblem('AB-123456')).toMatch(/格式不對/)
+    expect(plateProblem('A-123')).toMatch(/格式不對/)
     expect(plateProblem('')).toMatch(/請填車號/)
   })
   it('plateKey 忽略連字號與大小寫', () => {
@@ -92,4 +96,16 @@ describe('容易落選（不同意電腦選號、有效志願少）', () => {
     expect(w.has('A1-8')).toBe(false)
   })
   it('沒給車位資料就不檢查這項', () => expect(rosterWarnings(hh).has('A1-2')).toBe(false))
+})
+
+describe('警示帶種類（名冊頁已處理用）', () => {
+  const items = rosterWarningItems([
+    { 戶號: 'A6-10', 電話: '0900-000-004', vehicles: [] },
+    { 戶號: 'B6-9', 電話: '0900000004', vehicles: [] },
+    { 戶號: 'A5-9', 電話: '', vehicles: [{ 車號: '綠色淑女車', 車種: '一般' }] },
+  ])
+  it('同電話、車號不是車牌各有自己的種類', () => {
+    expect(items.get('A6-10').map((w) => w.type)).toEqual([WARN_TYPE.SAME_PHONE])
+    expect(items.get('A5-9').map((w) => w.type)).toEqual([WARN_TYPE.PLATE])
+  })
 })

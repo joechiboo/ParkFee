@@ -2,6 +2,8 @@
 // POST /rename-household  { op: 'list', ...同上憑證 }  → { households: [整戶資料（含電話、車輛）] }
 //   名冊維護頁（/roster）用：列出全部登記供檢視、匯出、修改、更正戶號。含個資，每次撈都寫稽核（只記戶數）。
 // POST /rename-household  { op: 'delete', 戶號目標, ...同上憑證 }  → { 戶號, 車輛數, 釋出車位 }（2026-11-16，見下方）
+// POST /rename-household  { op: 'review', 戶號目標, type, note?, done, ...同上憑證 }  → { ok }（2026-11-17）
+//   名冊警示標記已處理（done=true，附備註）或取消（done=false）。存 roster_review（0018），寫稽核 roster.review。
 // 更正戶號（2026-11-10）：住戶把戶號填錯時，由管理員改成正確的戶號。🔒 僅管理員。
 // 整戶的電話、志願、車輛、已選定車位、繳費紀錄一起搬（資料庫函式 app_rename_household，單一交易）。
 // 新戶號必須是社區實際有的戶；舊戶號不檢查格式（本來就是填錯的）。
@@ -22,8 +24,27 @@ Deno.serve(async (req) => {
       const { data: hs, error: hErr } = await db.from('household').select('戶號').order('戶號')
       if (hErr) return json({ error: hErr.message }, 400)
       const households = (await Promise.all((hs || []).map((h) => fetchHousehold(db, h.戶號 as string)))).filter(Boolean)
+      const { data: reviews } = await db.from('roster_review').select('戶號, type, note, at')
       await audit(db, 'roster.list', { body, detail: { 戶數: households.length, via: 'roster-admin' } })
-      return json({ households })
+      return json({ households, reviews: reviews ?? [] })
+    }
+
+    // 名冊警示已處理（2026-11-17）
+    if (body.op === 'review') {
+      const hid = String(body.戶號目標 ?? '').normalize('NFKC').replace(/\s+/g, '').toUpperCase()
+      const type = String(body.type ?? '').trim()
+      if (!hid || !type) return json({ error: '缺少戶號或警示種類' }, 400)
+      if (body.done) {
+        const note = String(body.note ?? '').trim().slice(0, 200)
+        const { error } = await db.from('roster_review').upsert({ 戶號: hid, type, note, at: new Date().toISOString() })
+        if (error) return json({ error: error.message }, 400)
+        await audit(db, 'roster.review', { body, target: hid, detail: { type, done: true, note } })
+      } else {
+        const { error } = await db.from('roster_review').delete().eq('戶號', hid).eq('type', type)
+        if (error) return json({ error: error.message }, 400)
+        await audit(db, 'roster.review', { body, target: hid, detail: { type, done: false } })
+      }
+      return json({ ok: true })
     }
 
     // 刪除整戶登記（2026-11-16）：同一戶用錯的舊戶號與正確戶號各登記一次、或確認不是住戶時用。

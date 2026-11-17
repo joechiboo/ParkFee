@@ -111,6 +111,7 @@ export function plateProblem(raw: unknown): string | null {
   if (!/^[A-Z0-9-]+$/.test(s) || !/\d/.test(s))
     return '這不是車牌號碼。沒有車牌的車（自行車、電動代步車等）請改按「＋自行車」登記，或洽管理中心'
   if (!s.includes('-')) return `請照車牌上的寫法加上連字號（例：${s.slice(0, 3)}-${s.slice(3)}）`
-  if (!/^[A-Z0-9]{2,4}-[A-Z0-9]{2,4}$/.test(s)) return '車號格式不對，請照車牌上的寫法填（例：ABC-1234）'
+  // 兩邊各 2–5 碼：掛牌電動機車是 2 碼＋5 碼（例 AB-12345，11/17 秘書回報真實車牌被誤判）
+  if (!/^[A-Z0-9]{2,5}-[A-Z0-9]{2,5}$/.test(s)) return '車號格式不對，請照車牌上的寫法填（例：ABC-1234）'
   return null
 }

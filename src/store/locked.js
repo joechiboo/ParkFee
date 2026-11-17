@@ -139,10 +139,18 @@ export async function renameHousehold(oldId, newId) {
   return callRename({ 舊戶號: oldId, 新戶號: newId, ...adminAuth() })
 }
 
-// 全部登記（管理員，名冊維護頁用）：[{ 戶號, 電話, createdAt, 車位志願, 志願落選保底, 工作人員, vehicles[] }]
+// 全部登記（管理員，名冊維護頁用）：{ households: [{ 戶號, 電話, createdAt, 車位志願, 志願落選保底, 工作人員, vehicles[] }],
+//   reviews: [{ 戶號, type, note, at }] }（reviews＝名冊警示已處理紀錄，2026-11-17）
 export async function listHouseholds() {
-  if (!useSupabase) return []
-  return (await callRename({ op: 'list', ...adminAuth() }))?.households || []
+  if (!useSupabase) return { households: [], reviews: [] }
+  const r = await callRename({ op: 'list', ...adminAuth() })
+  return { households: r?.households || [], reviews: r?.reviews || [] }
+}
+
+// 名冊警示標記已處理（done=true＋備註）或取消（done=false）。
+export async function reviewWarning(hid, type, { done, note = '' }) {
+  if (!useSupabase) throw new Error('本機模式不支援')
+  return callRename({ op: 'review', 戶號目標: hid, type, done, note, ...adminAuth() })
 }
 
 // 刪除整戶登記（管理員）：已繳費的車後端會拒絕；該戶佔的車位一併放回可選。
