@@ -148,8 +148,7 @@ function edit(h) {
 async function markReviewed(h) {
   const open = h.warns.filter((w) => !w.review)
   if (!open.length) return
-  const list = open.map((w) => '・' + w.text.replace(/。.*/, '')).join('
-')
+  const list = open.map((w) => '・' + w.text.replace(/。.*/, '')).join('\n')
   const note = prompt(`${h.戶號}：標記為已處理
 ${list}
 
