@@ -202,3 +202,68 @@ describe('混合名冊端到端（名冊 → 兩支引擎 → 合併匯出）', 
     }
   })
 })
+
+describe('兩輪抽籤（2026-11-24：自行車第 2 輛起留到第二輪）', () => {
+  // 5 格；3 戶各有第 1 輛，其中 2 戶還有第 2 輛、1 戶有第 3 輛。
+  const regs = [
+    bike('A1-1'), bike('A1-1', 2), bike('A1-1', 3),
+    bike('B2-2'), bike('B2-2', 2),
+    bike('C3-3'),
+  ]
+
+  it('第一輪只抽每戶第 1 輛，第 2 輛起列待第二輪、不算候補，車位留著', () => {
+    const r = run(regs, { stage: 1 })
+    expect(r.assigned).toHaveLength(3)
+    expect(r.assigned.every((a) => a.第幾輛 === 1)).toBe(true)
+    expect(r.落選).toHaveLength(0)
+    expect(r.待安排).toHaveLength(3)
+    expect(r.待安排.every((w) => w.第幾輛 >= 2 && w.原因 === BIKE_REASON.NEXT_STAGE)).toBe(true)
+    expect(r.summary.remaining).toBe(2)
+    expect(r.summary.待第二輪).toBe(3)
+    expect(r.summary.順序號迄).toBe(3)
+  })
+
+  it('第一輪匯出：第 2 輛起的狀態是「待第二輪」', () => {
+    const rows = mergedResultRows([run(regs, { stage: 1 })])
+    expect(rows).toHaveLength(regs.length)
+    expect(rows.filter((x) => x.狀態 === '待第二輪')).toHaveLength(3)
+    expect(rows.filter((x) => x.狀態 === '分配')).toHaveLength(3)
+  })
+
+  // 模擬 12/1 發佈 → 12/15 重新匯出名冊：車位編號寫回的是剝掉前綴的地面號碼。
+  const afterStage1 = () => {
+    const s1 = run(regs, { stage: 1 })
+    const published = new Map(mergedResultRows([s1]).map((x) => [x.車號, x]))
+    const roster = regs.map((g) => ({ ...g, 車位編號: published.get(g.車號).車位編號, 配位狀態: published.get(g.車號).狀態 }))
+    return { s1, roster }
+  }
+
+  it('第二輪：第一輪抽中的帶地面號碼回來仍算已指派，那一格不會再配給別人', () => {
+    const { s1, roster } = afterStage1()
+    expect(roster.find((x) => x.第幾輛 === 1).車位編號).toMatch(/^\d+$/) // 前提：名冊裡是裸數字
+    const s2 = run(roster, { stage: 2, seqStart: s1.summary.順序號迄 })
+    const ids = s2.assigned.map((a) => a.車位編號)
+    expect(new Set(ids).size).toBe(ids.length) // 沒有一格配兩次
+    expect(ids.every((id) => /^B\d{3}$/.test(id))).toBe(true)
+    const kept = s2.assigned.filter((a) => a.配位方式 === BIKE_VIA.PRESET)
+    expect(kept.map((a) => a.車位編號).sort()).toEqual(s1.assigned.map((a) => a.車位編號).sort())
+  })
+
+  it('第二輪：剩 2 格先給第 2 輛，第 3 輛列候補；順序號接續第一輪', () => {
+    const { s1, roster } = afterStage1()
+    const s2 = run(roster, { stage: 2, seqStart: s1.summary.順序號迄 })
+    const drawn = s2.assigned.filter((a) => a.配位方式 === BIKE_VIA.DRAW)
+    expect(drawn).toHaveLength(2)
+    expect(drawn.every((a) => a.第幾輛 === 2)).toBe(true)
+    expect(drawn.map((a) => a.順序號).sort()).toEqual([4, 5])
+    expect(s2.落選).toEqual([expect.objectContaining({ 戶號: 'A1-1', 第幾輛: 3, 順序號: 6 })])
+    expect(s2.待安排).toHaveLength(0)
+  })
+
+  it('一次跑完（每月演練）行為不變：全部輛次同一次抽完', () => {
+    const r = run(regs)
+    expect(r.assigned).toHaveLength(5)
+    expect(r.落選).toHaveLength(1)
+    expect(r.待安排).toHaveLength(0)
+  })
+})

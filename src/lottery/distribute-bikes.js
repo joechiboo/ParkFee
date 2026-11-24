@@ -16,7 +16,8 @@
 
 import { mulberry32, hashSeed, seededShuffle } from './rng.js'
 import { bikeSeats, PUBLIC_BIKE_IDS } from '../map/seats.js'
-import { KIND, compareSeatId } from '../map/seat-id.js'
+import { KIND, compareSeatId, toBikeId } from '../map/seat-id.js'
+import { REASON } from './distribute.js'
 
 export const BIKE_VIA = {
   DRAW: '抽籤', // 依辦法抽車位號碼
@@ -25,16 +26,21 @@ export const BIKE_VIA = {
 
 export const BIKE_REASON = {
   SHORT: '車位不足', // 順序號在可用車位數之後 → 候補
+  // 兩輪抽籤第一輪（12/1）：第 2 輛起本輪不抽，不算候補。與機車共用同一字串，匯出時才會轉成狀態「待第二輪」。
+  NEXT_STAGE: REASON.NEXT_STAGE,
 }
 
 const PUBLIC_SET = new Set(PUBLIC_BIKE_IDS)
 
 function toEntry(r, index) {
+  const 車位 = String(r.車位編號 ?? '').trim()
   return {
     戶號: String(r.戶號),
     車號: String(r.車號 ?? ''), // 自行車為合成鍵（自行車-<戶號>-<序>），住戶不需知道
     第幾輛: Number(r.第幾輛) || 1,
-    車位編號: String(r.車位編號 ?? '').trim(), // 物業抽籤前已指派（空＝待抽）
+    // 物業抽籤前已指派（空＝待抽）。一律轉正規形 B0xx：發佈結果寫回 vehicle 的是剝掉前綴的地面號碼（23），
+    // 第二輪重新匯出名冊後若不轉回 B023，就無法把該格移出池，會把同一格再配給別人。
+    車位編號: 車位 ? toBikeId(車位) || 車位 : '',
     已繳費: r.已繳費 === true || r.已繳費 === 'Y' || r.已繳費 === 'y',
     社宅: r.社宅 === true || r.社宅 === 'Y' || r.社宅 === 'y',
     特徵: String(r.特徵 ?? ''),
@@ -54,7 +60,15 @@ export function distributeBikes({
   seed = 'parkfee-bike',
   runAt = null,
   socialHousingPublicOnly = true,
+  // 兩輪抽籤（2026-11-24 使用者定：自行車第 2 輛起比照機車留到第二輪）。
+  //   stage 1（12/1）：只抽每戶第 1 輛；第 2 輛起列「待第二輪」，不抽、不算候補。
+  //   stage 2（12/15）：名冊用第一輪發佈後重新匯出的，第一輪抽中者帶車位編號走已指派；
+  //     其餘依第幾輛分輪抽（第一輪候補的第 1 輛排在第 2 輛之前），順序號用 seqStart 接續第一輪。
+  //   'all'（預設）：一次跑完，供每月演練與既有測試；行為與加 stage 前完全相同。
+  stage = 'all',
+  seqStart = 0,
 }) {
+  const STAGE = stage === 1 || stage === '1' ? 1 : stage === 2 || stage === '2' ? 2 : 'all'
   const rng = mulberry32(hashSeed(seed))
 
   // 只處理自行車列；同一份名冊可混機車，由本函式自行篩掉。
@@ -88,7 +102,13 @@ export function distributeBikes({
 
   // ── 已指派（物業抽籤前確定：保留位、臨櫃辦理）──────────────────
   const preset = entries.filter((e) => e.車位編號)
-  const pending = entries.filter((e) => !e.車位編號)
+  let pending = entries.filter((e) => !e.車位編號)
+  const waiting = []
+  if (STAGE === 1) {
+    for (const e of pending.filter((x) => x.第幾輛 !== 1))
+      waiting.push({ 戶號: e.戶號, 車號: e.車號, 車種: KIND.BIKE, 第幾輛: e.第幾輛, 原因: BIKE_REASON.NEXT_STAGE })
+    pending = pending.filter((x) => x.第幾輛 === 1)
+  }
   if (preset.length) {
     const a = []
     for (const e of preset) {
@@ -102,7 +122,7 @@ export function distributeBikes({
 
   // ── 各輪：第 1 輛 → 第 2 輛（辦法伍三(四)：前一輪完結後仍有剩餘才辦下一輪）──
   // 順序號跨輪連續累加，每台抽籤車一個唯一號、不重來 → 順序號即候補序。
-  let seqCounter = 0
+  let seqCounter = Number(seqStart) || 0
   const nths = [...new Set(pending.map((e) => e.第幾輛))].sort((x, y) => x - y)
 
   for (const nth of nths) {
@@ -161,19 +181,25 @@ export function distributeBikes({
     rounds.push({ round: nth, name: `第 ${nth} 輛自行車`, draws, assignments: a })
   }
 
+  if (waiting.length) say(`待第二輪：${waiting.length} 台（第 2 輛起，12/15 再抽）`)
+
   return {
     seed,
     seedHash: hashSeed(seed),
     runAt,
+    stage: STAGE,
     rounds,
     assigned,
     落選: lost, // 順序號即候補序（辦法伍三(三)＋Q1）
+    待安排: waiting, // 第一輪的第 2 輛起（原因＝待第二輪再分配）
     log,
     summary: {
       registrations: entries.length,
       assigned: assigned.length,
       落選: lost.length,
+      待第二輪: waiting.length,
       remaining: available.size,
+      順序號迄: seqCounter, // 第二輪的 seqStart 填這個數
     },
   }
 }
