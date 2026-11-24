@@ -18,7 +18,8 @@ import { encodeBig5, decodeBig5 } from './lib/big5.mjs'
 
 // ── 社區幫「新增繳費單 → 下載範例檔」欄位（2026-11-03 下載；順序即輸出順序，社區幫依欄位順序匯入）──
 //   與 9/17 的物業月結檔不同：備註移到期限後、多「郵資」、汽車與機車清潔費合併成「汽/機車清潔費」。
-//   獨立帳單模式照這組輸出；merge 模式仍沿用舊物業月結檔欄位（下方 FEE_COLUMNS）。
+//   2026-11-24 起獨立帳單預設改回物業月結檔欄位（下方 FEE_COLUMNS，經理指定金額記「機車清潔費」）；
+//   這組只在 --format template 時輸出，另外也用來辨識 --fee 給的是範例檔。
 export const TEMPLATE_COLUMNS = [
   '住戶住址(門牌號)',
   '住戶住址(樓層)',
@@ -95,8 +96,10 @@ export function householdIdOf(門牌, 樓層) {
 }
 
 // 兩輪帳單用不同收費類別：回查時才分得出這筆繳的是哪一輪，同戶第一輪繳了、第二輪沒繳也不會混。
-export function roundCategory(round, 民國年度 = '') {
-  return `${民國年度 ? `${民國年度}年度` : ''}機車位清潔費第${round === 2 || round === '2' ? '二' : '一'}輪`
+//   2026-11-24 經理指定用字「2027年機車清潔費」（西元、無「位」字）；輪次是我們為了回查加的，使用者同日同意。
+//   不給年度時回「機車清潔費第一輪」，回查用「包含」比對，跨年度不用改。
+export function roundCategory(round, 西元年度 = '') {
+  return `${西元年度 ? `${西元年度}年` : ''}機車清潔費第${round === 2 || round === '2' ? '二' : '一'}輪`
 }
 
 // 配位結果中「這輪出過帳」的車號：第二輪結果會帶著第一輪的車位，不排除就重複收費。
@@ -190,18 +193,28 @@ export function addressIndex(feeRows) {
   return idx
 }
 
-// 獨立帳單模式：只出「機車位費用」一張帳，管理費／郵資／附加費用全掛 0，金額填「汽/機車清潔費」。
-//   欄位照 TEMPLATE_COLUMNS（2026-11-03 範例檔）。
+// 獨立帳單的兩種欄位格式。
+//   fee（預設）＝物業月結檔欄位，金額填獨立的「機車清潔費」。2026-11-24 經理指定（LINE 範例：汽車、機車清潔費分兩欄），
+//     財秘對帳時機車位的錢才不會跟汽車清潔費混在同一科目。9/17 以此格式實際上傳成功過。
+//   template＝社區幫 2026-11-03 範例檔欄位，金額填合併的「汽/機車清潔費」。11/10 上傳成功過，留作 fee 被擋時的備援。
+export const STANDALONE_FORMATS = {
+  fee: { columns: FEE_COLUMNS, target: TARGET_COL, items: '#管理費#汽車清潔費#機車清潔費#附加費用' },
+  template: { columns: TEMPLATE_COLUMNS, target: TEMPLATE_TARGET_COL, items: TEMPLATE_ITEMS },
+}
+
+// 獨立帳單模式：只出「機車位費用」一張帳，其餘金額欄全掛 0，金額填該格式的機車欄（見 STANDALONE_FORMATS）。
 //   相對於併入物業月結檔，好處是不受物業出檔時程綁住、沒有多列戶問題、帳單品名清楚。
 //   **只列有金額的戶**——全 655 戶都出一列會產生 400 多張 0 元帳單。
 export function buildStandaloneRows(byHousehold, addrIdx, opts = {}) {
+  const fmt = STANDALONE_FORMATS[opts.format ?? 'fee']
   const {
     收費類別 = '',
     立帳通知日期 = '',
     繳費期限 = '',
-    細項 = TEMPLATE_ITEMS,
+    細項 = fmt.items,
     備註 = '',
   } = opts
+  const 金額欄 = fmt.columns.slice(8) // 前 8 欄是門牌三欄＋類別／細項／日期／備註，其後全是金額
   const rows = []
   const 查無門牌 = []
   for (const [id, due] of byHousehold) {
@@ -211,18 +224,17 @@ export function buildStandaloneRows(byHousehold, addrIdx, opts = {}) {
       查無門牌.push(id)
       continue
     }
-    rows.push({
+    const base = {
       ...addr,
       收費類別,
       '細項(列舉參考欄位)': 細項,
       '立帳通知日期(YYYY/MM/DD)': 立帳通知日期,
       '繳費期限(YYYY/MM/DD)': 繳費期限,
       備註,
-      管理費: '0',
-      郵資: '0',
-      [TEMPLATE_TARGET_COL]: String(due.金額),
-      附加費用: '0',
-    })
+    }
+    for (const c of 金額欄) base[c] = c === fmt.target ? String(due.金額) : '0'
+    // 鍵的順序＝該格式的欄位順序（輸出時仍以 columns 為準，這裡只是讓物件好讀、好測）。
+    rows.push(Object.fromEntries(fmt.columns.map((c) => [c, base[c]])))
   }
   // 依門牌、樓層排序，方便物業肉眼核對。
   rows.sort(
@@ -233,7 +245,7 @@ export function buildStandaloneRows(byHousehold, addrIdx, opts = {}) {
     report: {
       出帳戶數: rows.length,
       查無門牌,
-      輸出總額: rows.reduce((s, r) => s + Number(r[TEMPLATE_TARGET_COL] || 0), 0),
+      輸出總額: rows.reduce((s, r) => s + Number(r[fmt.target] || 0), 0),
       應收總額: [...byHousehold.values()].reduce((s, v) => s + v.金額, 0),
     },
   }
@@ -306,8 +318,10 @@ if (isMain) {
   --due <YYYY-MM-DD>       繳費期限（絕對日期，優先於 --due-days）
   --due-days <N>           繳費期限＝公告日 + N 日（預設 10，對齊辦法伍二（六）「逾 10 日視同放棄」）
   --bill-date <YYYY/M/D>   立帳通知日期（預設＝匯出當日；社區幫的立帳日是建帳那天）
-  --category <字串>        收費類別（預設依 --round，例 116年度機車位清潔費第一輪）
-  --items <字串>           細項(列舉參考欄位)，預設沿用物業檔的固定字串
+  --category <字串>        收費類別（預設依 --round，例 2027年機車清潔費第一輪）
+  --items <字串>           細項(列舉參考欄位)，預設沿用該格式的固定字串
+  --format <fee|template>  欄位格式。fee（預設）＝物業月結檔欄位，金額填「機車清潔費」（2026-11-24 經理指定）；
+                           template＝社區幫範例檔欄位，金額填「汽/機車清潔費」（備援）
 
 共用：
   --out <輸出.csv>         寫出（Big5 無 BOM）；不給則只驗證
@@ -318,6 +332,11 @@ if (isMain) {
   const mode = arg('mode', 'standalone')
   if (mode !== 'standalone' && mode !== 'merge') {
     console.error(`--mode 只能是 standalone 或 merge（收到 "${mode}"）`)
+    process.exit(1)
+  }
+  const format = arg('format', 'fee')
+  if (!STANDALONE_FORMATS[format]) {
+    console.error(`--format 只能是 fee 或 template（收到 "${format}"）`)
     process.exit(1)
   }
 
@@ -360,19 +379,17 @@ if (isMain) {
     const 放棄線 = announce ? addDays(announce, 10) : ''
     if (!announce) problems.push('獨立帳單模式需要 --announce <公告日 YYYY-MM-DD> 才能算繳費期限')
     // 使用期間為公告次年的曆年（12/1 抽的是次年車位）→ 年度＝公告年 + 1。
-    // 收費類別預設用**民國年**：與登記表「116 年度」、物業檔名「…115年05月管理費」一致，住戶對得起來。
-    // ⚠️ 社區幫「收費類別」欄現有值是西元（「2026年05月管理費」），若其匯入驗證卡格式，
-    //    改用 --category "2027年度機車位清潔費" 即可，見 §4 待確認。
+    // 收費類別用**西元年**（2026-11-24 經理指定「2027年機車清潔費」），與社區幫該欄現有值「2026年12月管理費」同一寫法。
     const 西元年度 = announce ? new Date(`${announce}T00:00:00`).getFullYear() + 1 : ''
-    const 民國年度 = 西元年度 ? 西元年度 - 1911 : ''
     // 立帳通知日期＝**匯出當日**（2026-09-17 實測修正）。社區幫的「立帳」是帳單建立那天，
     // 與抽籤公告日無關——公告後可能隔幾天才產檔上傳，用公告日會讓帳單顯示的立帳日早於實際建帳日。
     const 立帳日 = arg('bill-date') || todayStr()
     const opts = {
-      收費類別: arg('category', roundCategory(round, 民國年度)),
+      收費類別: arg('category', roundCategory(round, 西元年度)),
       立帳通知日期: 立帳日,
       繳費期限: dueAbs || (announce ? addDays(announce, dueDays) : ''),
       備註: '',
+      format,
     }
     const items = arg('items')
     if (items) opts.細項 = items
@@ -383,6 +400,7 @@ if (isMain) {
     ;({ rows, report } = buildStandaloneRows(byHousehold, addressIndex(feeRows), opts))
     console.log('=== 社區幫匯入檔產製（standalone：獨立機車位帳單）===')
     console.log(`收費類別          ${opts.收費類別}`)
+    console.log(`金額欄位          ${STANDALONE_FORMATS[format].target}（--format ${format}）`)
     console.log(`立帳通知日期      ${opts.立帳通知日期}（${arg('bill-date') ? '--bill-date 指定' : '匯出當日'}）`)
     console.log(`繳費期限          ${opts.繳費期限}${dueAbs ? '（--due 指定）' : `（公告日 +${dueDays} 日）`}`)
     if (放棄線 && opts.繳費期限 !== 放棄線)
@@ -409,7 +427,7 @@ if (isMain) {
     console.log('\n--dry：不寫檔。')
   } else if (outPath) {
     const bad = new Set()
-    const buf = encodeBig5(toFeeCSV(rows, mode === 'merge' ? FEE_COLUMNS : TEMPLATE_COLUMNS), { onUnmappable: (c) => bad.add(c) })
+    const buf = encodeBig5(toFeeCSV(rows, mode === 'merge' ? FEE_COLUMNS : STANDALONE_FORMATS[format].columns), { onUnmappable: (c) => bad.add(c) })
     if (bad.size) console.log(`\n⚠ 有 ${bad.size} 個字元無法以 Big5 編碼，已代換為 '?'：${[...bad].join('')}`)
     writeFileSync(outPath, buf)
     console.log(`\n已寫出 ${outPath}（Big5、無 BOM、${rows.length} 列）`)

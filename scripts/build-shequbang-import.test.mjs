@@ -87,8 +87,8 @@ describe('兩輪分開收費', () => {
   })
 
   it('兩輪收費類別不同，回查才分得出繳的是哪輪', () => {
-    expect(roundCategory(1, 116)).toBe('116年度機車位清潔費第一輪')
-    expect(roundCategory('2', 116)).toBe('116年度機車位清潔費第二輪')
+    expect(roundCategory(1, 2027)).toBe('2027年機車清潔費第一輪')
+    expect(roundCategory('2', 2027)).toBe('2027年機車清潔費第二輪')
   })
 })
 
@@ -197,11 +197,30 @@ describe('獨立帳單模式', () => {
     expect(idx.get('H6-5')['住戶住址(門牌號)']).toBe('#H6-293')
   })
 
-  it('照 2026-11-03 範例檔欄位：金額填「汽/機車清潔費」，管理費／郵資／附加費用一律 0', () => {
-    const { rows } = buildStandaloneRows(
+  it('預設照物業月結檔欄位（2026-11-24 經理指定）：金額填獨立的「機車清潔費」，其餘金額欄一律 0', () => {
+    const { rows, report } = buildStandaloneRows(
       new Map([['A1-2', { 金額: 4800, 台數: 2 }]]),
       addressIndex(feeRows),
       opts
+    )
+    expect(rows).toHaveLength(1)
+    expect(rows[0].機車清潔費).toBe('4800')
+    expect(rows[0].管理費).toBe('0')
+    expect(rows[0].汽車清潔費).toBe('0') // 不得跟汽車清潔費混在一起
+    expect(rows[0].附加費用).toBe('0')
+    expect(rows[0]['細項(列舉參考欄位)']).toBe('#管理費#汽車清潔費#機車清潔費#附加費用')
+    // 欄位順序＝財秘給的 12 月管理費檔表頭
+    expect(Object.keys(rows[0])).toEqual(Object.keys(feeRows[0]))
+    expect(rows[0]).not.toHaveProperty('郵資')
+    expect(rows[0]).not.toHaveProperty('汽/機車清潔費')
+    expect(report.輸出總額).toBe(4800)
+  })
+
+  it('--format template：照 2026-11-03 範例檔欄位，金額填「汽/機車清潔費」（備援）', () => {
+    const { rows } = buildStandaloneRows(
+      new Map([['A1-2', { 金額: 4800, 台數: 2 }]]),
+      addressIndex(feeRows),
+      { ...opts, format: 'template' }
     )
     expect(rows).toHaveLength(1)
     expect(rows[0]['汽/機車清潔費']).toBe('4800')
