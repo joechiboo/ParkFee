@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { rosterWarnings, rosterWarningItems, WARN_TYPE, nearPlate } from './roster-warnings.js'
+import { rosterWarnings, rosterWarningItems, WARN_TYPE, RED_TYPES, nearPlate, smallSeatProblem } from './roster-warnings.js'
 import { plateProblem, plateKey, normalizeTWPlate } from './plate.js'
 
 describe('車號像不像車牌', () => {
@@ -114,5 +114,39 @@ describe('警示帶種類（名冊頁已處理用）', () => {
   it('同電話、車號不是車牌各有自己的種類', () => {
     expect(items.get('A6-10').map((w) => w.type)).toEqual([WARN_TYPE.SAME_PHONE])
     expect(items.get('A5-9').map((w) => w.type)).toEqual([WARN_TYPE.PLATE])
+  })
+})
+
+describe('志願小位與車位對不上（紅色警示，2026-11-26）', () => {
+  const car = (o) => ({ 車號: 'ABC-1234', 車種: '一般', 第幾輛: 1, 志願小位: true, 配位狀態: '志願小位', 車位編號: '58', ...o })
+  it('正常：第 1 輛、有勾、有格號 → 沒問題', () => {
+    expect(smallSeatProblem(car())).toBe('')
+  })
+  it('沒選格子、或不是志願小位狀態 → 不管', () => {
+    expect(smallSeatProblem(car({ 車位編號: '' }))).toBe('')
+    expect(smallSeatProblem(car({ 配位狀態: '保留', 志願小位: false }))).toBe('')
+    expect(smallSeatProblem(car({ 車種: '自行車', 志願小位: false }))).toBe('')
+  })
+  it('勾被取消但格子還在（C5-12 型）→ 問要不要，給兩條路', () => {
+    const t = smallSeatProblem(car({ 志願小位: false }))
+    expect(t).toContain('小位 58')
+    expect(t).toContain('修改登記')
+    expect(t).toContain('解除 58')
+  })
+  it('小位掛在第 2 輛（D7-11 型）→ 講明第 1 輛會從結果消失', () => {
+    const t = smallSeatProblem(car({ 第幾輛: 2, 志願小位: false, 車位編號: '239' }))
+    expect(t).toContain('第 2 輛')
+    expect(t).toContain('消失')
+    expect(t).toContain('勾回志願小位')
+    expect(t).toContain('解除 239')
+  })
+  it('名冊警示帶紅色種類', () => {
+    const items = rosterWarningItems([
+      { 戶號: 'C5-12', 電話: '0900-000-111', vehicles: [car({ 志願小位: false })] },
+      { 戶號: 'A1-4', 電話: '0900-000-222', vehicles: [car({ 車號: 'XYZ-5678', 車位編號: '59' })] },
+    ])
+    expect(items.get('C5-12').map((w) => w.type)).toEqual([WARN_TYPE.SMALL_SEAT])
+    expect(RED_TYPES.has(WARN_TYPE.SMALL_SEAT)).toBe(true)
+    expect(items.has('A1-4')).toBe(false)
   })
 })

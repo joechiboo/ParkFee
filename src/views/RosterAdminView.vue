@@ -9,7 +9,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { listHouseholds, renameHousehold, deleteHousehold, reviewWarning, lockedSeats, refreshLocked } from '../store/locked.js'
 import { motorSeats } from '../map/seats.js'
-import { rosterWarningItems } from '../data/roster-warnings.js'
+import { rosterWarningItems, RED_TYPES } from '../data/roster-warnings.js'
 import { editTarget } from '../store/editTarget.js'
 import { normalizeHousehold, householdProblem, isTestHousehold } from '../data/household.js'
 import { toCSV } from '../data/csv.js'
@@ -59,7 +59,8 @@ const allMotorSeats = motorSeats()
 const warnings = computed(() => {
   const out = new Map()
   for (const [hid, items] of rosterWarningItems(households.value, { seats: allMotorSeats, locked: lockedSeats.value }))
-    out.set(hid, items.map((w) => ({ ...w, review: reviews.value.get(`${hid}|${w.type}`) || null })))
+    // 紅色警示（志願小位對不上等）不吃「已處理」：資料改好才會消失（2026-11-26）。
+    out.set(hid, items.map((w) => ({ ...w, red: RED_TYPES.has(w.type), review: RED_TYPES.has(w.type) ? null : reviews.value.get(`${hid}|${w.type}`) || null })))
   return out
 })
 const openWarns = (hid) => (warnings.value.get(hid) || []).filter((w) => !w.review)
@@ -70,7 +71,7 @@ const rows = computed(() => {
     .map((h) => {
       const warns = warnings.value.get(h.戶號) || []
     const fmtReview = (w) => `${w.text.replace(/。.*/, '')}（${w.review.note || '已確認'}）`
-      return { ...h, problem: problemOf(h), warns, open: warns.filter((w) => !w.review).length, test: isTestHousehold(h.戶號) }
+      return { ...h, problem: problemOf(h), warns, open: warns.filter((w) => !w.review).length, red: warns.some((w) => w.red), test: isTestHousehold(h.戶號) }
     })
     .filter((h) => !onlyProblem.value || h.open || (showResolved.value && h.warns.length))
     .filter(
@@ -89,6 +90,7 @@ const stats = computed(() => {
     重機: vs.filter((v) => v.車種 === '重機').length,
     自行車: vs.filter(isBike).length,
     有誤: households.value.filter((h) => openWarns(h.戶號).length).length,
+    紅: households.value.filter((h) => (warnings.value.get(h.戶號) || []).some((w) => w.red)).length,
     已處理: households.value.filter((h) => (warnings.value.get(h.戶號) || []).length && !openWarns(h.戶號).length).length,
   }
 })
@@ -146,8 +148,12 @@ function edit(h) {
 // ── 警示已處理：秘書聯繫住戶確認後，在右邊「維護」欄按一次，這一戶所有未處理的警示一起標記（可寫備註）。
 //    該條改灰、整列改淺綠；按「取消已處理」整戶還原。（11/17 使用者要求按鈕跟其他維護按鈕放一起）──
 async function markReviewed(h) {
-  const open = h.warns.filter((w) => !w.review)
-  if (!open.length) return
+  // 紅色警示不能標已處理：資料沒改好，抽籤照樣出錯。
+  const open = h.warns.filter((w) => !w.review && !w.red)
+  if (!open.length) {
+    if (h.red) alert('紅色警示要把資料改好（勾回志願小位或解除車位）才會消失，不能標記已處理。')
+    return
+  }
   const list = open.map((w) => '・' + w.text.replace(/。.*/, '')).join('\n')
   const note = prompt(`${h.戶號}：標記為已處理
 ${list}
@@ -268,6 +274,7 @@ async function doRename() {
       <span>一般機車 <b>{{ stats.一般 }}</b></span>
       <span>重機 <b>{{ stats.重機 }}</b></span>
       <span>自行車 <b>{{ stats.自行車 }}</b></span>
+      <span v-if="stats.紅" class="rounded bg-red-200 px-2 py-0.5 font-medium text-red-900">抽籤前必須處理 {{ stats.紅 }} 戶</span>
       <span v-if="stats.有誤" class="rounded bg-yellow-200 px-2 py-0.5 font-medium text-yellow-900">需聯繫確認 {{ stats.有誤 }} 戶</span>
       <span v-if="stats.已處理" class="rounded bg-emerald-100 px-2 py-0.5 font-medium text-emerald-800">已處理 {{ stats.已處理 }} 戶</span>
       <span class="ml-auto flex flex-wrap items-center gap-3">
@@ -297,7 +304,7 @@ async function doRename() {
         </thead>
         <tbody>
           <template v-for="h in rows" :key="h.戶號">
-            <tr class="border-t border-slate-100 align-top" :class="h.open ? 'bg-yellow-100' : h.warns.length ? 'bg-emerald-50' : ''">
+            <tr class="border-t border-slate-100 align-top" :class="h.red ? 'bg-red-100' : h.open ? 'bg-yellow-100' : h.warns.length ? 'bg-emerald-50' : ''">
               <td class="px-3 py-2">
                 <b class="font-mono">{{ h.戶號 }}</b>
                 <span v-if="h.工作人員" class="ml-1 rounded bg-slate-200 px-1 text-xs">工作人員</span>
@@ -305,7 +312,7 @@ async function doRename() {
                 <ul v-if="h.warns.length" class="mt-1 max-w-md space-y-1 text-xs">
                   <li v-for="w in h.warns" :key="w.text">
                     <template v-if="!w.review">
-                      <span class="text-red-700">• {{ w.text }}</span>
+                      <span :class="w.red ? 'font-semibold text-red-800' : 'text-red-700'">{{ w.red ? '🔴 抽籤前必須處理：' : '• ' }}{{ w.text }}</span>
                     </template>
                     <template v-else>
                       <span class="text-slate-400 line-through">• {{ w.text.replace(/。.*/, '') }}</span>

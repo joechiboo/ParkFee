@@ -31,6 +31,26 @@ export const WARN_TYPE = {
   SAME_VEHICLE: 'same-vehicle', // 同一台車登記兩戶
   NEAR_PLATE: 'near-plate', // 車號只差一字
   SAME_PHONE: 'same-phone', // 同電話多戶
+  SMALL_SEAT: 'small-seat', // 志願小位與車位對不上（勾被取消但格子還鎖著、或掛在第 2 輛以後）
+}
+
+// 紅色警示（2026-11-26）：會讓抽籤結果出錯，資料改好才會消失，不能用「已處理」按掉。
+export const RED_TYPES = new Set([WARN_TYPE.SMALL_SEAT])
+
+// 志願小位與車位對不上 → 回警示文字；沒問題回 ''。
+// 11/26 查到 D7-11、C5-12：住戶線上選小位後，秘書代改時勾選被取消，格子卻還鎖著（0019 前取消勾選不會放格子）；
+// D7-11 的小位車還被擠到第 2 輛，照引擎現況第 1 輛會從抽籤結果消失。
+export function smallSeatProblem(v) {
+  if (v.車種 === BIKE || v.配位狀態 !== '志願小位' || !v.車位編號) return ''
+  const seat = String(v.車位編號)
+  const nth = Number(v.第幾輛)
+  const unticked = !v.志願小位
+  const notFirst = nth !== 1
+  if (!unticked && !notFirst) return ''
+  const no = `不要 → 到車位維護頁解除 ${seat}，${notFirst ? '第 1 輛' : '這台'}改照志願抽籤`
+  if (notFirst)
+    return `小位 ${seat} 掛在第 ${nth} 輛${unticked ? '，志願小位的勾也被取消了' : ''}。小位限第一部，照現況第 1 輛抽籤時會被跳過、從抽籤結果消失。請問住戶小位 ${seat} 還要不要：要 → 這台要改回第 1 輛${unticked ? '並勾回志願小位' : ''}（「修改登記」畫面改不了，請聯絡管理員處理）；${no}`
+  return `已選定小位 ${seat}，但志願小位的勾被取消了，格子仍鎖在這戶。請問住戶小位 ${seat} 還要不要：要 → 按右邊「修改登記」把志願小位勾回去；${no}`
 }
 
 // 回 Map(戶號 → [{ type, text }])。名冊頁用這個；rosterWarnings() 只要文字。
@@ -68,6 +88,8 @@ export function rosterWarningItems(households, { seats = null, locked = null } =
     for (const v of h.vehicles || []) {
       if (v.車種 === BIKE) continue
       const pp = plateProblem(v.車號)
+      const sp = smallSeatProblem(v)
+      if (sp) add(h.戶號, WARN_TYPE.SMALL_SEAT, sp)
       if (pp) add(h.戶號, WARN_TYPE.PLATE, `車號「${v.車號}」不是車牌，目前被當成機車（會抽機車位、收 1,200 元）。請問住戶這是什麼車：沒有車牌的自行車請改登記為自行車；確實是機車請補上正確車牌`)
       motors.push({ hid: h.戶號, plate: v.車號, key: plateKey(v.車號) })
     }

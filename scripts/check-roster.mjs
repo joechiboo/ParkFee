@@ -12,6 +12,7 @@ import { join } from 'node:path'
 import { parseCSVObjects } from '../src/data/csv.js'
 import { PUBLIC_BIKE_IDS, MOTOR_SEATS_OPEN_TO_BIKE, toBikeId, isBikeId } from '../src/map/seat-id.js'
 import { householdProblem } from '../src/data/household.js'
+import { smallSeatProblem } from '../src/data/roster-warnings.js'
 const ADJ = JSON.parse(readFileSync('src/map/seat-adjacency.json', 'utf8')).adj
 
 // ── 車位主檔（直接讀 JSON：seats.js 走 import attribute，純 Node 載不動）──
@@ -140,6 +141,7 @@ for (const r of rows) {
     身障: yes(r.身障),
     志願小位: yes(r.志願小位),
     車位編號: String(r.車位編號 ?? '').trim(),
+    配位狀態: String(r.配位狀態 ?? '').trim(),
   })
 }
 const all = [...houses.values()];
@@ -346,6 +348,15 @@ if (heavyWaiting.length)
   add('info', '重機待安排（不參與抽籤）',
     `共 ${heavyWaiting.length} 台，每台要相鄰兩個大位。所有非重機車位確定後，由管理中心安排。`,
     heavyWaiting)
+
+// 11) 志願小位與車位對不上（2026-11-26，同名冊頁紅色警示）：勾被取消但格子還鎖著、或小位掛在第 2 輛以後。
+//     後者照引擎現況第 1 輛會從抽籤結果消失，抽籤前一定要處理。
+const smallMismatch = all.flatMap((h) =>
+  h.cars.map((c) => smallSeatProblem(c)).filter(Boolean).map((t) => `${h.戶號}：${t}`))
+if (smallMismatch.length)
+  add('warn', '志願小位與車位對不上（抽籤前必須處理）',
+    `共 ${smallMismatch.length} 台。名冊頁標紅；請秘書問住戶小位還要不要，要＝勾回志願小位，不要＝維護頁解除該格。`,
+    smallMismatch)
 
 // ── 輸出 ──
 const motorCars = all.reduce((n, h) => n + h.cars.filter((c) => !isBikeCar(c)).length, 0)
