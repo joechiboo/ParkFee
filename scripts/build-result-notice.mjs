@@ -1,12 +1,12 @@
 // 抽籤結果公告（A4 張貼版）— 把抽籤頁下載的配位結果 CSV 排成可列印張貼的 PDF。
 //
 // 輸入：抽籤頁「公告版 CSV」（欄位：戶號?,車號,車位編號,車位類型,應繳金額,簽約期限,狀態,備註）。
-//       有戶號欄就印戶號並依戶號排序；沒有就只印車號、依車號排序。
+//       有戶號欄就印棟別、戶號並依戶號排序；沒有就只印車號、依車號排序。
 // 輸出：同名 .html 與 .pdf（本機 Edge 無頭模式列印）。
 //
 // 用法：
 //   node scripts/build-result-notice.mjs --csv private/配位結果-公告版.csv --round 1 --announce 2026-12-01 --out private/抽籤結果公告.pdf
-//   加 --sample 會在每頁印「樣張」浮水印（示範資料用）。
+//   加 --sample 會在每頁印「樣張」浮水印（示範資料用）；--watermark 模擬 可換浮水印文字（隱含 --sample）。
 //   --round 1｜2 決定標題與說明文字；--deadline 省略時取 CSV 內的簽約期限。
 //
 // 版面：每頁兩欄、每欄固定列數，自己分頁（不靠瀏覽器斷表格，表頭每欄都重印）。
@@ -27,7 +27,8 @@ if (!csvPath) {
 }
 const round = arg('round', '1')
 const announce = arg('announce')
-const sample = process.argv.includes('--sample')
+const watermark = arg('watermark', '樣張')
+const sample = process.argv.includes('--sample') || process.argv.includes('--watermark')
 const outPdf = resolve(arg('out', csvPath.replace(/\.csv$/i, '') + '-公告.pdf'))
 const outHtml = outPdf.replace(/\.pdf$/i, '.html')
 
@@ -67,7 +68,9 @@ const assigned = motor.filter((r) => r.車位編號).sort(cmp)
 const missed = motor.filter((r) => !r.車位編號 && r.狀態 === '未中').sort(cmp)
 const waiting = motor.filter((r) => !r.車位編號 && r.狀態 !== '未中').sort(cmp)
 const bikeAssigned = bikes.filter((r) => r.車位編號).sort(cmp)
-const bikeMissed = bikes.filter((r) => !r.車位編號).sort(cmp)
+// 自行車也分兩輪（2026-11-24）：第一輪每戶第 2 輛起列「待第二輪」，不是沒抽中，要分開列。
+const bikeWaiting = bikes.filter((r) => !r.車位編號 && r.狀態 === '待第二輪').sort(cmp)
+const bikeMissed = bikes.filter((r) => !r.車位編號 && r.狀態 !== '待第二輪').sort(cmp)
 
 // 配位方式的公告用字：志願小位是登記時依先後順序選定的，標明出來（經理 2026-11-10）。
 const viaLabel = (v) => (v === '志願小位' ? '志願小位（依登記順序）' : v)
@@ -75,8 +78,14 @@ const viaLabel = (v) => (v === '志願小位' ? '志願小位（依登記順序�
 // ── 分頁：每頁兩欄，每欄 PER 列；第一頁因為有抬頭與說明，列數較少 ──
 const PER = 44
 const PER_FIRST = 34
-const hidTh = hasHid ? '<th>戶號</th>' : ''
-const hidTd = (r) => (hasHid ? `<td>${esc(r.戶號)}</td>` : '')
+// 棟別取戶號開頭字母（A–H 棟、S＝店面）；工作人員等非標準戶號留空（經理 2026-11-26 要求公告列棟別）。
+const towerOf = (h) => {
+  const m = String(h || '').match(/^([A-Z])\d+-\d+$/)
+  if (!m) return ''
+  return m[1] === 'S' ? '店面' : `${m[1]} 棟`
+}
+const hidTh = hasHid ? '<th>棟別</th><th>戶號</th>' : ''
+const hidTd = (r) => (hasHid ? `<td>${esc(towerOf(r.戶號))}</td><td>${esc(r.戶號)}</td>` : '')
 const table = (heads, cells) => (list) =>
   list.length
     ? `<table><thead><tr>${hidTh}${heads.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${list
@@ -99,7 +108,7 @@ const notes =
     ? [`機車配到車位者請於 <b>${roc(deadline)}</b> 前完成繳費，逾期視同放棄。`]
     : [
         `機車配到車位者請於 <b>${roc(deadline)}</b> 前完成繳費，逾期視同放棄，車位釋出供第二輪分配。`,
-        '「待第二輪」：每戶第 2 輛起的機車，於第二輪抽籤分配。「待安排」：重型機車，另行安排相鄰兩個大車位。',
+        '「待第二輪」：每戶第 2 輛起的機車與自行車，於第二輪抽籤分配。「待安排」：重型機車，另行安排相鄰兩個大車位。',
         '「未中」：本輪未配到車位，併入第二輪分配。',
       ]
 notes.push('應繳金額為機車位年度清潔費；自行車位免費。', '名單先列機車、後列自行車，各依戶號排序。對結果有疑問，請洽管理中心或 A、B 棟櫃台秘書。')
@@ -115,9 +124,10 @@ const sections = [
   ['機車：本輪未中', missed, tOther],
   ['機車：待第二輪／待安排', waiting, tOther],
   ['自行車：配到車位', bikeAssigned, tBike],
+  ['自行車：待第二輪', bikeWaiting, tBikeMissed],
   ['自行車：未配到車位', bikeMissed, tBikeMissed],
 ].filter(([, list]) => list.length)
-const NUM = ['一', '二', '三', '四', '五']
+const NUM = ['一', '二', '三', '四', '五', '六']
 // 排版：各段接續排，不強制換頁。每頁有「列數額度」，段標題算 2 列；
 // 一段在同一頁內左右兩欄平均分，剩不到 6 列就換頁，避免標題孤懸或只剩一列獨佔一頁。
 const HEAD_ROWS = 2
@@ -170,7 +180,7 @@ td.via { font-size: 8.5pt; }
 ${sheets
   .map(
     (s, i) =>
-      `<section class="sheet">${sample ? '<div class="wm">樣張</div>' : ''}${s}${i === sheets.length - 1 ? sign : ''}<div class="pageno">第 ${i + 1} 頁，共 ${sheets.length} 頁</div></section>`,
+      `<section class="sheet">${sample ? `<div class="wm">${esc(watermark)}</div>` : ''}${s}${i === sheets.length - 1 ? sign : ''}<div class="pageno">第 ${i + 1} 頁，共 ${sheets.length} 頁</div></section>`,
   )
   .join('\n')}
 </body></html>`
@@ -189,4 +199,4 @@ if (!existsSync(outPdf)) {
   process.exit(1)
 }
 console.log(`✅ ${outPdf}`)
-console.log(`   機車：配到 ${assigned.length}、未中 ${missed.length}、待第二輪／待安排 ${waiting.length}；自行車：配到 ${bikeAssigned.length}、未配到 ${bikeMissed.length}；共 ${sheets.length} 頁${sample ? '（樣張）' : ''}`)
+console.log(`   機車：配到 ${assigned.length}、未中 ${missed.length}、待第二輪／待安排 ${waiting.length}；自行車：配到 ${bikeAssigned.length}、待第二輪 ${bikeWaiting.length}、未配到 ${bikeMissed.length}；共 ${sheets.length} 頁${sample ? `（${watermark}）` : ''}`)
