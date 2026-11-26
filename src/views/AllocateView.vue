@@ -225,9 +225,12 @@ function downloadResultCSV(pub = true) {
   // 完整版＝含戶號＋工作人員列，僅物業內部（管理員鈕），不受開關影響。
   if (!result.value) return
   const withHH = showHousehold.value
+  // 第二輪的公告版只列本輪新配（輪次 0＝第一輪帶進來的已配位，比照發佈不重送），否則第二輪公告會把第一輪的人重貼一次（2026-11-26）。
+  // 完整版照舊全列：出帳腳本會自己排除第一輪已出帳的車。
+  const fresh = (r) => (pub && result.value.stage === 2 && r ? { ...r, assigned: r.assigned.filter((a) => a.輪次 !== 0) } : r)
   const csv =
     '﻿' +
-    mergedResultCSV([result.value, bikeResult.value], { 公告日: announceDate.value, 簽約期限: signDeadlineOverride.value, 公開版: pub, 含戶號: withHH })
+    mergedResultCSV([fresh(result.value), fresh(bikeResult.value)], { 公告日: announceDate.value, 簽約期限: signDeadlineOverride.value, 公開版: pub, 含戶號: withHH })
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

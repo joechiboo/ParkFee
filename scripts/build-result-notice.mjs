@@ -8,6 +8,8 @@
 //   node scripts/build-result-notice.mjs --csv private/配位結果-公告版.csv --round 1 --announce 2026-12-01 --out private/抽籤結果公告.pdf
 //   加 --sample 會在每頁印「樣張」浮水印（示範資料用）；--watermark 模擬 可換浮水印文字（隱含 --sample）。
 //   --round 1｜2 決定標題與說明文字；--deadline 省略時取 CSV 內的簽約期限。
+//   --by-tower：依 AB、CD、EF、GH 棟各產一份（檔名加 -AB 等），張貼在各棟海報旁（經理 2026-11-26）；
+//     店面（S 開頭）另產一份 -店面；工作人員公告版本來就不列。需要有戶號欄。
 //
 // 版面：每頁兩欄、每欄固定列數，自己分頁（不靠瀏覽器斷表格，表頭每欄都重印）。
 import { readFileSync, writeFileSync, existsSync, rmSync } from 'node:fs'
@@ -29,12 +31,16 @@ const round = arg('round', '1')
 const announce = arg('announce')
 const watermark = arg('watermark', '樣張')
 const sample = process.argv.includes('--sample') || process.argv.includes('--watermark')
-const outPdf = resolve(arg('out', csvPath.replace(/\.csv$/i, '') + '-公告.pdf'))
-const outHtml = outPdf.replace(/\.pdf$/i, '.html')
+const outBase = resolve(arg('out', csvPath.replace(/\.csv$/i, '') + '-公告.pdf'))
+const byTower = process.argv.includes('--by-tower')
 
-const rows = parseCSVObjects(readFileSync(csvPath, 'utf8').replace(/^\ufeff/, ''))
-const hasHid = rows.some((r) => r.戶號)
-const deadline = arg('deadline') || rows.find((r) => r.簽約期限)?.簽約期限 || ''
+const allRows = parseCSVObjects(readFileSync(csvPath, 'utf8').replace(/^\ufeff/, ''))
+const hasHid = allRows.some((r) => r.戶號)
+const deadline = arg('deadline') || allRows.find((r) => r.簽約期限)?.簽約期限 || ''
+if (byTower && !hasHid) {
+  console.error('❌ --by-tower 需要戶號欄：抽籤頁下載公告版 CSV 前要先打開「顯示戶號」')
+  process.exit(1)
+}
 
 // 戶號自然排序：棟別字母 → 房型編號 → 樓層；工作人員等非標準戶號排最後。
 const hidKey = (h) => {
@@ -60,6 +66,9 @@ const plate = (v) => {
   return m ? `自行車 第 ${m[1]} 輛` : v
 }
 
+// 產一份公告：rows＝這份要列的資料，group＝棟別標示（'A、B 棟'；不分棟時給 ''）。
+function build(rows, group, outPdf) {
+const outHtml = outPdf.replace(/\.pdf$/i, '.html')
 // 機車與自行車分開列（經理 2026-11-10）：先機車、後自行車，各自依戶號排序。
 const isBike = (r) => r.車位類型 === '自行車' || /^自行車-/.test(String(r.車號 || ''))
 const motor = rows.filter((r) => !isBike(r))
@@ -104,9 +113,14 @@ const tBike = table(['車輛', '車位', '配位方式'], (r) => `<td>${esc(plat
 const tBikeMissed = table(['車輛', '狀態', '說明'], (r) => `<td>${esc(plate(r.車號))}</td><td>${esc(r.狀態)}</td><td>${esc(r.備註)}</td>`)
 
 const title = `樂菲莊園社區 116 年度機車及自行車停車位　第${round === '2' ? '二' : '一'}輪抽籤結果公告`
+const groupLine = group ? `<div class="group">${esc(group)}</div>` : ''
 const notes =
   round === '2'
-    ? [`機車配到車位者請於 <b>${roc(deadline)}</b> 前完成繳費，逾期視同放棄。`]
+    ? [
+        `機車配到車位者請於 <b>${roc(deadline)}</b> 前完成繳費，逾期視同放棄。`,
+        '本公告只列第二輪新分配的車輛；第一輪已配到車位者不再重列。',
+        '自行車第 2 輛起依順序號分配剩餘車位，車位不足者列「未中」。',
+      ]
     : [
         `機車配到車位者請於 <b>${roc(deadline)}</b> 前完成繳費，逾期視同放棄，車位釋出供第二輪分配。`,
         '「待第二輪」：每戶第 2 輛起的機車與自行車，於第二輪抽籤分配。「待安排」：重型機車，另行安排相鄰兩個大車位。',
@@ -117,6 +131,7 @@ notes.push('應繳金額為機車位年度清潔費；自行車位免費。', '�
 const count = (label, n) => (n ? `${label} ${n} 輛` : '')
 const head = `
 <h1>${esc(title)}</h1>
+${groupLine}
 <div class="meta">${announce ? `公告日期：${roc(announce)}　` : ''}${deadline ? `繳費期限：${roc(deadline)}　` : ''}${[count('機車配到', assigned.length), count('自行車配到', bikeAssigned.length)].filter(Boolean).join('、')}</div>
 <ol class="notes">${notes.map((n) => `<li>${n}</li>`).join('')}</ol>`
 
@@ -155,13 +170,14 @@ sections.forEach(([label, list, render], n) => {
 if (cur) flush()
 const sign = `<div class="sign">樂菲莊園管理委員會</div>`
 
-const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
+const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><title>${esc(title)}${group ? '（' + esc(group) + '）' : ''}</title><style>
 @page { size: A4; margin: 12mm 11mm 12mm; }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; font-size: 9.5pt; color: #111; }
 .sheet { position: relative; page-break-after: always; }
 .sheet:last-child { page-break-after: auto; }
 h1 { font-size: 16pt; text-align: center; margin: 0 0 4px; letter-spacing: 1px; }
+.group { text-align: center; font-size: 22pt; font-weight: 900; letter-spacing: 6px; margin: 2px 0 4px; }
 .meta { text-align: center; font-size: 10pt; margin-bottom: 4px; }
 .notes { margin: 0 0 6px; padding-left: 1.6em; font-size: 9.5pt; line-height: 1.45; }
 h2 { font-size: 11.5pt; margin: 8px 0 4px; border-left: 4px solid #333; padding-left: 6px; }
@@ -199,5 +215,27 @@ if (!existsSync(outPdf)) {
   console.error('❌ PDF 沒有產出（Edge 無頭模式失敗）。HTML 已寫出：' + outHtml)
   process.exit(1)
 }
-console.log(`✅ ${outPdf}`)
+console.log(`✅ ${group ? `[${group}] ` : ''}${outPdf}`)
 console.log(`   機車：配到 ${assigned.length}、未中 ${missed.length}、待第二輪／待安排 ${waiting.length}；自行車：配到 ${bikeAssigned.length}、待第二輪 ${bikeWaiting.length}、未配到 ${bikeMissed.length}；共 ${sheets.length} 頁${sample ? `（${watermark}）` : ''}`)
+}
+
+// 棟別組（經理 2026-11-26：依 AB、CD、EF、GH 棟列表，張貼在各棟海報旁）
+const GROUPS = [
+  ['AB', 'A、B 棟', /^[AB]\d+-\d+$/],
+  ['CD', 'C、D 棟', /^[CD]\d+-\d+$/],
+  ['EF', 'E、F 棟', /^[EF]\d+-\d+$/],
+  ['GH', 'G、H 棟', /^[GH]\d+-\d+$/],
+  ['店面', '店面', /^S\d+-\d+$/],
+]
+if (byTower) {
+  const covered = new Set()
+  for (const [suffix, label, re] of GROUPS) {
+    const sub = allRows.filter((r) => re.test(String(r.戶號 || '')))
+    sub.forEach((r) => covered.add(r))
+    if (sub.length) build(sub, label, outBase.replace(/\.pdf$/i, `-${suffix}.pdf`))
+  }
+  const left = allRows.filter((r) => !covered.has(r))
+  if (left.length) console.log(`⚠️ 有 ${left.length} 列不屬於任何棟別（戶號：${[...new Set(left.map((r) => r.戶號))].join('、')}），未列入分棟公告`)
+} else {
+  build(allRows, '', outBase)
+}
