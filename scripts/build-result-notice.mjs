@@ -78,11 +78,12 @@ const viaLabel = (v) => (v === '志願小位' ? '志願小位（依登記順序�
 // ── 分頁：每頁兩欄，每欄 PER 列；第一頁因為有抬頭與說明，列數較少 ──
 const PER = 44
 const PER_FIRST = 34
-// 棟別取戶號開頭字母（A–H 棟、S＝店面）；工作人員等非標準戶號留空（經理 2026-11-26 要求公告列棟別）。
+// 棟別取戶號開頭字母（A–H、S＝店面）；工作人員等非標準戶號留空（經理 2026-11-26 要求公告列棟別）。
+// 只印字母不加「棟」：A4 半頁欄寬有限，多一個字右欄的配位方式就會被裁掉。
 const towerOf = (h) => {
   const m = String(h || '').match(/^([A-Z])\d+-\d+$/)
   if (!m) return ''
-  return m[1] === 'S' ? '店面' : `${m[1]} 棟`
+  return m[1] === 'S' ? '店面' : m[1]
 }
 const hidTh = hasHid ? '<th>棟別</th><th>戶號</th>' : ''
 const hidTd = (r) => (hasHid ? `<td>${esc(towerOf(r.戶號))}</td><td>${esc(r.戶號)}</td>` : '')
@@ -164,15 +165,15 @@ h1 { font-size: 16pt; text-align: center; margin: 0 0 4px; letter-spacing: 1px; 
 .meta { text-align: center; font-size: 10pt; margin-bottom: 4px; }
 .notes { margin: 0 0 6px; padding-left: 1.6em; font-size: 9.5pt; line-height: 1.45; }
 h2 { font-size: 11.5pt; margin: 8px 0 4px; border-left: 4px solid #333; padding-left: 6px; }
-.cols { display: flex; gap: 6mm; align-items: flex-start; }
+.cols { display: flex; gap: 4mm; align-items: flex-start; }
 .cols > div { flex: 1; min-width: 0; }
-table { width: 100%; border-collapse: collapse; }
-th, td { border: 0.6px solid #666; padding: 0 4px; height: 5.4mm; line-height: 5.2mm; white-space: nowrap; overflow: hidden; text-align: center; }
+table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+th, td { border: 0.6px solid #666; padding: 0 2px; height: 5.4mm; line-height: 5.2mm; white-space: nowrap; overflow: hidden; text-align: center; }
 th { background: #e8e8e8; font-weight: 700; }
 tbody tr:nth-child(even) { background: #f6f6f6; }
 td.seat { font-weight: 700; font-size: 10pt; }
 td.num { text-align: right; }
-td.via { font-size: 8.5pt; }
+td.via { font-size: 8pt; letter-spacing: -0.3px; }
 .sign { text-align: right; font-size: 12pt; font-weight: 700; margin-top: 8mm; }
 .pageno { text-align: center; font-size: 8.5pt; color: #555; margin-top: 3mm; }
 .wm { position: absolute; top: 105mm; left: 0; right: 0; text-align: center; font-size: 110pt; font-weight: 900; color: rgba(200,0,0,.13); transform: rotate(-28deg); pointer-events: none; letter-spacing: 12px; }
