@@ -11,6 +11,14 @@ import { normalizeHousehold } from '../_shared/normalize.ts'
 import { buildVehicleRows, isBikeOnly, plateTakenElsewhere } from '../_shared/vehicles.ts'
 import { clientIp, isBikeOnlyHousehold, bikeThrottled, logLogin, maskPhone, THROTTLE_MSG } from '../_shared/bike-auth.ts'
 
+// 稽核用的車輛摘要：「一般#1 …1234 志願小位 位239」。車號只留末 4 碼——足以在同一戶內認出是哪台、
+// 又不在稽核表再複製一份完整車號（http.ts audit：detail 不放個資）。
+function vehicleBrief(v: Record<string, unknown>): string {
+  const bike = v.車種 === '自行車'
+  const tail = bike ? '' : ' …' + String(v.車號 ?? '').replace(/[^0-9A-Za-z]/g, '').slice(-4)
+  return `${v.車種}#${v.第幾輛}${tail}${v.志願小位 ? ' 志願小位' : ''}${v.車位編號 ? ' 位' + v.車位編號 : ''}${v.已繳費 ? ' 已繳' : ''}`
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405)
@@ -62,8 +70,8 @@ Deno.serve(async (req) => {
     const taken = await plateTakenElsewhere(db, hid, cleaned)
     if (taken) return json({ error: taken }, 409)
 
-    // 原子整批取代（含跨戶車號衝突檢查）
-    const { error } = await db.rpc('app_update_household', {
+    // 原子整批取代（含跨戶車號衝突檢查）。0019 起回傳 { before: 改前車輛, released: 這次釋放的志願小位格號 }。
+    const { data: rpcOut, error } = await db.rpc('app_update_household', {
       p_hid: hid,
       p_phone: phone,
       p_vehicles: cleaned,
@@ -76,12 +84,24 @@ Deno.serve(async (req) => {
     if (工作人員 !== undefined) 戶旗標.工作人員 = !!工作人員
     if (!bikeAuth && Object.keys(戶旗標).length) await db.from('household').update(戶旗標).eq('戶號', hid)
 
-    if (byAdmin) await audit(db, 'household.update', { body: admin, target: hid, detail: { 車輛數: cleaned.length } })
-    if (bikeAuth) {
-      const 新增機車 = cleaned.filter((r) => r.車種 !== '自行車').map((r) => r.車號)
-      await audit(db, 'household.update', { body: { 戶號: hid }, target: hid, detail: { via: '空白車號（純自行車戶）', ip, 車輛數: cleaned.length, ...(新增機車.length ? { 新增機車 } : {}) } })
-    }
     const h = await fetchHousehold(db, hid)
+
+    // 稽核（2026-11-26 起每次修改都記，含住戶自己改）：改前／改後車輛摘要＋釋放的志願小位。
+    // 11/26 前只記管理員代改的「車輛數」，E1-10 輛次被調換、D7-11 的志願小位被取消都查不出經過。
+    const out = (rpcOut ?? {}) as { before?: Record<string, unknown>[]; released?: string[] }
+    const 新增機車 = bikeAuth ? cleaned.filter((r) => r.車種 !== '自行車').map((r) => r.車號) : []
+    await audit(db, 'household.update', {
+      body: byAdmin ? admin : { 戶號: hid },
+      target: hid,
+      detail: {
+        via: byAdmin ? '管理員代改' : bikeAuth ? '空白車號（純自行車戶）' : '住戶自改',
+        ...(bikeAuth ? { ip } : {}),
+        改前: (out.before ?? []).map(vehicleBrief),
+        改後: (h?.vehicles ?? []).map(vehicleBrief),
+        ...(out.released?.length ? { 釋放志願小位: out.released } : {}),
+        ...(新增機車.length ? { 新增機車 } : {}),
+      },
+    })
     // 還是純自行車戶 → 電話照樣遮住、維持空白車號登入；加了機車 → 回完整資料，前端改用那台機車的車號當登入憑證
     const stillBike = bikeAuth && isBikeOnly(cleaned)
     return json({ household: stillBike && h ? { ...h, 電話: maskPhone(h.電話), 僅自行車登入: true } : h })

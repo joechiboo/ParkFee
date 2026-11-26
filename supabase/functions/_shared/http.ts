@@ -112,7 +112,11 @@ export async function audit(
 ): Promise<void> {
   try {
     // 單一共用密碼追不到人；管理員戶號＋車牌這種才記得出是誰。
-    const actor = opts.body?.password ? 'password' : normalizeHousehold(opts.body?.戶號) || '?'
+    // 前端 adminAuth() 兩條路都會把登入時車號欄的內容塞進 password（H3-6 塞的是車牌），
+    // 所以要比對真的是管理員密碼才記 'password'，否則記戶號（2026-11-26 前 H3-6 也被記成 password）。
+    const secret = Deno.env.get('ADMIN_PASSWORD')
+    const byPassword = !!secret && String(opts.body?.password ?? '') === secret
+    const actor = byPassword ? 'password' : normalizeHousehold(opts.body?.戶號) || (opts.body?.password ? 'password?' : '?')
     await db.from('audit_log').insert({
       action,
       actor,

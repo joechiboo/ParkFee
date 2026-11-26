@@ -53,6 +53,8 @@ onMounted(() => {
     身障: !!v.身障,
     志願小位: !!v.志願小位,
     特徵: v.特徵 || '',
+    // 線上選定中的志願小位（只供畫面提示，不送後端）：取消勾選送出後，後端會釋放這一格（0019）。
+    heldSmall: v.配位狀態 === '志願小位' && v.志願小位 && v.車位編號 ? String(v.車位編號) : '',
   }))
   form.vehicles = vs.length ? vs : [blankVehicle()]
   editTarget.value = null // 取用後清空，避免之後新登記誤入編輯模式
@@ -311,6 +313,9 @@ async function submit() {
             <label v-if="v.車種 === '一般' && form.vehicles.findIndex((x) => !isBike(x)) === i" class="flex items-center gap-2 py-1 text-sm text-slate-700">
               <input v-model="v.志願小位" type="checkbox" class="h-4 w-4" /> 志願小位（限第 1 輛：登記後到選位頁<b>直接選定一格</b>，免抽籤、先選先得）
             </label>
+            <p v-if="v.heldSmall && !v.志願小位" class="w-full rounded border border-red-300 bg-red-50 px-2 py-1 text-xs text-red-800">
+              這台已選定小位 <b>{{ v.heldSmall }}</b>。取消勾選並送出後，<b>小位 {{ v.heldSmall }} 會被釋放</b>，改回一般抽籤，別戶可以選走這一格。不是要放棄小位的話，請把勾選打回去。
+            </p>
           </div>
         </div>
 
