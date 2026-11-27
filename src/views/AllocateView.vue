@@ -212,7 +212,7 @@ const bikeLostRows = computed(() =>
 
 // 下載配位結果 CSV（公告日 → 簽約期限=公告+10；加 BOM 供 Excel 中文正確）。
 const announceDate = ref('')
-// 簽約期限直接指定：公告寫 12/10、第二輪 12/25，而公告日+10 會算出 12/11；填了就以這個為準。
+// 簽約期限直接指定：填了就以這個為準。第一輪 12/11（經理 11/27 改）、第二輪 12/25 剛好都等於公告日+10。
 const signDeadlineOverride = ref('')
 
 // 發佈結果（回填 vehicle）＝寫真實資料 → 只有管理員看得到此鈕，後端再驗 ADMIN_PASSWORD。
@@ -402,7 +402,7 @@ function downloadResultCSV(pub = true) {
           />
         </label>
         <label class="block">
-          <span class="text-sm font-medium text-slate-700">簽約期限（填了就以此為準，如公告寫 12/10）</span>
+          <span class="text-sm font-medium text-slate-700">簽約期限（填了就以此為準；第一輪 12/11、第二輪 12/25）</span>
           <input
             v-model="signDeadlineOverride"
             type="date"

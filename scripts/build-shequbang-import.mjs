@@ -8,8 +8,8 @@
 // ⚠️ 只讀不寫原檔：管理費／汽車清潔費等欄一律照抄，我們只碰「機車清潔費」。
 //
 // 用法：
-//   兩輪分開收費（2026-11-05：抽中才繳）。第一輪 12/2 出帳、12/10 止；第二輪 12/16 出帳、12/25 止：
-//   node scripts/build-shequbang-import.mjs --fee <範例檔.csv> --result <第一輪結果.csv> --round 1 --announce 2026-12-01 --due 2026-12-10 --out <輸出.csv>
+//   兩輪分開收費（2026-11-05：抽中才繳）。第一輪 12/2 出帳、12/11（晚上 8 點）止；第二輪 12/16 出帳、12/25 止：
+//   node scripts/build-shequbang-import.mjs --fee <範例檔.csv> --result <第一輪結果.csv> --round 1 --announce 2026-12-01 --due 2026-12-11 --out <輸出.csv>
 //   node scripts/build-shequbang-import.mjs --fee <範例檔.csv> --result <第二輪結果.csv> --round 2 --billed <第一輪結果.csv> --announce 2026-12-15 --due 2026-12-25 --out <輸出.csv>
 //   加 --dry 只驗證不寫檔
 import { readFileSync, writeFileSync } from 'node:fs'

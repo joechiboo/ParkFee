@@ -59,7 +59,7 @@ const selectedIsLottery = computed(() => !!selectedAssign.value && !selectedAssi
 
 const STATUS_OPTIONS = ['志願小位', '無障礙', '保留', '維修', '分配']
 
-// ── 未繳費／逾期批次解除（12/10 繳費截止後，把第一輪中籤與志願小位沒繳的釋出，第二輪才配得到）──
+// ── 未繳費／逾期批次解除（12/11 晚上 8 點繳費截止後，把第一輪中籤與志願小位沒繳的釋出，第二輪才配得到）──
 // 一台車只列一次（重機兩格同車號）；解除走 unlockSeat（後端一併清車位、繳費、簽約期限並稽核）。
 const todayStr = computed(() => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10))
 const unpaid = computed(() => {
@@ -431,7 +431,7 @@ function decorate(s) {
             </div>
           </div>
 
-          <!-- 未繳費／逾期批次解除：12/10 繳費截止後釋出，第二輪才配得到 -->
+          <!-- 未繳費／逾期批次解除：12/11 繳費截止後釋出，第二輪才配得到 -->
           <div v-if="unpaid.length" class="rounded-lg border border-amber-200 bg-amber-50 p-4">
             <div class="font-semibold text-amber-800">未繳費 <span class="text-amber-600">({{ unpaid.length }} 台)</span></div>
             <p class="mt-1 text-xs text-amber-700">

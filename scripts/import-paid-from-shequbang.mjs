@@ -1,4 +1,4 @@
-// 繳費回查（第一輪 12/11、第二輪 12/26）：讀社區幫「管理費列表 → 下載檔案」匯出檔，把已繳的戶批次標進系統（vehicle.已繳費）。
+// 繳費回查（第一輪 12/14、第二輪 12/26；第一輪截止 12/11 晚上 8 點）：讀社區幫「管理費列表 → 下載檔案」匯出檔，把已繳的戶批次標進系統（vehicle.已繳費）。
 // 作業流程見 docs/37 §2；資料格式見 docs/24 §5。
 //
 // 判斷規則：
@@ -12,7 +12,7 @@
 // 用法：
 //   node scripts/import-paid-from-shequbang.mjs --round 1 --file private/shequbang/payment-20261211-big5.csv
 //   $env:ADMIN_PASSWORD='…'; node scripts/import-paid-from-shequbang.mjs --round 1 --file <匯出.csv> --apply
-//   選項：--category <字串>（蓋過 --round）  --source "社區幫第一輪 2026-12-11"（預設帶今天）  --undo（與 --apply 併用，只撤回這個來源標的）
+//   選項：--category <字串>（蓋過 --round）  --source "社區幫第一輪 2026-12-14"（預設帶今天）  --undo（與 --apply 併用，只撤回這個來源標的）
 import { readFileSync } from 'node:fs'
 import { parseCSVObjects } from '../src/data/csv.js'
 import { decodeBig5 } from './lib/big5.mjs'
@@ -59,7 +59,7 @@ const isMain = process.argv[1] && import.meta.url.endsWith(process.argv[1].repla
 if (isMain) {
   const file = arg('file')
   if (!file) {
-    console.error('用法：node scripts/import-paid-from-shequbang.mjs --round <1|2> --file <社區幫匯出.csv> [--category 字串] [--source "社區幫第一輪 2026-12-11"] [--apply] [--undo]')
+    console.error('用法：node scripts/import-paid-from-shequbang.mjs --round <1|2> --file <社區幫匯出.csv> [--category 字串] [--source "社區幫第一輪 2026-12-14"] [--apply] [--undo]')
     process.exit(2)
   }
   const round = arg('round')

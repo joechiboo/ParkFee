@@ -8,6 +8,8 @@
 //   node scripts/build-result-notice.mjs --csv private/配位結果-公告版.csv --round 1 --announce 2026-12-01 --out private/抽籤結果公告.pdf
 //   加 --sample 會在每頁印「樣張」浮水印（示範資料用）；--watermark 模擬 可換浮水印文字（隱含 --sample）。
 //   --round 1｜2 決定標題與說明文字；--deadline 省略時取 CSV 內的簽約期限。
+//   --deadline-time 截止時刻（印在日期與星期後面）；第一輪預設「晚上 8 點」（經理 2026-11-27：12/11 晚上 8 點截止），
+//     第二輪預設不印時刻；要拿掉就給 --deadline-time ""。
 //   --by-tower：依 AB、CD、EF、GH 棟各產一份（檔名加 -AB 等），張貼在各棟海報旁（經理 2026-11-26）；
 //     店面（S 開頭）另產一份 -店面；工作人員公告版本來就不列。需要有戶號欄。
 //
@@ -37,6 +39,8 @@ const byTower = process.argv.includes('--by-tower')
 const allRows = parseCSVObjects(readFileSync(csvPath, 'utf8').replace(/^\ufeff/, ''))
 const hasHid = allRows.some((r) => r.戶號)
 const deadline = arg('deadline') || allRows.find((r) => r.簽約期限)?.簽約期限 || ''
+const dtIdx = process.argv.indexOf('--deadline-time')
+const deadlineTime = dtIdx >= 0 ? (process.argv[dtIdx + 1] ?? '') : round === '1' ? '晚上 8 點' : ''
 if (byTower && !hasHid) {
   console.error('❌ --by-tower 需要戶號欄：抽籤頁下載公告版 CSV 前要先打開「顯示戶號」')
   process.exit(1)
@@ -59,6 +63,13 @@ const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').
 const roc = (d) => {
   const m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})$/)
   return m ? `${+m[1] - 1911} 年 ${+m[2]} 月 ${+m[3]} 日` : d
+}
+// 截止日：日期＋星期＋時刻，例「115 年 12 月 11 日（五）晚上 8 點」。
+const rocDeadline = (d) => {
+  const m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return d
+  const wd = '日一二三四五六'[new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).getUTCDay()]
+  return `${roc(d)}（${wd}）${deadlineTime}`
 }
 // 自行車車號是系統合成鍵（自行車-戶號-序），公告上顯示成「自行車 第 N 輛」。
 const plate = (v) => {
@@ -117,12 +128,12 @@ const groupLine = group ? `<div class="group">${esc(group)}</div>` : ''
 const notes =
   round === '2'
     ? [
-        `機車配到車位者請於 <b>${roc(deadline)}</b> 前完成繳費，逾期視同放棄。`,
+        `機車配到車位者請於 <b>${rocDeadline(deadline)}</b> 前完成繳費，逾期視同放棄。`,
         '本公告只列第二輪新分配的車輛；第一輪已配到車位者不再重列。',
         '自行車第 2 輛起依順序號分配剩餘車位，車位不足者列「未中」。',
       ]
     : [
-        `機車配到車位者請於 <b>${roc(deadline)}</b> 前完成繳費，逾期視同放棄，車位釋出供第二輪分配。`,
+        `機車配到車位者請於 <b>${rocDeadline(deadline)}</b> 前完成繳費，逾期視同放棄，車位釋出供第二輪分配。`,
         '「待第二輪」：每戶第 2 輛起的機車與自行車，於第二輪抽籤分配。「待安排」：重型機車，另行安排相鄰兩個大車位。',
         '「未中」：本輪未配到車位，併入第二輪分配。',
       ]
@@ -132,7 +143,7 @@ const count = (label, n) => (n ? `${label} ${n} 輛` : '')
 const head = `
 <h1>${esc(title)}</h1>
 ${groupLine}
-<div class="meta">${announce ? `公告日期：${roc(announce)}　` : ''}${deadline ? `繳費期限：${roc(deadline)}　` : ''}${[count('機車配到', assigned.length), count('自行車配到', bikeAssigned.length)].filter(Boolean).join('、')}</div>
+<div class="meta">${announce ? `公告日期：${roc(announce)}　` : ''}${deadline ? `繳費期限：${rocDeadline(deadline)}　` : ''}${[count('機車配到', assigned.length), count('自行車配到', bikeAssigned.length)].filter(Boolean).join('、')}</div>
 <ol class="notes">${notes.map((n) => `<li>${n}</li>`).join('')}</ol>`
 
 const sections = [

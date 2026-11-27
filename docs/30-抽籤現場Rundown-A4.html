@@ -80,9 +80,9 @@
     <div class="note">記下自行車區塊標題的「<b>順序號到 N 號</b>」與機車的最後順序號——12/15 第二輪要從這裡接續。</div>
   </li>
 
-  <li><b>存證與發佈</b>：打開「<b>顯示戶號</b>」→ 公告日填 <b>12/1</b>、<b>簽約期限填 12/10</b>（不填會算成公告日＋10＝12/11）→ <b>⬇ 下載公告版 CSV</b>＋<b>完整版 CSV</b>（順手截圖摘要）→ <b>📢 發佈結果</b>（住戶即可登入 <code>/me</code> 查詢）。</li>
+  <li><b>存證與發佈</b>：打開「<b>顯示戶號</b>」→ 公告日填 <b>12/1</b>、<b>簽約期限填 12/11</b>（12/11 晚上 8 點截止；不填也會算成公告日＋10＝12/11）→ <b>⬇ 下載公告版 CSV</b>＋<b>完整版 CSV</b>（順手截圖摘要）→ <b>📢 發佈結果</b>（住戶即可登入 <code>/me</code> 查詢）。</li>
 
-  <li><b>分棟公告</b>（AB／CD／EF／GH 各一份，店面另一份）：<code>node scripts/build-result-notice.mjs --csv &lt;公告版CSV&gt; --round 1 --announce 2026-12-01 --deadline 2026-12-10 --by-tower</code></li>
+  <li><b>分棟公告</b>（AB／CD／EF／GH 各一份，店面另一份）：<code>node scripts/build-result-notice.mjs --csv &lt;公告版CSV&gt; --round 1 --announce 2026-12-01 --deadline 2026-12-11 --by-tower</code>（截止日自動印「（五）晚上 8 點」；張貼印 A3＋符合紙張大小）</li>
 </ol>
 
 <h2 class="warn">③ 收場前必做：存證三件套</h2>
