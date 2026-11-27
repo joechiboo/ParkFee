@@ -134,8 +134,8 @@ const esc = (v) => {
 }
 const csv = '﻿' + [COLUMNS.join(','), ...rows.map((r) => COLUMNS.map((c) => esc(r[c])).join(','))].join('\r\n')
 
-if (!existsSync('private')) mkdirSync('private')
-const out = `private/roster-test-${TARGET}.csv`
+if (!existsSync('private/test-data')) mkdirSync('private/test-data', { recursive: true })
+const out = `private/test-data/roster-test-${TARGET}.csv`
 writeCsvUtf8(out, csv)
 
 const houses = new Set(rows.map((r) => r.戶號)).size

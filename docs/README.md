@@ -99,7 +99,12 @@
 |---|---|
 | `private/notices/` | 社區公告原檔（含印章），檔名 `公告_<文號>_<主旨>.pdf`；剪章來源 |
 | `private/seals/` | 剪下的兩顆章（去背 PNG），由 `node scripts/extract-seals.mjs <公告.pdf>` 產生 |
-| `private/reference/` | 主委／經理提供的參考檔，檔名 `<來源>_<主旨>_<日期>`（規約對照表範本、B1 圖修改稿、**10 月例會紀錄 V1.2 合併版／V1.3 原件**、10/29 臨時會掃描＋手寫批註、`主委LINE回饋_20261030/` 四張截圖） |
+| `private/reference/` | 主委／經理提供的參考檔，檔名 `<來源>_<主旨>_<日期>`（規約對照表範本、B1 圖修改稿、**10 月例會紀錄 V1.2 合併版／V1.3 原件**、10/29 臨時會掃描＋手寫批註、`主委LINE回饋_20261030/` 四張截圖）；另收早期素材（eTag 資料與分析腳本、115/05 管理費 csv、8/18 管理辦法草案） |
+| `private/roster/` | `export-roster.mjs` 匯出的真實名冊 `roster-<時間>.csv`；`check-roster.mjs` 不帶參數時抓這裡最新一份 |
+| `private/test-data/` | 演練／模擬／測試資料（`roster-test-*`、模擬第一／二輪、測試配位結果、社區幫自行測試匯入檔）——**不是正式資料** |
+| `private/給經理/<YYYYMMDD>/` | 依日期存放給經理的版本 |
+| `private/` 根目錄 | 只放 `backup-log.txt`（每日備份排程寫入）、`staff-roster.txt`（健檢讀）、聯繫名單；12/1 起正式的 `配位結果-第N輪.csv`、`社區幫匯入-第N輪.csv` 也放這裡（docs/37） |
+| `private/shequbang/` | 社區幫匯出的帳單／繳費檔與範本 |
 | `docs/pdf/9月例會送出版/` | 9 月例會實際寄出的檔案（與 docs/pdf 內同內容，保留寄出時檔名） |
 
 - `print-map-a3.mjs --seal image` 輸出到 `public/` 會**直接報錯**（public/ 隨網站部署）。

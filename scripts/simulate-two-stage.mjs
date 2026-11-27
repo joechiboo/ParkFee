@@ -11,7 +11,7 @@
 //   3. stage 2：第 1 輛落空者電腦補位 → 第 2 輛起 → 重機相鄰兩大位 → 工作人員，再出第二輪帳單
 //
 // 用法：
-//   node scripts/simulate-two-stage.mjs --roster private/roster-test-400.csv
+//   node scripts/simulate-two-stage.mjs --roster private/test-data/roster-test-400.csv
 //   node scripts/simulate-two-stage.mjs --roster <名冊.csv> --seed "2026-12-01" --paid-ratio 0.9
 //   node scripts/simulate-two-stage.mjs --roster <名冊.csv> --offline            # 不連 Supabase、不扣鎖定位
 //   node scripts/simulate-two-stage.mjs --roster <名冊.csv> --out-dir private    # 另寫 兩輪結果 CSV

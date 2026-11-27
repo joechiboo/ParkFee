@@ -8,7 +8,7 @@
 //      （URL 會沿用 .env 既有的 VITE_SUPABASE_URL；或另設 SUPABASE_URL）
 //   2) node scripts/export-roster.mjs
 //   （沒設 SUPABASE_SERVICE_ROLE_KEY 也能跑：自動改用 Supabase CLI 唯讀查詢，需先 npx supabase login）
-//   3) 產出 private/roster-<時間>.csv（gitignored）→ 交物業 或 匯入 AllocateView 抽籤
+//   3) 產出 private/roster/roster-<時間>.csv（gitignored）→ 交物業 或 匯入 AllocateView 抽籤
 //
 // CSV schema 與 registry.js 一致：戶號,車號,車種,第幾輛,身障,志願小位,登記時間,聯絡電話,車位志願,志願落選保底,來源
 
@@ -128,11 +128,11 @@ const rows = vehicles.map((v) => {
 
 const csv = [COLUMNS.join(','), ...rows.map((r) => COLUMNS.map((c) => esc(r[c])).join(','))].join('\r\n')
 
-if (!existsSync('private')) mkdirSync('private')
+if (!existsSync('private/roster')) mkdirSync('private/roster', { recursive: true })
 // 檔名用台北時間 YYYYMMDD-HHmm（原本用 UTC 且格式黏在一起，11/13 早上 9 點產的檔叫 2026-11-130107）
 const now = new Date(Date.now() + 8 * 3600 * 1000).toISOString()
 const stamp = `${now.slice(0, 10).replace(/-/g, '')}-${now.slice(11, 16).replace(':', '')}`
-const out = `private/roster-${stamp}.csv`
+const out = `private/roster/roster-${stamp}.csv`
 writeCsvUtf8(out, csv)
 
 console.log(`✓ 匯出 ${rows.length} 筆車輛 / ${households.length} 戶 → ${out}`)

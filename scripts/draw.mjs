@@ -8,7 +8,7 @@
 // 與 /allocate 頁用的是同一套引擎（distribute / distribute-bikes），同名冊＋同種子結果可重現。
 //
 // 用法：
-//   node scripts/draw.mjs --roster private/roster-test-400.csv
+//   node scripts/draw.mjs --roster private/test-data/roster-test-400.csv
 //   node scripts/draw.mjs --roster <名冊.csv> --seed "2026-12-01公開決定" --announce 2026-12-05 --out private/配位結果.csv
 //   node scripts/draw.mjs --roster <名冊.csv> --offline     # 不連 Supabase，不扣鎖定位（僅供離線試算）
 //

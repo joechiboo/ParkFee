@@ -4,7 +4,7 @@
 //    因為多數異常（身分衝突、無障礙超額、重機假相鄰）不是資料錯，是規則衝突，得由人決定。
 //
 // 用法：
-//   node scripts/check-roster.mjs                    # 自動抓 private/ 最新一份 roster-*.csv
+//   node scripts/check-roster.mjs                    # 自動抓 private/roster/ 最新一份 roster-*.csv
 //   node scripts/check-roster.mjs <roster.csv>       # 指定檔案
 //   （鎖定車位會嘗試連 Supabase 取得；連不到就以「未扣鎖定」計算並標註）
 import { readFileSync, readdirSync } from 'node:fs'
@@ -101,11 +101,11 @@ const argPath = process.argv[2]
 const rosterPath =
   argPath ||
   (() => {
-    const files = readdirSync('private')
+    const files = readdirSync('private/roster')
       .filter((f) => /^roster-.*\.csv$/.test(f))
       .sort()
-    if (!files.length) throw new Error('private/ 底下找不到 roster-*.csv，請先跑 export-roster.mjs 或指定路徑')
-    return join('private', files[files.length - 1])
+    if (!files.length) throw new Error('private/roster/ 底下找不到 roster-*.csv，請先跑 export-roster.mjs 或指定路徑')
+    return join('private/roster', files[files.length - 1])
   })()
 
 const rows = parseCSVObjects(
