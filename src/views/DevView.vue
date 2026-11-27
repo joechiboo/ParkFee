@@ -59,7 +59,14 @@ async function copyWipe() {
 const clearing = ref(false)
 const clearMsg = ref('')
 async function clearResult() {
-  if (!window.confirm('清除所有住戶的配位結果（車位編號/類型/狀態/簽約期限）？住戶/車輛資料保留。')) return
+  // 2026-11-27：11/15 起正式庫有住戶線上選定的志願小位與物業指派位，這顆會一起清掉（格子仍鎖著）→ 加重警告。
+  if (
+    !window.confirm(
+      '⚠️ 這會清除「所有車」的車位欄，包括住戶線上選定的志願小位與物業指派的車位（格子仍鎖著），之後重抽這些住戶會被當成沒有小位。\n\n' +
+        '第一輪發佈後要重來，請改用：同一頁換種子重跑再發佈，或匯入抽籤前下載的名冊。\n\n確定仍要全部清除？',
+    )
+  )
+    return
   clearing.value = true
   clearMsg.value = ''
   try {
@@ -122,7 +129,7 @@ function runDemo() {
     <div class="rounded-lg border-2 border-dashed border-amber-400 bg-amber-50 p-4">
       <h1 class="text-2xl font-bold text-amber-900">🛠 進階作業（管理員）</h1>
       <p class="mt-1 text-sm text-amber-800">
-        限管理員。<b>抽籤日</b>用「④ 匯入真實名冊」→ 配位頁抽籤；「②½ 清除配位結果」可撤回發佈重做。
+        限管理員。<b>抽籤日</b>在配位頁直接「載入真實名冊」抽籤；發佈後要重來<b>不要用</b>「②½ 清除配位結果」（會清掉住戶選定的小位），改用「④ 匯入真實名冊」匯入抽籤前下載的名冊重跑。
         <span v-if="isDev">灌 mock／清除測試／demo 僅開發模式顯示（mock 戶段一律 <b>9xx</b>，清除只刪 9xx）。</span>
       </p>
     </div>
@@ -169,8 +176,8 @@ function runDemo() {
     <div class="rounded-lg border border-slate-200 bg-white p-4">
       <h2 class="font-semibold">②½ 清除配位結果（保留住戶資料）</h2>
       <p class="mt-1 text-sm text-slate-500">
-        只清 <code>vehicle</code> 的車位編號／類型／配位狀態／簽約期限（＝撤回發佈）；住戶與車輛保留。
-        走 <code>publish-result</code>（service_role），免貼 SQL。
+        只清 <code>vehicle</code> 的車位編號／類型／配位狀態／簽約期限；住戶與車輛保留。
+        <b class="text-rose-700">⚠️ 會連住戶線上選定的志願小位、物業指派位一起清掉（格子仍鎖著）。11/15 後正式庫請勿使用</b>，發佈後重來改用「④ 匯入真實名冊」匯入抽籤前下載的名冊。
       </p>
       <button
         class="mt-3 rounded bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
