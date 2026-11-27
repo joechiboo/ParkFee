@@ -2,133 +2,86 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<title>抽籤演練操作清單 — 筆電操作用</title>
+<title>抽籤操作摘要 — 筆電用</title>
 <style>
-  @page{size:A4;margin:11mm 11mm}
+  @page{size:A4;margin:12mm 12mm}
   *{box-sizing:border-box}
-  body{font-family:"Microsoft JhengHei",sans-serif;color:#111;margin:0;background:#fff;font-size:12.5px;line-height:1.5}
+  body{font-family:"Microsoft JhengHei",sans-serif;color:#111;margin:0;background:#fff;font-size:13.5px;line-height:1.6}
   .page{max-width:800px;margin:0 auto}
-  h1{font-size:21px;text-align:center;margin:0;letter-spacing:2px}
-  .sub{text-align:center;font-size:11px;color:#666;margin:2px 0 9px}
-  h2{font-size:14.5px;margin:12px 0 5px;padding:3px 9px;background:#1d5fa8;color:#fff;border-radius:3px;break-after:avoid}
+  h1{font-size:22px;text-align:center;margin:0;letter-spacing:2px}
+  .sub{text-align:center;font-size:11.5px;color:#666;margin:2px 0 12px}
+  h2{font-size:15px;margin:14px 0 6px;padding:4px 10px;background:#1d5fa8;color:#fff;border-radius:3px}
   h2.warn{background:#c1121f}
   .chk{list-style:none;padding-left:0;margin:4px 0}
-  .chk>li{margin:0 0 5px;padding-left:1.25em;text-indent:-1.25em;break-inside:avoid}
+  .chk>li{margin:0 0 6px;padding-left:1.25em;text-indent:-1.25em}
   .chk>li::before{content:"☐ "}
-  .chk .tip{display:block;text-indent:0;color:#555;font-size:11.5px;margin-top:1px}
-  .cmd{display:block;text-indent:0;background:#f3f4f6;border:1px solid #ddd;border-radius:3px;padding:3px 7px;margin:3px 0 2px;font-family:Consolas,monospace;font-size:11px;line-height:1.45;white-space:pre-wrap;word-break:break-all}
-  .note{background:#f5f7fa;border-left:3px solid #999;padding:4px 9px;margin:5px 0;font-size:11.5px;color:#333}
+  .cmd{display:block;text-indent:0;background:#f3f4f6;border:1px solid #ddd;border-radius:3px;padding:2px 8px;margin:3px 0;font-family:Consolas,monospace;font-size:11.5px}
   .stop{color:#c1121f;font-weight:bold}
-  .blank{display:inline-block;min-width:70px;border-bottom:1px solid #333;margin:0 3px}
-  .blank.w{min-width:150px}
-  .rec{border:1.5px solid #1d5fa8;border-radius:5px;padding:7px 10px;margin:6px 0;font-size:12.5px;line-height:2.1}
-  table{width:100%;border-collapse:collapse;margin:5px 0;font-size:11.5px}
-  th,td{border:1px solid #aaa;padding:3px 7px;text-align:left;vertical-align:top}
-  th{background:#eef2f7}
-  code{background:#f0f0f0;padding:0 2px;font-family:Consolas,monospace;font-size:11.5px}
-  .foot{margin-top:10px;border-top:1px solid #ccc;padding-top:4px;font-size:10px;color:#777;text-align:center}
-  .pb{break-before:page}
-  .divider{display:flex;align-items:center;gap:10px;margin:16px 0 4px;color:#1d5fa8;font-weight:bold;font-size:12.5px;break-after:avoid}
+  .blank{display:inline-block;min-width:80px;border-bottom:1px solid #333;margin:0 3px}
+  .blank.w{min-width:170px}
+  .rec{border:1.5px solid #1d5fa8;border-radius:5px;padding:6px 12px;margin:8px 0;line-height:2.2}
+  .divider{display:flex;align-items:center;gap:10px;margin:18px 0 4px;color:#1d5fa8;font-weight:bold;font-size:13px}
   .divider::before,.divider::after{content:"";flex:1;border-top:2px dashed #1d5fa8}
+  .note{background:#f5f7fa;border-left:3px solid #999;padding:5px 10px;margin:8px 0;font-size:12.5px}
+  code{background:#f0f0f0;padding:0 2px;font-family:Consolas,monospace;font-size:12px}
+  .foot{margin-top:12px;border-top:1px solid #ccc;padding-top:4px;font-size:10.5px;color:#777;text-align:center}
 </style>
 </head>
 <body>
 <div class="page">
 
-<h1>抽籤演練操作清單</h1>
-<p class="sub">筆電操作用 · 正式站、<b>不發佈</b> · 12/1 正式抽籤也照這份（差異見最後一表） · 完整版 docs/41、背景 docs/14 · 2026-11-27</p>
+<h1>抽籤操作摘要</h1>
+<p class="sub">筆電用 · 演練不發佈、12/1 正式照同一份 · 指令在 <code>C:\Personal\Project\ParkFee</code> 開 PowerShell 跑 · 詳細版 docs/41</p>
 
-<div class="note">指令都在 <code>C:\Personal\Project\ParkFee</code>（<b>大寫 C</b>）開 PowerShell 跑。小寫 <code>c:\</code> 跑測試會全部假失敗。</div>
-
-<h2>〇、事前</h2>
+<h2 class="warn">1. 抽籤前：名冊健檢</h2>
 <ul class="chk">
-  <li>筆電插電、網路正常（Wi-Fi 不穩就開手機熱點）</li>
-  <li>正式站 <code>joechiboo.github.io/ParkFee</code> 按 <b>Ctrl+F5</b> → 戶號 <code>admin</code>＋車號欄填管理密碼登入</li>
-  <li><code>git pull</code>；<code>private/shequbang/payment-template-20261103-big5.csv</code> 在（全社區門牌，不進 git）</li>
+  <li>匯出名冊＋健檢 → 記下 <span class="blank"></span> 戶 ／ <span class="blank"></span> 台
+    <span class="cmd">node scripts/export-roster.mjs　→　node scripts/check-roster.mjs</span></li>
+  <li>「需處理」的項目都有交代；<b>志願小位對不上</b>一定要先改（D7-11：239 那台勾回小位、換成第 1 輛）</li>
 </ul>
 
-<h2 class="warn">一、名冊健檢（抽籤前一定要做）</h2>
+<h2>2. 配位頁：示範 → 載入 → 存名冊</h2>
 <ul class="chk">
-  <li>匯出最新名冊 → 記下 <span class="blank"></span> 台 ／ <span class="blank"></span> 戶
-    <span class="cmd">node scripts/export-roster.mjs</span></li>
-  <li>健檢（自動抓 <code>private/roster/</code> 最新一份）→ 看最後一行「需處理 N 項」
-    <span class="cmd">node scripts/check-roster.mjs</span></li>
-  <li><b>志願小位與車位對不上</b>＝<span class="stop">必須先處理</span>，否則該戶第 1 輛會從結果消失
-    <span class="tip">D7-11（11/27 定）：抽籤前住戶仍未回覆 → 持有 239 的車勾回志願小位、輛次換成第 1 輛（照 E1-10），再重匯、重健檢</span></li>
-  <li><b>沒填志願又沒勾電腦選號</b>應為 0；有就打電話催，否則必落選</li>
-  <li><b>工作人員不在員工名單</b>、<b>無障礙未核驗</b>：交物業確認（ℹ️ 開頭的只是參考，不擋抽籤）</li>
-  <li>網頁名冊頁勾「只看需聯繫確認」，黃／紅列與上面對得上</li>
-  <li>鎖定位核對：沒有「應鎖未鎖」；「多出 N 格」的 N ＝ 有車位的台數（沒有殘留鎖）
-    <span class="cmd">node scripts/verify-locks.mjs --phase after</span>
-    <span class="tip">規則鎖 71＝公益 20、動線轉角 28、498 漏水、641–655 共 15、無障礙保留 108／194、公益自行車 B114–118。結尾印 <code>Assertion failed … async.c</code> 是退出雜訊，不用理。</span></li>
-  <li>有改資料 → 回第一步重匯、重健檢</li>
-</ul>
-<div class="note">11/27 14:22：340 戶／558 台；需處理 3 項＝D7-11 小位對不上、工作人員不在名單 4、無障礙未核驗 1（A3-4）。鎖定 204＝規則 71＋有車 133。E8-3 的 503 是管委會指派（狀態「保留」），正常。A7-7、G6-8、H1-2 勾小位沒選格、也沒勾電腦選號，志願全被拿走會落選。</div>
-
-<h2>二、範例示範 → 下載名冊（配位頁）</h2>
-<ul class="chk">
-  <li><b>先示範</b>（頂端還是「🎲 範例 demo」時）：隨便一個種子跑兩次 → 結果一樣；換種子 → 結果整個不同
-    <span class="tip">已經載入名冊才想到 → 按 F5 就回到範例（名冊只存在分頁記憶體，不影響資料），示範完再載入</span></li>
-  <li>按「<b>⬇ 載入真實名冊</b>」→ 戶數／台數跟第一步<b>一樣</b>（不一樣＝有人改登記，回第一步）</li>
-  <li>按「<b>⬇ 下載本次名冊</b>」→ 存 <code>private/test-data/</code>（正式日存 <code>private/roster/</code>）
-    <span class="tip">抽籤用名冊的存證；發佈後要重抽也靠它</span></li>
+  <li>先用<b>範例 demo</b> 同種子跑兩次給大家看（已載入就按 F5 回範例）</li>
+  <li>「<b>⬇ 載入真實名冊</b>」→ 戶數／台數跟上面一樣</li>
+  <li>「<b>⬇ 下載本次名冊</b>」存檔</li>
 </ul>
 
-<h2>三、抽籤</h2>
+<h2>3. 抽籤</h2>
 <ul class="chk">
-  <li>輪次選「<b>第一輪 12/1</b>」<span class="stop">（預設「一次跑完」，一定要改）</span></li>
-  <li>種子填 <code>7-23-58</code> 格式 → <b>執行抽籤</b></li>
-  <li>同種子再跑一次 → 摘要與結果表一模一樣</li>
-  <li class="stop">⛔ 不按「📢 發佈結果」</li>
+  <li>輪次選「<b>第一輪 12/1</b>」<span class="stop">（預設是一次跑完，要改）</span></li>
+  <li>填種子（如 <code>7-23-58</code>）→ 執行；同種子再跑一次，結果一樣</li>
+  <li class="stop">演練：⛔ 不按「📢 發佈結果」</li>
 </ul>
 <div class="rec">
-  種子 <span class="blank w"></span>　　執行時間 <span class="blank"></span><br>
+  種子 <span class="blank w"></span><br>
   機車　配到 <span class="blank"></span>　落選 <span class="blank"></span>　順序號到 <span class="blank"></span> 號<br>
-  自行車　配到 <span class="blank"></span>　落選 <span class="blank"></span>　順序號到 <span class="blank"></span> 號　<span style="font-size:11px;color:#666">（順序號 12/15 第二輪要接續）</span>
+  自行車　配到 <span class="blank"></span>　落選 <span class="blank"></span>　順序號到 <span class="blank"></span> 號
 </div>
 
-<div class="divider pb">以下為抽完之後：匯出結果、出帳乾跑、公告</div>
+<div class="divider">以下為匯出結果</div>
 
-<h2>四、下載結果</h2>
+<h2>4. 下載結果</h2>
 <ul class="chk">
-  <li>開「<b>顯示戶號</b>」</li>
-  <li>公告日 <b>2026-12-01</b>、簽約期限 <b>2026-12-10</b></li>
-  <li>下載「<b>完整版 CSV</b>」→ <code>private/test-data/配位結果-演練-完整版.csv</code></li>
-  <li>下載「<b>公告版 CSV</b>」→ <code>private/test-data/配位結果-演練-公告版.csv</code></li>
-  <li>Excel 開：中文不亂碼、公告版有戶號欄</li>
+  <li>開「顯示戶號」，公告日 <b>12/01</b>、簽約期限 <b>12/10</b></li>
+  <li>下載<b>完整版 CSV</b>（出帳用）和<b>公告版 CSV</b>（貼公告用）</li>
 </ul>
 
-<h2>五、出帳乾跑與分棟公告</h2>
+<h2>5. 出帳乾跑、分棟公告</h2>
 <ul class="chk">
-  <li>社區幫帳單乾跑（不寫檔）→ 出現「✅ 驗證通過」；有 ❌ 不可上傳
-    <span class="cmd">node scripts/build-shequbang-import.mjs --fee private/shequbang/payment-template-20261103-big5.csv `
-  --result private/test-data/配位結果-演練-完整版.csv --round 1 `
-  --announce 2026-12-01 --due 2026-12-10 --bill-date 2026/12/1 --dry</span>
-    出帳 <span class="blank"></span> 戶　應收 <span class="blank"></span> 元</li>
-  <li>分棟公告（演練加浮水印）→ AB／CD／EF／GH／店面 5 份 PDF，棟別、戶號欄都有
-    <span class="cmd">node scripts/build-result-notice.mjs --csv private/test-data/配位結果-演練-公告版.csv `
-  --round 1 --announce 2026-12-01 --deadline 2026-12-10 --by-tower --watermark 演練</span></li>
+  <li>社區幫帳單乾跑 → 要看到「✅ 驗證通過」　出帳 <span class="blank"></span> 戶　<span class="blank"></span> 元</li>
+  <li>產 AB／CD／EF／GH／店面 5 份公告 PDF</li>
+</ul>
+<div class="note">這兩步的指令照 docs/41 第五段貼上，或交給 Claude 跑。</div>
+
+<h2 class="warn">12/1 正式時不一樣的地方</h2>
+<ul class="chk">
+  <li>種子由現場<b>三位住戶</b>各說 1–99，寫白板後一字不差填入</li>
+  <li>下載完結果 CSV <b>之後</b>才按「📢 發佈結果」</li>
+  <li>完整版存成 <code>private/配位結果-第一輪.csv</code>，12/2 出帳用</li>
 </ul>
 
-<h2>六、收尾確認</h2>
-<ul class="chk">
-  <li>隨便一戶登入「我的登記」<b>看不到車位</b>（＝沒誤按發佈）</li>
-  <li>演練檔都在 <code>private/test-data/</code>，沒混進 <code>private/</code> 根目錄（那裡留給正式檔）</li>
-</ul>
-
-<h2 class="warn">正式日（12/1）差異</h2>
-<table>
-  <tr><th style="width:17%">步驟</th><th style="width:30%">演練</th><th>正式</th></tr>
-  <tr><td>二、本次名冊</td><td>存 <code>private/test-data/</code></td><td>存 <code>private/roster/</code></td></tr>
-  <tr><td>三、種子</td><td>自己想</td><td>現場三位住戶各說 1–99，<b>由左到右用連字號</b>寫白板，再一字不差填入</td></tr>
-  <tr><td>三、發佈</td><td class="stop">⛔ 不按</td><td>下載完結果 CSV <b>之後</b>才按「📢 發佈結果」</td></tr>
-  <tr><td>四、結果檔</td><td><code>配位結果-演練-*.csv</code></td><td>完整版存 <code>private/配位結果-第一輪.csv</code>（12/2 出帳用），公告版另存</td></tr>
-  <tr><td>五、出帳</td><td><code>--dry</code></td><td>12/2 改 <code>--out private/社區幫匯入-第一輪.csv</code>，上傳見 docs/37 §1.3</td></tr>
-  <tr><td>五、公告</td><td><code>--watermark 演練</code></td><td>拿掉浮水印參數</td></tr>
-  <tr><td>備份</td><td>免</td><td>發佈前：主力電腦 12:30 快照＋本次名冊；發佈後：結果 CSV＋再跑一次 export-roster（手冊 §2.1 第 8 步）</td></tr>
-</table>
-
-<p class="foot">樂菲莊園社區 · 機車車位管理工具 —— 完整版見 docs/41-抽籤演練操作清單、背景見 docs/14-抽籤作業手冊</p>
+<p class="foot">樂菲莊園社區 · 機車車位管理工具 —— 詳細版 docs/41-抽籤演練操作清單、背景 docs/14-抽籤作業手冊</p>
 </div>
 </body>
 </html>
