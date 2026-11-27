@@ -267,3 +267,42 @@ describe('兩輪抽籤（2026-11-24：自行車第 2 輛起留到第二輪）', 
     expect(r.待安排).toHaveLength(0)
   })
 })
+describe('工作人員自行車排全體住戶之後（2026-11-27）', () => {
+  const staff = (name, nth = 1) => bike(`員工-${name}`, nth, { 工作人員: 'Y' })
+
+  it('第一輪：工作人員第 1 輛也不抽，列待第二輪並帶工作人員標記', () => {
+    const r = run([bike('A1-1'), staff('甲')], { stage: 1 })
+    expect(r.assigned.map((a) => a.戶號)).toEqual(['A1-1'])
+    expect(r.待安排).toHaveLength(1)
+    expect(r.待安排[0]).toMatchObject({ 戶號: '員工-甲', 原因: BIKE_REASON.NEXT_STAGE, 工作人員: true })
+  })
+
+  it('住戶都配到 → 工作人員撿剩位，配位方式＝工作人員', () => {
+    const r = run([bike('A1-1'), bike('B2-2', 1), bike('B2-2', 2), staff('甲'), staff('乙')])
+    const s = r.assigned.filter((a) => a.戶號.startsWith('員工-'))
+    expect(s).toHaveLength(2)
+    expect(s.every((a) => a.配位方式 === BIKE_VIA.STAFF)).toBe(true)
+    // 工作人員的順序號都排在住戶之後
+    const maxResident = Math.max(...r.assigned.filter((a) => !a.戶號.startsWith('員工-')).map((a) => a.順序號))
+    expect(Math.min(...s.map((a) => a.順序號))).toBeGreaterThan(maxResident)
+  })
+
+  it('還有住戶候補 → 工作人員全數暫緩，不搶住戶的位', () => {
+    // 5 格、6 台住戶第 1 輛 → 1 台住戶候補；工作人員一台都不能配
+    const residents = ['A1-1', 'A2-1', 'A3-1', 'A5-1', 'A6-1', 'A7-1'].map((h) => bike(h))
+    const r = run([...residents, staff('甲')])
+    expect(r.assigned.some((a) => a.戶號.startsWith('員工-'))).toBe(false)
+    const s = r.落選.find((l) => l.戶號 === '員工-甲')
+    expect(s).toMatchObject({ 原因: BIKE_REASON.STAFF_PENDING, 工作人員: true })
+  })
+
+  it('公告版不列工作人員（配到、暫緩、待第二輪都不列）', () => {
+    const r1 = run([bike('A1-1'), staff('甲')], { stage: 1 })
+    const r2 = run([...['A1-1', 'A2-1', 'A3-1', 'A5-1', 'A6-1', 'A7-1'].map((h) => bike(h)), staff('乙')])
+    const r3 = run([bike('A1-1'), staff('丙')])
+    for (const r of [r1, r2, r3]) {
+      const rows = mergedResultRows([r], { 公開版: true, 含戶號: true })
+      expect(rows.some((x) => String(x.戶號).startsWith('員工-'))).toBe(false)
+    }
+  })
+})

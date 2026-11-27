@@ -17,17 +17,20 @@
 import { mulberry32, hashSeed, seededShuffle } from './rng.js'
 import { bikeSeats, PUBLIC_BIKE_IDS } from '../map/seats.js'
 import { KIND, compareSeatId, toBikeId } from '../map/seat-id.js'
-import { REASON } from './distribute.js'
+import { REASON, VIA } from './distribute.js'
 
 export const BIKE_VIA = {
   DRAW: '抽籤', // 依辦法抽車位號碼
   PRESET: '物業指派', // 抽籤前已指派（保留/臨櫃辦理），免抽、直接記入結果
+  STAFF: VIA.STAFF, // 工作人員：住戶全部配完後撿剩位（與機車同字串 → 公告版同一條規則濾掉）
 }
 
 export const BIKE_REASON = {
   SHORT: '車位不足', // 順序號在可用車位數之後 → 候補
   // 兩輪抽籤第一輪（12/1）：第 2 輛起本輪不抽，不算候補。與機車共用同一字串，匯出時才會轉成狀態「待第二輪」。
   NEXT_STAGE: REASON.NEXT_STAGE,
+  // 工作人員：還有住戶候補時一律暫緩（2026-11-27 使用者定比照機車：工作人員自行車排全體住戶之後）。
+  STAFF_PENDING: REASON.STAFF_PENDING,
 }
 
 const PUBLIC_SET = new Set(PUBLIC_BIKE_IDS)
@@ -43,6 +46,7 @@ function toEntry(r, index) {
     車位編號: 車位 ? toBikeId(車位) || 車位 : '',
     已繳費: r.已繳費 === true || r.已繳費 === 'Y' || r.已繳費 === 'y',
     社宅: r.社宅 === true || r.社宅 === 'Y' || r.社宅 === 'y',
+    工作人員: r.工作人員 === true || r.工作人員 === 'Y' || r.工作人員 === 'y',
     特徵: String(r.特徵 ?? ''),
     _order: index,
   }
@@ -103,11 +107,16 @@ export function distributeBikes({
   // ── 已指派（物業抽籤前確定：保留位、臨櫃辦理）──────────────────
   const preset = entries.filter((e) => e.車位編號)
   let pending = entries.filter((e) => !e.車位編號)
+  // 工作人員排全體住戶之後（2026-11-27 使用者定，比照機車辦法伍二（十二））：先抽離，住戶各輪辦完才處理。
+  let staff = pending.filter((e) => e.工作人員)
+  pending = pending.filter((e) => !e.工作人員)
   const waiting = []
+  const wait = (e) => ({ 戶號: e.戶號, 車號: e.車號, 車種: KIND.BIKE, 第幾輛: e.第幾輛, 原因: BIKE_REASON.NEXT_STAGE, ...(e.工作人員 ? { 工作人員: true } : {}) })
   if (STAGE === 1) {
-    for (const e of pending.filter((x) => x.第幾輛 !== 1))
-      waiting.push({ 戶號: e.戶號, 車號: e.車號, 車種: KIND.BIKE, 第幾輛: e.第幾輛, 原因: BIKE_REASON.NEXT_STAGE })
+    for (const e of pending.filter((x) => x.第幾輛 !== 1)) waiting.push(wait(e))
     pending = pending.filter((x) => x.第幾輛 === 1)
+    for (const e of staff) waiting.push(wait(e)) // 第一輪工作人員一律不抽
+    staff = []
   }
   if (preset.length) {
     const a = []
@@ -125,22 +134,19 @@ export function distributeBikes({
   let seqCounter = Number(seqStart) || 0
   const nths = [...new Set(pending.map((e) => e.第幾輛))].sort((x, y) => x - y)
 
-  for (const nth of nths) {
+  // 抽一組（住戶的某一輪、或工作人員）：洗牌定順序號，依序從洗牌後的池取位；取不到列候補。
+  function drawGroup(cands, roundKey, name, via) {
+    if (!cands.length) return
     if (!available.size) {
-      // 車位已發完 → 本輪全數列候補，仍給順序號以定候補序。
-      const rest = seededShuffle(pending.filter((e) => e.第幾輛 === nth), rng)
+      // 車位已發完 → 本組全數列候補，仍給順序號以定候補序。
+      const rest = seededShuffle(cands, rng)
       for (const e of rest) {
         const seq = ++seqCounter
-        lost.push({ 戶號: e.戶號, 車號: e.車號, 第幾輛: nth, 輪次: nth, 順序號: seq, 原因: BIKE_REASON.SHORT })
+        lost.push({ 戶號: e.戶號, 車號: e.車號, 第幾輛: e.第幾輛, 輪次: roundKey, 順序號: seq, 原因: BIKE_REASON.SHORT, ...(e.工作人員 ? { 工作人員: true } : {}) })
       }
-      if (rest.length) say(`R${nth} 第 ${nth} 輛：車位已發完，${rest.length} 台全列候補`)
-      continue
+      say(`${name}：車位已發完，${rest.length} 台全列候補`)
+      return
     }
-
-    // 候選＝本輪序號的車。「一戶一位」不適用自行車：辦法伍三(四) 是「第一輛全部辦完、
-    // 有剩餘才辦第二輛」，同一戶本來就可能同時有第一與第二輛，由 第幾輛 分輪即可。
-    const cands = pending.filter((e) => e.第幾輛 === nth)
-    if (!cands.length) continue
 
     // 住戶洗牌 → 順序號；車位另行洗牌 → 依序發放。
     // 車位也洗牌是刻意的：若車位按編號序發，「順序號小」會固定拿到「編號小」的位置，
@@ -169,16 +175,32 @@ export function distributeBikes({
 
       draws.push({ 戶號: e.戶號, 車號: e.車號, 順序號: seq, 中籤: !!picked })
       if (!picked) {
-        lost.push({ 戶號: e.戶號, 車號: e.車號, 第幾輛: nth, 輪次: nth, 順序號: seq, 原因: BIKE_REASON.SHORT })
+        lost.push({ 戶號: e.戶號, 車號: e.車號, 第幾輛: e.第幾輛, 輪次: roundKey, 順序號: seq, 原因: BIKE_REASON.SHORT, ...(e.工作人員 ? { 工作人員: true } : {}) })
         continue
       }
       available.delete(picked)
-      record(e, picked, BIKE_VIA.DRAW, nth, seq)
-      a.push({ 戶號: e.戶號, 車位編號: picked, 順序號: seq, 配位方式: BIKE_VIA.DRAW })
+      record(e, picked, via, roundKey, seq)
+      a.push({ 戶號: e.戶號, 車位編號: picked, 順序號: seq, 配位方式: via })
     }
 
-    say(`R${nth} 第 ${nth} 輛：登記 ${cands.length}，配出 ${a.length}，候補 ${cands.length - a.length}，剩餘 ${available.size}`)
-    rounds.push({ round: nth, name: `第 ${nth} 輛自行車`, draws, assignments: a })
+    say(`${name}：登記 ${cands.length}，配出 ${a.length}，候補 ${cands.length - a.length}，剩餘 ${available.size}`)
+    rounds.push({ round: roundKey, name, draws, assignments: a })
+  }
+
+  // 候選＝本輪序號的車。「一戶一位」不適用自行車：辦法伍三(四) 是「第一輛全部辦完、
+  // 有剩餘才辦第二輛」，同一戶本來就可能同時有第一與第二輛，由 第幾輛 分輪即可。
+  for (const nth of nths) drawGroup(pending.filter((e) => e.第幾輛 === nth), nth, `R${nth} 第 ${nth} 輛自行車`, BIKE_VIA.DRAW)
+
+  // 工作人員（第二輪／一次跑完）：還有住戶候補 → 全數暫緩，不搶住戶的候補位；住戶都配到才撿剩位。
+  if (staff.length) {
+    const residentShort = lost.some((l) => l.原因 === BIKE_REASON.SHORT && !l.工作人員)
+    if (residentShort) {
+      for (const e of staff)
+        lost.push({ 戶號: e.戶號, 車號: e.車號, 第幾輛: e.第幾輛, 輪次: '工作人員', 順序號: null, 原因: BIKE_REASON.STAFF_PENDING, 工作人員: true })
+      say(`工作人員：尚有住戶候補，${staff.length} 台暫緩`)
+    } else {
+      drawGroup([...staff].sort((x, y) => x.第幾輛 - y.第幾輛), '工作人員', '工作人員（住戶配完後之剩餘位）', BIKE_VIA.STAFF)
+    }
   }
 
   if (waiting.length) say(`待第二輪：${waiting.length} 台（第 2 輛起，12/15 再抽）`)

@@ -53,7 +53,7 @@ export function resultRows(result, { 公告日 = '', 公開版 = false, 簽約�
     })
   }
   for (const l of result.落選 || []) {
-    if (公開版 && l.原因 === REASON.STAFF_PENDING) continue
+    if (公開版 && (l.原因 === REASON.STAFF_PENDING || l.工作人員)) continue // 自行車工作人員車位不足也不公告（2026-11-27）
     rows.push({
       戶號: l.戶號,
       車號: l.車號,
