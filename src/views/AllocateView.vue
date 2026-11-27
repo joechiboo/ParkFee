@@ -4,7 +4,8 @@ import { distribute, VIA } from '../lottery/distribute.js'
 import { distributeBikes, BIKE_VIA } from '../lottery/distribute-bikes.js'
 import { motorSeats, bikeSeats } from '../map/seats.js'
 import { displaySeatId, displaySeatIds } from '../map/seat-id.js'
-import { buildRoster } from '../data/registry.js'
+import { buildRoster, REGISTRATION_COLUMNS } from '../data/registry.js'
+import { toCSV } from '../data/csv.js'
 import { importedRoster, importInfo, setImportedRoster } from '../store/roster.js'
 import { mergedResultCSV, mergedResultRows } from '../export/result.js'
 import { sampleRoster } from '../data/sample.js'
@@ -51,6 +52,10 @@ const houseCount = computed(() => new Set(registrations.value.map((r) => r.戶�
 // 這裡走 list-roster Edge Function，管理員密碼即可 → 12/1 當天物業自己按一顆鈕就行。
 const loadingRoster = ref(false)
 const rosterErr = ref('')
+// 本次載入的原始名冊列（存證＋重跑用，2026-11-27）：雲端名冊會在發佈後帶著結果，
+// 發佈後要重來或事後驗算，必須用「抽籤前」這一份；/dev「④ 匯入真實名冊」可原樣匯回。
+const loadedRows = ref(null)
+const loadedAt = ref(null)
 async function loadFromCloud() {
   rosterErr.value = ''
   loadingRoster.value = true
@@ -61,6 +66,8 @@ async function loadFromCloud() {
       return
     }
     const { entries, invalid, conflicts } = buildRoster(rows)
+    loadedRows.value = rows
+    loadedAt.value = new Date()
     setImportedRoster(
       entries,
       `線上即時名冊 · ${戶數} 戶 / ${台數} 台` +
@@ -74,6 +81,21 @@ async function loadFromCloud() {
   } finally {
     loadingRoster.value = false
   }
+}
+
+// 下載本次名冊 CSV（欄位同 export-roster.mjs，可在 /dev 匯回）。檔名帶載入時間，與抽籤紀錄的執行時間對照。
+const ROSTER_DL_COLUMNS = [...REGISTRATION_COLUMNS, '車位編號', '已繳費', '配位狀態']
+function downloadRoster() {
+  if (!loadedRows.value) return
+  const t = loadedAt.value || new Date()
+  const p = (n) => String(n).padStart(2, '0')
+  const stamp = `${t.getFullYear()}${p(t.getMonth() + 1)}${p(t.getDate())}-${p(t.getHours())}${p(t.getMinutes())}`
+  const blob = new Blob(['﻿' + toCSV(loadedRows.value, ROSTER_DL_COLUMNS)], { type: 'text/csv;charset=utf-8' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `抽籤名冊-${stamp}.csv`
+  a.click()
+  URL.revokeObjectURL(a.href)
 }
 
 // ── 抽籤狀態 ──
@@ -261,8 +283,14 @@ function downloadResultCSV(pub = true) {
       <span v-else>抽籤日請以<b>管理員</b>登入後載入真實名冊。</span>
     </p>
     <p v-if="rosterErr" class="mt-1 rounded bg-rose-50 px-3 py-1.5 text-xs text-rose-700">{{ rosterErr }}</p>
-    <p v-else class="mt-2 rounded bg-emerald-50 px-3 py-1.5 text-xs text-emerald-700">
-      ✓ 已載入<b>匯入名冊</b>，可執行正式抽籤與發佈。
+    <p v-else class="mt-2 flex flex-wrap items-center gap-2 rounded bg-emerald-50 px-3 py-1.5 text-xs text-emerald-700">
+      <span>✓ 已載入<b>匯入名冊</b>，可執行正式抽籤與發佈。</span>
+      <button
+        v-if="loadedRows"
+        class="rounded bg-emerald-700 px-2.5 py-1 font-medium text-white hover:bg-emerald-800"
+        @click="downloadRoster"
+      >⬇ 下載本次名冊（存證，抽籤前先按）</button>
+      <span v-if="loadedRows" class="text-emerald-800">發佈後雲端名冊會帶著結果；要重來或事後驗算都要用這一份（/dev「④ 匯入真實名冊」可匯回）。</span>
     </p>
 
     <!-- 配位規則說明（可摺疊） -->
